@@ -1,0 +1,70 @@
+{
+  "name": "default",
+  "version": "1.0.0",
+  "author": "ThiasNET",
+  "locales": ["it", "de", "en"],
+  "layouts": {
+    "home": {
+      "label": "Homepage",
+      "zones": {
+        "hero": { "blocks": ["hero"], "max": 1 },
+        "main": { "blocks": ["heading", "text", "image", "text_image", "gallery", "cta", "quote", "video", "files", "map", "contacts", "divider"] }
+      }
+    },
+    "page": {
+      "label": "Pagina standard",
+      "zones": {
+        "main": { "blocks": ["heading", "text", "image", "text_image", "gallery", "cta", "quote", "video", "files", "map", "contacts", "divider"] },
+        "sidebar": { "blocks": ["text", "cta", "image"], "max": 4 }
+      }
+    },
+    "full": {
+      "label": "Pagina larga (senza sidebar)",
+      "zones": {
+        "main": { "blocks": ["heading", "text", "image", "text_image", "gallery", "cta", "quote", "video", "files", "map", "divider"] }
+      }
+    }
+  },
+  "widget_areas": {
+    "header_top": { "label": "Barra superiore", "widgets": ["notice", "contacts_inline"] },
+    "footer": { "label": "Piè di pagina", "widgets": ["hours", "contacts", "social", "latest_entries", "text"] },
+    "sidebar": { "label": "Barra laterale", "widgets": ["hours", "latest_entries", "text", "cta"] }
+  },
+  "menus": {
+    "main": { "label": "Menu principale", "max_depth": 2 },
+    "footer": { "label": "Menu footer", "max_depth": 1 }
+  },
+  "collections": {
+    "news": {
+      "label": "Notizie",
+      "fields": {
+        "date": { "type": "date", "required": true },
+        "cover": { "type": "media" },
+        "summary": { "type": "textarea", "max": 300 },
+        "body": { "type": "richtext" }
+      }
+    },
+    "events": {
+      "label": "Eventi",
+      "fields": {
+        "start": { "type": "datetime", "required": true },
+        "end": { "type": "datetime" },
+        "place": { "type": "text" },
+        "cover": { "type": "media" },
+        "body": { "type": "richtext" }
+      }
+    }
+  },
+  "image_sizes": {
+    "thumb": { "width": 320, "ratio": "1:1" },
+    "card": { "width": 640, "ratio": "4:3" },
+    "content": { "width": 1024 },
+    "hero": { "width": 1920, "ratio": "16:9" }
+  },
+  "settings": {
+    "accent_color": { "type": "color", "label": "Colore principale", "palette": ["#0B5FFF", "#1F7A4D", "#B3261E", "#6B4EFF", "#202124"], "default": "#0B5FFF" },
+    "show_breadcrumbs": { "type": "boolean", "label": "Mostra percorso di navigazione", "default": true },
+    "header_style": { "type": "select", "label": "Stile header", "options": ["light", "dark"], "default": "light" },
+    "footer_note": { "type": "text", "label": "Nota nel footer", "max": 120 }
+  }
+}
