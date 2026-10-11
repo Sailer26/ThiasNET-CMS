@@ -20,3 +20,6 @@ Registro delle decisioni di prodotto. Ogni decisione ha un ID stabile (D-xx): se
 | D-14 | 2026-10-11 | Le impostazioni del tema si salvano su `PUT /api/admin/settings/appearance` (non `/settings/theme`). | Evita il conflitto con `test_no_admin_route_touches_theme_files`, che vieta route admin mutanti contenenti "theme". |
 | D-15 | 2026-10-11 | Pubblicazione per editor controllata dal flag `users.can_publish` (impostato da admin/owner). | Mancava nel modello dati. |
 | D-16 | 2026-10-11 | Pubblicazione programmata eseguita da un job periodico (comando `flask publish-scheduled` lanciato ogni minuto) + controllo al momento della richiesta per sicurezza. | Mancava il meccanismo. |
+| D-17 | 2026-10-11 | Comandi di progetto via `python scripts/tasks.py <comando>` (dev, test, lint, migrate, theme-check); il `Makefile` resta per CI/Docker e delega allo script. | `make` non è installato sul PC di sviluppo Windows. |
+| D-18 | 2026-10-11 | Le miniature dichiarate in `block_variants` devono esistere in `themes/<tema>/assets/`: se ne manca una l'avvio fallisce. | Il cliente non deve mai vedere una scelta senza figura. |
+| D-19 | 2026-10-11 | La variabile `FLASK_ENV` diventa `APP_ENV` (development, testing, production). | Flask non usa più `FLASK_ENV`. |
