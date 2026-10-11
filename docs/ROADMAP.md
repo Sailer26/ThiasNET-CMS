@@ -1,4 +1,4 @@
-# Roadmap — ThiasCMS
+# Roadmap — ThiasNET CMS
 
 Una fase alla volta. Una fase è chiusa solo quando tutti i criteri sono spuntati e `make test` + `make lint` sono verdi.
 
@@ -18,8 +18,10 @@ Una fase alla volta. Una fase è chiusa solo quando tutti i criteri sono spuntat
 
 ## Fase 2 — Pagine e blocchi (backend)
 - [ ] Modelli pagine, blocchi, revisioni
-- [ ] Registry blocchi + JSON Schema per i 12 blocchi base
-- [ ] Validazione zone/blocchi ammessi da `theme.json`
+- [ ] Registry blocchi + JSON Schema per i 13 blocchi base (incluso `hero`, D-11)
+- [ ] Validazione zone/blocchi ammessi e varianti (`block_variants`) da `theme.json` (D-03)
+- [ ] `users.can_publish` per editor (D-15); job `flask publish-scheduled` (D-16)
+- [ ] Bozze autosave (`page_drafts`) separate dalla versione pubblicata (D-07)
 - [ ] Sanitizzazione rich text (nh3) + test XSS
 - [ ] API CRUD pagine/blocchi, riordino, bozza/pubblica/programma, ripristino revisione
 
@@ -28,7 +30,9 @@ Una fase alla volta. Una fase è chiusa solo quando tutti i criteri sono spuntat
 - [ ] Tema `default` completo (layout, partials, blocchi), accessibile e responsive
 - [ ] Risoluzione path, 404 del tema, redirect, sitemap, robots, canonical
 - [ ] Cache HTML + invalidazione
-- [ ] Anteprima bozza per utenti loggati
+- [ ] Anteprima bozza per utenti loggati + endpoint anteprima live con `data-block-id` (D-02)
+- [ ] Banner consenso cookie, video/mappe "clicca per caricare", analytics solo dopo consenso (D-06)
+- [ ] Modulo contatti: invio SMTP, honeypot, rate limit, tempo minimo, `contact_messages` (D-05)
 
 ## Fase 4 — Media library
 - [ ] Upload con verifica MIME sui byte, allowlist, limite dimensione, SVG rifiutati
@@ -38,13 +42,18 @@ Una fase alla volta. Una fase è chiusa solo quando tutti i criteri sono spuntat
 ## Fase 5 — Pannello admin (React)
 - [ ] Shell Vite+TS, login, layout, gestione errori/sessione scaduta
 - [ ] Albero pagine, editor pagina con zone e blocchi drag&drop (dnd-kit), TipTap
+- [ ] Anteprima live affiancata (iframe), click sul blocco → apre il form (D-02)
+- [ ] Scelta varianti blocco da miniature (D-03)
+- [ ] Autosave + annulla/ripristina (D-07)
 - [ ] Media picker, gestione utenti (admin/owner), audit log (owner)
-- [ ] UI tutta in italiano, utilizzabile da tablet
+- [ ] Tour guidato al primo accesso, suggerimenti accanto ai campi, controllo prima di pubblicare, "Chiedi a Thias" (D-08, D-09)
+- [ ] UI tutta in italiano, PC + tablet, azioni rapide da telefono (D-10)
+- [ ] Test d'uso con un cliente vero (PREMORTEM #6)
 
 ## Fase 6 — Widget, menu, impostazioni
 - [ ] Widget per area con visibilità per pagina
 - [ ] Menu per posizione, drag&drop, profondità massima
-- [ ] Impostazioni sito + settings del tema generate da `theme.json` (form dinamico tipizzato)
+- [ ] Impostazioni sito + settings del tema generate da `theme.json` (form dinamico tipizzato) su `PUT /api/admin/settings/appearance` (D-14)
 
 ## Fase 7 — Collezioni e multilingua
 - [ ] Collezioni da `theme.json` (news, eventi), listing paginato, dettaglio

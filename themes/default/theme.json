@@ -2,7 +2,7 @@
   "name": "default",
   "version": "1.0.0",
   "author": "ThiasNET",
-  "locales": ["it", "de", "en"],
+  "locales": ["it", "de", "rm", "en"],
   "layouts": {
     "home": {
       "label": "Homepage",

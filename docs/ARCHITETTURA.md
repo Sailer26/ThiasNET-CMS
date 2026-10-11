@@ -1,4 +1,4 @@
-# Architettura — ThiasCMS
+# Architettura — ThiasNET CMS
 
 ## Visione d'insieme
 ```
@@ -30,7 +30,7 @@ users(id, email, password_hash, role[owner|admin|editor], totp_secret, active, l
 pages(id, parent_id, locale, translation_group, slug, path, title, layout, status[draft|published|scheduled],
       publish_at, seo_json, sort, created_by, updated_at)
 page_revisions(id, page_id, snapshot_json, author_id, created_at)
-blocks(id, page_id, zone, type, data_json, sort)
+blocks(id, page_id, zone, type, variant, data_json, sort)   -- variant: enum da theme.json > block_variants (D-03)
 collections(id, key)            -- dichiarate dal tema, sincronizzate all'avvio
 entries(id, collection_id, locale, slug, title, fields_json, status, publish_at)
 media(id, folder_id, filename, mime, width, height, sha256, alt, focal_x, focal_y, variants_json)
@@ -40,6 +40,10 @@ menus(id, location, locale) · menu_items(id, menu_id, parent_id, label, target_
 settings(key, value_json)       -- sito + settings esposti dal tema
 redirects(id, from_path, to_path, code)
 audit_log(id, user_id, action, entity, entity_id, diff_json, ip, created_at)
+page_drafts(page_id, data_json, author_id, updated_at)          -- autosave (D-07), mai pubblicato da solo
+contact_messages(id, form_page_id, name, email, message, ip_hash, created_at)   -- D-05
+support_requests(id, user_id, page_id, message, created_at, sent_at)           -- "Chiedi a Thias" (D-09)
+-- users ha in più: can_publish (D-15), tour_completed_at (D-08)
 ```
 
 ## Blocchi
@@ -48,6 +52,11 @@ Ogni tipo di blocco = 3 pezzi con lo stesso nome:
 2. `themes/<tema>/blocks/<tipo>.html` — rendering (scritto da Thias, mai dall'utente).
 3. `admin/src/blocks/<tipo>/Editor.tsx` — form di editing.
 Riferimenti a media salvati come `media_id`, mai come URL liberi.
+
+## Anteprima live (D-02)
+- L'editor admin mostra un iframe su `/_preview/<page_id>` (solo utenti loggati, stessa origine, `X-Frame-Options: SAMEORIGIN` solo su questa route).
+- Il pannello invia lo stato corrente della bozza con `POST /api/admin/pages/<id>/preview` (validato con gli stessi schemi dei blocchi); il server renderizza con il tema attivo esattamente come il sito pubblico, aggiungendo solo un piccolo script del CMS (file statico, compatibile CSP) che evidenzia i blocchi via `data-block-id` e comunica il click al pannello con `postMessage` (origine verificata).
+- Il rendering di anteprima non scrive cache e non pubblica nulla.
 
 ## Rendering pubblico
 1. Risolvi `path` → pagina pubblicata (o redirect / 404 del tema).

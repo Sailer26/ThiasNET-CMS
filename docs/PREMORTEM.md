@@ -1,4 +1,4 @@
-# Premortem — "È un anno dopo e ThiasCMS è fallito. Perché?"
+# Premortem — "È un anno dopo e ThiasNET CMS è fallito. Perché?"
 
 | # | Causa probabile del fallimento | Segnale d'allarme | Contromisura |
 |---|---|---|---|

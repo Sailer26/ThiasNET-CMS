@@ -19,6 +19,22 @@ themes/<nome>/
 - `menus`: posizioni dei menu e profondità massima.
 - `collections`: tipi di contenuto con campi tipizzati.
 - `image_sizes`: varianti da generare (larghezza, ratio).
+- `block_variants` (D-03): per ogni tipo di blocco, le varianti grafiche che il cliente può scegliere. Ogni variante ha `label` (italiano), `thumbnail` (immagine in `assets/variants/`) ed è un valore di un enum chiuso: il server rifiuta varianti non dichiarate. Il template del blocco riceve `block.variant` e lo usa solo come classe/ramo del template, mai come CSS o markup. Esempio:
+  ```json
+  "block_variants": {
+    "text_image": {
+      "default": "image_left",
+      "options": {
+        "image_left":  { "label": "Immagine a sinistra", "thumbnail": "variants/text_image-left.webp" },
+        "image_right": { "label": "Immagine a destra",   "thumbnail": "variants/text_image-right.webp" },
+        "dark":        { "label": "Sfondo scuro",        "thumbnail": "variants/text_image-dark.webp" }
+      }
+    }
+  }
+  ```
+
+## Template unici per ogni sito (D-04)
+Tutti i temi condividono gli **stessi tipi di blocco e widget** (schema dati e editor nel core), ma ogni tema è libero su tutto il resto: markup dei blocchi, layout, tipografia, CSS, animazioni (in file `assets/`), varianti. Un tema nuovo nasce copiando la struttura di `default` e riscrivendo la grafica da zero, senza toccare `app/` o `admin/`. Il contratto (questo documento + lo schema di `theme.json`) è l'unico punto di contatto: se un tema ha bisogno di un dato che i blocchi non hanno, è una modifica al core da decidere a parte.
 - `settings`: le **uniche** personalizzazioni esposte al cliente. Tipi ammessi: `text`, `textarea`, `boolean`, `select` (opzioni fisse), `color` (hex, opzionalmente limitato a una `palette`), `media` (immagine dalla libreria), `url`. **Vietati**: campi CSS, JS, HTML o template liberi.
 
 ## Regole per chi scrive un tema
@@ -27,6 +43,8 @@ themes/<nome>/
 3. Immagini sempre via helper `{{ img(media_id, size="card") }}` (srcset, width/height, lazy, alt).
 4. Nessun JS inline; JS nei file `assets/`, compatibile con la CSP.
 5. Un tema nuovo o modificato entra solo con commit + build + deploy.
+6. Ogni blocco nel template ha l'attributo `data-block-id="{{ block.id }}"` sull'elemento radice: serve all'anteprima live per evidenziare e selezionare il blocco (D-02). In modalità pubblica l'attributo è innocuo.
+7. Il tema fornisce lo stile del banner cookie e dei segnaposto "clicca per caricare" (video/mappe), ma il comportamento è del CMS (D-06).
 
 ## Cosa NON potrà mai fare un utente del pannello
 Modificare/caricare file del tema, cambiare tema attivo (solo owner da file di config/env, non da UI), inserire CSS/JS/HTML arbitrario, inserire codice Jinja nei contenuti, aggiungere zone o layout non dichiarati.

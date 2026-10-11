@@ -1,7 +1,10 @@
-# CLAUDE.md — ThiasCMS
+# CLAUDE.md — ThiasNET CMS
 
 CMS proprietario di ThiasNET per i siti dei clienti (PMI, comuni, associazioni in Ticino/Grigioni).
-Leggi SEMPRE prima di lavorare: `docs/PRD.md`, `docs/ARCHITETTURA.md`, `docs/TEMPLATE-CONTRACT.md`, `docs/ROADMAP.md`.
+Leggi SEMPRE prima di lavorare: `docs/PRD.md`, `docs/DECISIONI.md`, `docs/ARCHITETTURA.md`, `docs/TEMPLATE-CONTRACT.md`, `docs/ROADMAP.md`.
+`docs/DECISIONI.md` prevale sugli altri documenti in caso di conflitto. Le idee fuori scope vanno in `docs/IDEE.md`.
+
+Priorità di prodotto: (1) facilità d'uso per clienti non tecnici, (2) ogni sito ha una grafica unica costruita sugli stessi blocchi/widget (D-04).
 
 ## Regola d'oro (non negoziabile)
 **Il template (tema) non è modificabile dal pannello admin, da nessun ruolo.**

@@ -3,7 +3,7 @@
 Copia il kit in una cartella vuota, poi:
 
 ```bash
-git init && git add . && git commit -m "chore: kit iniziale ThiasCMS"
+git init && git add . && git commit -m "chore: kit iniziale ThiasNET CMS"
 claude
 ```
 

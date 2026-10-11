@@ -138,7 +138,8 @@ def test_jinja_in_content_is_not_executed(owner_client):
 
 
 def test_unknown_theme_setting_rejected(owner_client):
-    resp = owner_client.put("/api/admin/settings/theme", json={"custom_css": "body{display:none}"})
+    # Route su "appearance" e non "theme": vedi D-14 e test_no_admin_route_touches_theme_files.
+    resp = owner_client.put("/api/admin/settings/appearance", json={"custom_css": "body{display:none}"})
     assert resp.status_code in (400, 422)
 
 
