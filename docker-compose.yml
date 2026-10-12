@@ -1,0 +1,19 @@
+# Sviluppo: docker compose up. Il tema è montato in SOLA LETTURA (regola d'oro).
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5000:5000"
+    environment:
+      APP_ENV: development
+      DATABASE_URL: sqlite:////srv/app/data/cms.db
+    volumes:
+      - ./app:/srv/app/app
+      - ./migrations:/srv/app/migrations
+      - ./themes:/srv/app/themes:ro
+      - cms-data:/srv/app/data
+
+volumes:
+  cms-data:
