@@ -5,6 +5,7 @@ con una feature, è la feature a essere sbagliata.
 Alcuni test sono marcati `skip` finché la fase corrispondente non esiste:
 vanno attivati quando la relativa route viene creata.
 """
+
 from __future__ import annotations
 
 import ast
@@ -39,6 +40,7 @@ def _themes_hash() -> str:
 
 # --- Analisi statica -------------------------------------------------------
 
+
 def test_no_dynamic_template_rendering_in_app():
     """Nessun template costruito da stringhe (rischio SSTI)."""
     offenders = []
@@ -54,7 +56,9 @@ def test_no_dynamic_template_rendering_in_app():
 
 def test_app_code_never_writes_into_themes():
     """Nessun riferimento a 'themes' accanto a operazioni di scrittura."""
-    write_pattern = re.compile(r"(write_text|write_bytes|open\([^)]*['\"][wa]|shutil\.|os\.rename|os\.remove|\.save\()")
+    write_pattern = re.compile(
+        r"(write_text|write_bytes|open\([^)]*['\"][wa]|shutil\.|os\.rename|os\.remove|\.save\()"
+    )
     offenders = []
     for path in _python_files():
         for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
@@ -79,11 +83,16 @@ def test_theme_settings_are_typed_and_safe():
     for tj in THEMES_DIR.glob("*/theme.json"):
         data = json.loads(tj.read_text(encoding="utf-8"))
         for key, spec in data.get("settings", {}).items():
-            assert spec.get("type") in ALLOWED_SETTING_TYPES, f"{tj}: setting '{key}' di tipo non ammesso"
-            assert not re.search(r"(css|js|script|html|code)", key, re.I), f"{tj}: setting '{key}' sospetta"
+            assert spec.get("type") in ALLOWED_SETTING_TYPES, (
+                f"{tj}: setting '{key}' di tipo non ammesso"
+            )
+            assert not re.search(r"(css|js|script|html|code)", key, re.I), (
+                f"{tj}: setting '{key}' sospetta"
+            )
 
 
 # --- Test runtime (attivare con le fasi) -----------------------------------
+
 
 @pytest.fixture
 def client():
@@ -134,14 +143,20 @@ def test_no_admin_route_touches_theme_files(client):
 
 def test_jinja_in_content_is_not_executed(owner_client):
     """Un blocco testo con sintassi Jinja deve uscire come testo, non essere eseguito."""
-    pytest.skip("Attivare in Fase 3: creare pagina con blocco text '{{ 7*7 }}' e verificare che '49' non compaia")
+    pytest.skip(
+        "Attivare in Fase 3: creare pagina con blocco text '{{ 7*7 }}' e verificare che '49' non compaia"
+    )
 
 
 def test_unknown_theme_setting_rejected(owner_client):
     # Route su "appearance" e non "theme": vedi D-14 e test_no_admin_route_touches_theme_files.
-    resp = owner_client.put("/api/admin/settings/appearance", json={"custom_css": "body{display:none}"})
+    resp = owner_client.put(
+        "/api/admin/settings/appearance", json={"custom_css": "body{display:none}"}
+    )
     assert resp.status_code in (400, 422)
 
 
 def test_theme_files_unchanged_after_full_admin_session(owner_client):
-    pytest.skip("Attivare in Fase 6: eseguire CRUD completo su pagine/widget/menu/settings e confrontare _themes_hash()")
+    pytest.skip(
+        "Attivare in Fase 6: eseguire CRUD completo su pagine/widget/menu/settings e confrontare _themes_hash()"
+    )

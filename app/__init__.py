@@ -1,0 +1,45 @@
+"""ThiasNET CMS — application factory."""
+
+from __future__ import annotations
+
+import os
+from collections.abc import Mapping
+from pathlib import Path
+from typing import Any, cast
+
+from flask import Flask, current_app
+
+from app import database  # noqa: F401  (registra i PRAGMA SQLite)
+from app.cli import register_cli
+from app.config import PROJECT_ROOT, build_config
+from app.database import ensure_sqlite_directory
+from app.extensions import db, migrate
+from app.services.theme import Theme, load_theme
+
+ACTIVE_THEME_KEY = "thiasnet.active_theme"
+MIGRATIONS_DIR = PROJECT_ROOT / "migrations"
+
+
+def create_app(config_name: str | None = None, overrides: Mapping[str, Any] | None = None) -> Flask:
+    """Crea l'app. Se il tema attivo non è valido solleva ThemeValidationError e non parte."""
+    app = Flask(__name__)
+    app.config.from_mapping(
+        build_config(config_name or os.environ.get("APP_ENV", "development"), os.environ)
+    )
+    if overrides:
+        app.config.from_mapping(overrides)
+
+    app.extensions[ACTIVE_THEME_KEY] = load_theme(
+        Path(app.config["THEMES_DIR"]), app.config["ACTIVE_THEME"]
+    )
+
+    ensure_sqlite_directory(app.config["SQLALCHEMY_DATABASE_URI"])
+    db.init_app(app)
+    migrate.init_app(app, db, directory=str(MIGRATIONS_DIR))
+    register_cli(app)
+    return app
+
+
+def get_theme() -> Theme:
+    """Tema attivo dell'app corrente (sola lettura)."""
+    return cast(Theme, current_app.extensions[ACTIVE_THEME_KEY])

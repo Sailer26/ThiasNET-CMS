@@ -45,9 +45,11 @@ extend-exclude = ["migrations"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "S", "T20", "ANN", "RUF", "PTH", "DTZ"]
+# Any è inevitabile su JSON non ancora validato e sugli hook DB-API; mypy strict resta attivo.
+ignore = ["ANN401"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "ANN", "S603"]
+"tests/**" = ["S101", "ANN", "S603", "E501"]
 "scripts/**" = ["S603", "S607", "T20"]
 
 [tool.mypy]

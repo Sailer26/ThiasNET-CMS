@@ -36,10 +36,7 @@ def make_theme(tmp_path: Path) -> MakeTheme:
     ) -> Path:
         theme_dir = themes_dir / name
         (theme_dir / "assets").mkdir(parents=True, exist_ok=True)
-        if isinstance(data, str):
-            content = data
-        else:
-            content = json.dumps({**data, "name": name})
+        content = data if isinstance(data, str) else json.dumps({**data, "name": name})
         (theme_dir / "theme.json").write_text(content, encoding="utf-8")
         for thumb in thumbnails:
             target = theme_dir / "assets" / thumb

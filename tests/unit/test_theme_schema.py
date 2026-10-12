@@ -36,7 +36,7 @@ def test_default_theme_is_valid() -> None:
 
 def test_missing_theme_json_raises(tmp_path: Path) -> None:
     (tmp_path / "themes" / "demo").mkdir(parents=True)
-    with pytest.raises(ThemeValidationError, match="theme.json"):
+    with pytest.raises(ThemeValidationError, match=r"theme\.json"):
         load_theme(tmp_path / "themes", "demo")
 
 
@@ -92,7 +92,9 @@ def test_select_requires_options(make_theme: MakeTheme, theme_data: dict[str, An
 
 
 @pytest.mark.parametrize("bad_color", ["red", "#12345", "#GGGGGG", "url(x)"])
-def test_color_must_be_hex(make_theme: MakeTheme, theme_data: dict[str, Any], bad_color: str) -> None:
+def test_color_must_be_hex(
+    make_theme: MakeTheme, theme_data: dict[str, Any], bad_color: str
+) -> None:
     theme_data["settings"]["accent_color"]["palette"].append(bad_color)
     _expect_error(make_theme, theme_data, "accent_color")
 

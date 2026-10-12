@@ -25,7 +25,11 @@ def test_development_config_debug() -> None:
 def test_environment_overrides_paths_and_theme() -> None:
     config = build_config(
         "development",
-        environ={"ACTIVE_THEME": "cliente", "THEMES_DIR": "/srv/themes", "DATABASE_URL": "sqlite:///x.db"},
+        environ={
+            "ACTIVE_THEME": "cliente",
+            "THEMES_DIR": "/srv/themes",
+            "DATABASE_URL": "sqlite:///x.db",
+        },
     )
     assert config["ACTIVE_THEME"] == "cliente"
     assert str(config["THEMES_DIR"]).replace("\\", "/").endswith("/srv/themes")

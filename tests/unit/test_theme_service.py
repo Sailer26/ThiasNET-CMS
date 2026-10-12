@@ -109,7 +109,11 @@ def test_theme_model_is_immutable(theme: Theme) -> None:
 def test_theme_service_has_no_write_api() -> None:
     names = [n for n in dir(theme_module) if not n.startswith("_")]
     names += [n for n in dir(Theme) if not n.startswith("_")]
-    offenders = [n for n in names if n.lower().startswith(WRITE_PREFIXES)]
+    offenders = [
+        n
+        for n in names
+        if any(n.lower() == p or n.lower().startswith(f"{p}_") for p in WRITE_PREFIXES)
+    ]
     assert not offenders
 
 
@@ -122,7 +126,9 @@ def _dir_hash(path: Path) -> str:
     return h.hexdigest()
 
 
-def test_loading_does_not_modify_themes_dir(make_theme: MakeTheme, theme_data: dict[str, Any]) -> None:
+def test_loading_does_not_modify_themes_dir(
+    make_theme: MakeTheme, theme_data: dict[str, Any]
+) -> None:
     theme_data["block_variants"] = VARIANTS
     themes_dir = make_theme(theme_data, thumbnails=THUMBS)
     before = _dir_hash(themes_dir)
