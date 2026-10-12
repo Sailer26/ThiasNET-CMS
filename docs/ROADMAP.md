@@ -3,11 +3,17 @@
 Una fase alla volta. Una fase è chiusa solo quando tutti i criteri sono spuntati e `make test` + `make lint` sono verdi.
 
 ## Fase 0 — Fondamenta
-- [ ] Repo, `pyproject.toml`, `Makefile`, ruff/mypy, pre-commit, Docker dev
-- [ ] App factory Flask, config per ambiente, SQLAlchemy + Alembic, SQLite WAL
-- [ ] `services/theme.py`: carica e valida `theme.json` (JSON Schema); avvio fallisce se invalido
-- [ ] `tests/security/test_template_lock.py` attivo (anche se alcune parti sono ancora `skip` dove le route non esistono)
-- [ ] CI (GitHub Actions): test + lint
+- [x] Repo, `pyproject.toml`, `Makefile`, ruff/mypy, pre-commit, Docker dev
+- [x] App factory Flask, config per ambiente, SQLAlchemy + Alembic, SQLite WAL
+- [x] `services/theme.py`: carica e valida `theme.json` (JSON Schema); avvio fallisce se invalido
+- [x] `tests/security/test_template_lock.py` attivo (anche se alcune parti sono ancora `skip` dove le route non esistono)
+- [x] CI (GitHub Actions): test + lint
+
+**Rimandati dalla review della Fase 0** (da chiudere nella fase indicata):
+- Fase 1: cookie `REMEMBER_*` di Flask-Login, `SESSION_COOKIE_NAME="__Host-session"` e `PERMANENT_SESSION_LIFETIME` in produzione; mypy esteso a `tests/` e `scripts/`.
+- Fase 3: `theme-check` verifica che esistano i template (`layouts/*.html`, `blocks/<tipo>.html`) e avvisa sulle varianti di blocchi mai ammessi in una zona; controllo del formato reale delle miniature (WebP/PNG/JPG); il tema `default` riceve `block_variants` reali; aggiungere l'`Environment` di `services/render.py` all'allowlist di `tests/security/test_golden_rule.py`.
+- Fase 6: validazione server dei valori delle settings salvati dal pannello (url solo http(s)/relativo, colori nella palette).
+- Fase 8: immagine base Docker per digest, `pip install --require-hashes` o lockfile, action e hook fissati a SHA.
 
 ## Fase 1 — Utenti e autenticazione
 - [ ] Modello `users`, ruoli owner/admin/editor, Argon2

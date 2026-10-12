@@ -49,7 +49,9 @@ docs/
 4. Commit piccoli, messaggi in italiano, formato `tipo(ambito): descrizione`.
 
 ## Comandi
-- `make dev` · `make test` · `make lint` (ruff + mypy + eslint) · `make migrate` · `make seed`
+- Su Windows (senza make, D-17): `python scripts/tasks.py dev|test|lint|migrate|theme-check` con la `.venv` attiva. Il `Makefile` delega allo stesso script.
+- `python -m app.theme_check` valida i temi anche quando il tema attivo è rotto e l'app non parte.
+- L'app non parte senza `APP_ENV` (development | testing | production): `tasks.py` usa `development` di default.
 - Comandi progetto: `/fase N`, `/nuovo-blocco <nome>`, `/check-template-lock`
 
 ## Non fare
