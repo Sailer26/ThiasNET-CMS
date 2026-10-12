@@ -13,8 +13,8 @@ data/
 media/
 admin/node_modules/
 admin/dist/
-.venv/
 coverage.xml
 *.db-wal
 *.db-shm
 instance/
+*.egg-info/

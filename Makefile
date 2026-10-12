@@ -1,25 +1,29 @@
+# Su Windows senza make usare direttamente: python scripts/tasks.py <comando> (D-17)
+PY ?= python
+TASKS = $(PY) scripts/tasks.py
+
 .PHONY: dev test lint migrate seed theme-check admin-dev build
 
 dev:            ## Avvia backend Flask in debug
-	flask --app app run --debug --port 5000
+	$(TASKS) dev
 
-admin-dev:      ## Avvia il pannello React (Vite)
+admin-dev:      ## Avvia il pannello React (Vite), dalla Fase 5
 	cd admin && npm run dev
 
 test:
-	pytest -q --cov=app --cov-report=term-missing
+	$(TASKS) test
 
-lint:
-	ruff check . && ruff format --check . && mypy app && cd admin && npm run lint
+lint:           ## ruff + mypy (+ eslint se esiste admin/)
+	$(TASKS) lint
 
 migrate:
-	flask --app app db upgrade
+	$(TASKS) migrate
 
-seed:
-	flask --app app seed-demo
+seed:           ## Dati demo (comando seed-demo da creare nelle fasi successive)
+	$(PY) -m flask --app app seed-demo
 
 theme-check:    ## Valida theme.json di tutti i temi
-	flask --app app theme-check
+	$(TASKS) theme-check
 
 build:
 	docker compose build
