@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -195,6 +196,89 @@ def test_collection_unknown_field_type_rejected(
 def test_unknown_locale_rejected(make_theme: MakeTheme, theme_data: dict[str, Any]) -> None:
     theme_data["locales"].append("fr")
     _expect_error(make_theme, theme_data, "locales")
+
+
+@pytest.mark.parametrize("bad_key", ["custom_style", "head_extra", "raw_markup", "js_snippet"])
+def test_more_suspicious_setting_keys_rejected(
+    make_theme: MakeTheme, theme_data: dict[str, Any], bad_key: str
+) -> None:
+    theme_data["settings"][bad_key] = {"type": "textarea", "label": "X", "max": 100}
+    _expect_error(make_theme, theme_data, bad_key)
+
+
+@pytest.mark.parametrize("good_key", ["site_description", "postcode", "zip_code", "headline"])
+def test_legit_setting_keys_accepted(
+    make_theme: MakeTheme, theme_data: dict[str, Any], good_key: str
+) -> None:
+    """Niente falsi positivi: la sicurezza vera è l'allowlist dei tipi."""
+    theme_data["settings"][good_key] = {"type": "text", "label": "X", "max": 100}
+    assert good_key in load_theme(make_theme(theme_data), "demo").settings
+
+
+@pytest.mark.parametrize("kind", ["text", "textarea"])
+def test_text_settings_require_max(
+    make_theme: MakeTheme, theme_data: dict[str, Any], kind: str
+) -> None:
+    theme_data["settings"]["slogan"] = {"type": kind, "label": "Slogan"}
+    _expect_error(make_theme, theme_data, "slogan")
+
+
+@pytest.mark.parametrize("bad_url", ["javascript:alert(1)", "data:text/html,x", "//evil.ch"])
+def test_url_default_must_be_http_or_relative(
+    make_theme: MakeTheme, theme_data: dict[str, Any], bad_url: str
+) -> None:
+    theme_data["settings"]["link"] = {"type": "url", "label": "Link", "default": bad_url}
+    _expect_error(make_theme, theme_data, "link")
+
+
+def test_url_default_https_accepted(make_theme: MakeTheme, theme_data: dict[str, Any]) -> None:
+    theme_data["settings"]["link"] = {"type": "url", "label": "Link", "default": "https://x.ch"}
+    assert load_theme(make_theme(theme_data), "demo").setting("link").default == "https://x.ch"
+
+
+def test_media_default_must_be_null(make_theme: MakeTheme, theme_data: dict[str, Any]) -> None:
+    theme_data["settings"]["logo"] = {"type": "media", "label": "Logo", "default": "/x.png"}
+    _expect_error(make_theme, theme_data, "logo")
+
+
+def test_color_default_case_insensitive(make_theme: MakeTheme, theme_data: dict[str, Any]) -> None:
+    theme_data["settings"]["accent_color"]["default"] = "#0b5fff"
+    assert load_theme(make_theme(theme_data), "demo").setting("accent_color").default == "#0B5FFF"
+
+
+def test_duplicate_json_keys_rejected(make_theme: MakeTheme, theme_data: dict[str, Any]) -> None:
+    raw = json.dumps({**theme_data, "name": "demo"})
+    raw = raw[:-1] + ', "settings": {}}'
+    _expect_error(make_theme, raw, "duplicat")
+
+
+def test_nan_rejected(make_theme: MakeTheme, theme_data: dict[str, Any]) -> None:
+    raw = json.dumps({**theme_data, "name": "demo"})
+    raw = raw.replace('"width": 320', '"width": NaN')
+    _expect_error(make_theme, raw, "NaN")
+
+
+def test_empty_thumbnail_file_rejected(make_theme: MakeTheme, theme_data: dict[str, Any]) -> None:
+    theme_data["block_variants"] = VARIANTS
+    themes_dir = make_theme(theme_data, thumbnails=THUMBS)
+    (themes_dir / "demo" / "assets" / THUMBS[0]).write_bytes(b"")
+    with pytest.raises(ThemeValidationError, match="vuot"):
+        load_theme(themes_dir, "demo")
+
+
+def test_thumbnail_with_trailing_newline_rejected(
+    make_theme: MakeTheme, theme_data: dict[str, Any]
+) -> None:
+    option = {"label": "Scuro", "thumbnail": "variants/ti-dark.webp\n"}
+    theme_data["block_variants"] = {"text_image": {"default": "dark", "options": {"dark": option}}}
+    _expect_error(make_theme, theme_data, "thumbnail", thumbnails=THUMBS)
+
+
+def test_key_with_trailing_newline_rejected(
+    make_theme: MakeTheme, theme_data: dict[str, Any]
+) -> None:
+    theme_data["settings"]["slogan\n"] = {"type": "boolean", "label": "X"}
+    _expect_error(make_theme, theme_data, "settings")
 
 
 @pytest.mark.parametrize("bad_name", ["../etc", "Default", "a/b", "", ".hidden"])

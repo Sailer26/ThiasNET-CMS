@@ -1,4 +1,9 @@
-"""Comandi `flask ...` del progetto."""
+"""Comandi del progetto.
+
+`theme-check` esiste in due forme:
+- `flask --app app theme-check` (richiede che il tema attivo sia valido, perché l'app parte);
+- `python -m app.theme_check` che NON crea l'app: serve proprio quando il tema attivo è rotto.
+"""
 
 from __future__ import annotations
 
@@ -11,23 +16,33 @@ from flask.cli import with_appcontext
 from app.services.theme import ThemeValidationError, load_theme
 
 
-@click.command("theme-check")
-@with_appcontext
-def theme_check_command() -> None:
-    """Valida theme.json di tutti i temi in THEMES_DIR."""
-    themes_dir = Path(current_app.config["THEMES_DIR"])
+def check_all_themes(themes_dir: Path) -> tuple[list[str], int]:
+    """Valida ogni cartella in `themes_dir`. Restituisce (righe di report, numero di errori)."""
+    if not themes_dir.is_dir():
+        return [f"ERRORE la cartella dei temi non esiste: {themes_dir}"], 1
+    lines: list[str] = []
+    failures = 0
     candidates = sorted(
         p for p in themes_dir.iterdir() if p.is_dir() and not p.name.startswith(".")
     )
-    failures = 0
     for candidate in candidates:
         try:
             load_theme(themes_dir, candidate.name)
         except ThemeValidationError as exc:
             failures += 1
-            click.echo(f"ERRORE {exc}")
+            lines.append(f"ERRORE {exc}")
         else:
-            click.echo(f"OK     {candidate.name}")
+            lines.append(f"OK     {candidate.name}")
+    return lines, failures
+
+
+@click.command("theme-check")
+@with_appcontext  # necessario: add_command() non aggiunge da solo il contesto dell'app
+def theme_check_command() -> None:
+    """Valida theme.json di tutti i temi in THEMES_DIR."""
+    lines, failures = check_all_themes(Path(current_app.config["THEMES_DIR"]))
+    for line in lines:
+        click.echo(line)
     if failures:
         raise click.exceptions.Exit(1)
 

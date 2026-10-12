@@ -6,7 +6,12 @@
   "additionalProperties": false,
   "required": ["name", "version", "locales", "layouts"],
   "properties": {
-    "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$", "maxLength": 64 },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]*$",
+      "maxLength": 64,
+      "$ref": "#/$defs/no_whitespace"
+    },
     "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
     "author": { "type": "string", "maxLength": 100 },
     "locales": {
@@ -53,7 +58,13 @@
     }
   },
   "$defs": {
-    "key": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 64 },
+    "no_whitespace": { "not": { "type": "string", "pattern": "\\s" } },
+    "key": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "maxLength": 64,
+      "$ref": "#/$defs/no_whitespace"
+    },
     "label": { "type": "string", "minLength": 1, "maxLength": 80 },
     "hex_color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
     "layout": {
@@ -164,7 +175,11 @@
       "required": ["label", "thumbnail"],
       "properties": {
         "label": { "$ref": "#/$defs/label" },
-        "thumbnail": { "type": "string", "pattern": "^variants/[a-z0-9][a-z0-9_-]*\\.(webp|png|jpg)$" }
+        "thumbnail": {
+          "type": "string",
+          "pattern": "^variants/[a-z0-9][a-z0-9_-]*\\.(webp|png|jpg)$",
+          "$ref": "#/$defs/no_whitespace"
+        }
       }
     },
     "setting": {
@@ -181,7 +196,11 @@
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" }
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*$",
+            "$ref": "#/$defs/no_whitespace"
+          }
         },
         "palette": {
           "type": "array",
@@ -202,6 +221,22 @@
         {
           "if": { "properties": { "type": { "const": "boolean" } } },
           "then": { "properties": { "default": { "type": "boolean" } } }
+        },
+        {
+          "if": { "properties": { "type": { "enum": ["text", "textarea"] } } },
+          "then": { "required": ["max"], "properties": { "default": { "type": "string" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "url" } } },
+          "then": {
+            "properties": {
+              "default": { "type": "string", "pattern": "^(https?://[^\\s]+|/(?!/)[^\\s]*)$" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "media" } } },
+          "then": { "properties": { "default": { "type": "null" } } }
         }
       ]
     }

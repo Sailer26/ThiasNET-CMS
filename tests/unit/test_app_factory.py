@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 from app import create_app, get_theme
+from app.config import ConfigError
 from app.services.theme import ThemeValidationError
 from tests.conftest import MakeTheme
 
@@ -34,6 +35,12 @@ def test_create_app_fails_with_missing_theme(tmp_path: Path) -> None:
 def test_create_app_uses_app_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("APP_ENV", "testing")
     assert create_app().testing
+
+
+def test_create_app_without_app_env_refuses_to_start() -> None:
+    """Fail-closed: un deploy che dimentica APP_ENV non parte in modalità sviluppo."""
+    with pytest.raises(ConfigError, match="APP_ENV"):
+        create_app()
 
 
 def test_get_theme_outside_app_context_raises() -> None:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
@@ -19,8 +20,19 @@ class ConfigError(RuntimeError):
     """Configurazione mancante o non sicura: l'app non deve partire."""
 
 
+def _max_upload_mb(environ: Mapping[str, str]) -> int:
+    raw = environ.get("MAX_UPLOAD_MB", str(DEFAULT_MAX_UPLOAD_MB))
+    try:
+        value = int(raw)
+    except ValueError:
+        raise ConfigError(f"MAX_UPLOAD_MB deve essere un intero, non {raw!r}") from None
+    if value <= 0:
+        raise ConfigError(f"MAX_UPLOAD_MB deve essere maggiore di 0, non {value}")
+    return value
+
+
 def _common(environ: Mapping[str, str]) -> dict[str, Any]:
-    max_upload_mb = int(environ.get("MAX_UPLOAD_MB", str(DEFAULT_MAX_UPLOAD_MB)))
+    max_upload_mb = _max_upload_mb(environ)
     return {
         "THEMES_DIR": Path(environ.get("THEMES_DIR", str(PROJECT_ROOT / "themes"))).resolve(),
         "ACTIVE_THEME": environ.get("ACTIVE_THEME", DEFAULT_ACTIVE_THEME),
@@ -36,7 +48,8 @@ def _development(environ: Mapping[str, str]) -> dict[str, Any]:
     return {
         "DEBUG": True,
         "TESTING": False,
-        "SECRET_KEY": environ.get("SECRET_KEY", "dev-chiave-non-sicura"),
+        # Senza SECRET_KEY si usa una chiave casuale: le sessioni durano fino al riavvio.
+        "SECRET_KEY": environ.get("SECRET_KEY") or secrets.token_urlsafe(MIN_SECRET_KEY_LENGTH),
         "SQLALCHEMY_DATABASE_URI": environ.get("DATABASE_URL", default_db),
         "SESSION_COOKIE_SECURE": False,
     }
@@ -78,8 +91,14 @@ _ENVIRONMENTS: dict[str, Callable[[Mapping[str, str]], dict[str, Any]]] = {
 }
 
 
-def build_config(name: str, environ: Mapping[str, str]) -> dict[str, Any]:
-    """Restituisce la configurazione Flask per l'ambiente `name`."""
+def build_config(name: str | None, environ: Mapping[str, str]) -> dict[str, Any]:
+    """Restituisce la configurazione Flask per l'ambiente `name` (di solito APP_ENV).
+
+    Fail-closed: senza ambiente esplicito l'app non parte, così un deploy che dimentica
+    APP_ENV non finisce in modalità sviluppo.
+    """
+    if not name:
+        raise ConfigError("APP_ENV mancante: impostare development, testing o production")
     try:
         specific = _ENVIRONMENTS[name]
     except KeyError:

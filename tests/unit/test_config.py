@@ -62,6 +62,24 @@ def test_production_config_ok() -> None:
     assert config["SESSION_COOKIE_SECURE"] is True
 
 
+def test_development_without_secret_key_uses_random_key() -> None:
+    first = build_config("development", environ={})["SECRET_KEY"]
+    second = build_config("development", environ={})["SECRET_KEY"]
+    assert first != second
+    assert len(first) >= 32
+
+
+@pytest.mark.parametrize("value", ["abc", "0", "-1", "1.5"])
+def test_invalid_max_upload_raises(value: str) -> None:
+    with pytest.raises(ConfigError, match="MAX_UPLOAD_MB"):
+        build_config("development", environ={"MAX_UPLOAD_MB": value})
+
+
+def test_max_upload_in_bytes() -> None:
+    config = build_config("development", environ={"MAX_UPLOAD_MB": "2"})
+    assert config["MAX_CONTENT_LENGTH"] == 2 * 1024 * 1024
+
+
 def test_unknown_config_name_raises() -> None:
     with pytest.raises(ConfigError, match="staging"):
         build_config("staging", environ={})

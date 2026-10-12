@@ -43,6 +43,13 @@ def test_allowed_blocks_for_zone(theme: Theme) -> None:
     assert "gallery" not in theme.allowed_blocks("page", "sidebar")
 
 
+def test_zone_label_kept(make_theme: MakeTheme, theme_data: dict[str, Any]) -> None:
+    theme_data["layouts"]["page"]["zones"]["sidebar"]["label"] = "Colonna"
+    theme = load_theme(make_theme(theme_data), "demo")
+    assert theme.layouts["page"].zones["sidebar"].label == "Colonna"
+    assert theme.layouts["page"].zones["main"].label == "main"
+
+
 def test_zone_max(theme: Theme) -> None:
     assert theme.zone_max("page", "sidebar") == 4
     assert theme.zone_max("page", "main") is None

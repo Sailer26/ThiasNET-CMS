@@ -9,13 +9,16 @@ from typing import Any
 from sqlalchemy import event
 from sqlalchemy.engine import Engine, make_url
 
+# busy_timeout per primo: anche il passaggio a WAL deve aspettare un lock invece di fallire.
 SQLITE_PRAGMAS = (
+    "PRAGMA busy_timeout=5000",
     "PRAGMA journal_mode=WAL",
     "PRAGMA foreign_keys=ON",
-    "PRAGMA busy_timeout=5000",
 )
 
 
+# Listener globale voluto: vale per ogni engine SQLite del processo (app, Alembic, test),
+# così nessuna connessione gira senza chiavi esterne. Gli altri database sono ignorati.
 @event.listens_for(Engine, "connect")
 def _configure_sqlite(dbapi_connection: Any, _connection_record: Any) -> None:
     if not isinstance(dbapi_connection, sqlite3.Connection):

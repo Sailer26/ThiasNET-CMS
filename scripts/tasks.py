@@ -7,6 +7,7 @@ Usa l'interprete con cui viene lanciato: attivare prima la .venv.
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from collections.abc import Sequence
@@ -26,13 +27,17 @@ COMMANDS: dict[str, list[list[str]]] = {
         [PY, "-m", "mypy", "app"],
     ],
     "migrate": [[*FLASK, "db", "upgrade"]],
-    "theme-check": [[*FLASK, "theme-check"]],
+    "theme-check": [[PY, "-m", "app.theme_check"]],
 }
+
+
+# L'app non parte senza APP_ENV (fail-closed): i comandi locali usano lo sviluppo.
+DEV_ENV = {**os.environ, "APP_ENV": os.environ.get("APP_ENV", "development")}
 
 
 def _run(command: Sequence[str]) -> int:
     print("$", " ".join(command), flush=True)
-    return subprocess.run(command, cwd=ROOT, check=False).returncode
+    return subprocess.run(command, cwd=ROOT, env=DEV_ENV, check=False).returncode
 
 
 def main(argv: Sequence[str] | None = None) -> int:

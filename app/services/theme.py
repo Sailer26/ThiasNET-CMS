@@ -19,10 +19,20 @@ from jsonschema import Draft202012Validator
 from app.core_types import BLOCK_TYPES, WIDGET_TYPES
 
 THEME_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
-SUSPICIOUS_SETTING_KEY_RE = re.compile(r"(css|js|script|html|code)", re.IGNORECASE)
+# Parole intere (separate da "_"): evita falsi positivi come site_description o postcode.
+# Vale solo per i campi a testo libero (un select "header_style" ha opzioni chiuse ed è sicuro).
+# È una difesa in più: la protezione vera è l'allowlist dei tipi nello schema.
+FREE_TEXT_SETTING_TYPES = frozenset({"text", "textarea", "url"})
+SUSPICIOUS_SETTING_KEY_RE = re.compile(
+    r"(^|_)(css|js|javascript|script|html|style|stylesheet|head|raw|markup|snippet|embed|"
+    r"iframe|template|jinja)(_|$)",
+    re.IGNORECASE,
+)
 MANIFEST_NAME = "theme.json"
 _SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schemas" / "theme.schema.json"
-_VALIDATOR = Draft202012Validator(json.loads(_SCHEMA_PATH.read_text(encoding="utf-8")))
+_SCHEMA = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+Draft202012Validator.check_schema(_SCHEMA)  # uno schema rotto deve fallire subito e in chiaro
+_VALIDATOR = Draft202012Validator(_SCHEMA)
 
 
 class ThemeValidationError(ValueError):
@@ -32,6 +42,7 @@ class ThemeValidationError(ValueError):
 @dataclass(frozen=True)
 class Zone:
     name: str
+    label: str
     blocks: tuple[str, ...]
     max: int | None
 
@@ -139,11 +150,29 @@ def _read_manifest(theme_dir: Path, name: str) -> Any:
     if not manifest.is_file():
         raise ThemeValidationError(f"Tema '{name}': {MANIFEST_NAME} non trovato in {theme_dir}")
     try:
-        return json.loads(manifest.read_bytes())
-    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        return json.loads(
+            manifest.read_bytes(),
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_constant,
+        )
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
         raise ThemeValidationError(
             f"Tema '{name}': {MANIFEST_NAME} non è JSON valido ({exc})"
         ) from exc
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Con chiavi duplicate json vince l'ultima e il resto sparisce in silenzio: rifiutiamo."""
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"chiave duplicata {key!r}")
+        result[key] = value
+    return result
+
+
+def _reject_constant(constant: str) -> Any:
+    raise ValueError(f"valore {constant} non ammesso")
 
 
 def _format_schema_error(error: Any) -> str:
@@ -194,24 +223,35 @@ def _variant_errors(block_variants: Mapping[str, Any], theme_dir: Path) -> list[
                 f"{where}: la variante di default {spec['default']!r} non è tra le opzioni"
             )
         for key, option in spec["options"].items():
-            if not (assets_dir / option["thumbnail"]).is_file():
-                errors.append(
-                    f"{where}/options/{key}/thumbnail: file mancante assets/{option['thumbnail']}"
-                )
+            problem = _thumbnail_problem(assets_dir, option["thumbnail"])
+            if problem:
+                errors.append(f"{where}/options/{key}/thumbnail: {problem}")
     return errors
+
+
+def _thumbnail_problem(assets_dir: Path, thumbnail: str) -> str | None:
+    """D-18: la miniatura deve esistere, non essere vuota e stare dentro assets/."""
+    path = (assets_dir / thumbnail).resolve()
+    if not path.is_relative_to(assets_dir.resolve()):
+        return f"assets/{thumbnail} punta fuori dalla cartella del tema"
+    if not path.is_file():
+        return f"file mancante assets/{thumbnail}"
+    if path.stat().st_size == 0:
+        return f"file vuoto assets/{thumbnail}"
+    return None
 
 
 def _setting_errors(settings: Mapping[str, Any]) -> list[str]:
     errors: list[str] = []
     for key, spec in settings.items():
         where = f"settings/{key}"
-        if SUSPICIOUS_SETTING_KEY_RE.search(key):
+        if spec["type"] in FREE_TEXT_SETTING_TYPES and SUSPICIOUS_SETTING_KEY_RE.search(key):
             errors.append(f"{where}: nome vietato (niente CSS/JS/HTML/codice nelle impostazioni)")
         default = spec.get("default")
         if spec["type"] == "select" and default is not None and default not in spec["options"]:
             errors.append(f"{where}: il default {default!r} non è tra le opzioni")
-        palette = spec.get("palette")
-        if spec["type"] == "color" and palette and default is not None and default not in palette:
+        palette = {color.upper() for color in spec.get("palette", ())}
+        if spec["type"] == "color" and palette and default and default.upper() not in palette:
             errors.append(f"{where}: il default {default!r} non è nella palette")
     return errors
 
@@ -254,7 +294,12 @@ def _build_theme(data: Mapping[str, Any], theme_dir: Path) -> Theme:
 
 def _build_layout(name: str, spec: Mapping[str, Any]) -> Layout:
     zones = {
-        zone: Zone(name=zone, blocks=tuple(zone_spec["blocks"]), max=zone_spec.get("max"))
+        zone: Zone(
+            name=zone,
+            label=zone_spec.get("label", zone),
+            blocks=tuple(zone_spec["blocks"]),
+            max=zone_spec.get("max"),
+        )
         for zone, zone_spec in spec["zones"].items()
     }
     return Layout(name=name, label=spec["label"], zones=MappingProxyType(zones))
@@ -269,12 +314,15 @@ def _build_variants(spec: Mapping[str, Any]) -> VariantSet:
 
 
 def _build_setting(key: str, spec: Mapping[str, Any]) -> SettingSpec:
+    default = spec.get("default")
+    if spec["type"] == "color" and isinstance(default, str):
+        default = default.upper()  # colori sempre in maiuscolo: confronti senza sorprese
     return SettingSpec(
         key=key,
         type=spec["type"],
         label=spec["label"],
-        default=spec.get("default"),
+        default=default,
         max=spec.get("max"),
         options=tuple(spec.get("options", ())),
-        palette=tuple(spec.get("palette", ())),
+        palette=tuple(color.upper() for color in spec.get("palette", ())),
     )

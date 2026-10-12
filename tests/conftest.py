@@ -16,6 +16,21 @@ DEFAULT_THEME_DATA: dict[str, Any] = json.loads(
 )
 
 MakeTheme = Callable[..., Path]
+APP_ENV_VARS = (
+    "APP_ENV",
+    "SECRET_KEY",
+    "DATABASE_URL",
+    "THEMES_DIR",
+    "ACTIVE_THEME",
+    "MAX_UPLOAD_MB",
+)
+
+
+@pytest.fixture(autouse=True)
+def _isolated_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """I test non dipendono mai dalle variabili d'ambiente della shell o della CI."""
+    for var in APP_ENV_VARS:
+        monkeypatch.delenv(var, raising=False)
 
 
 @pytest.fixture

@@ -9,10 +9,9 @@ from typing import Any, cast
 
 from flask import Flask, current_app
 
-from app import database  # noqa: F401  (registra i PRAGMA SQLite)
 from app.cli import register_cli
 from app.config import PROJECT_ROOT, build_config
-from app.database import ensure_sqlite_directory
+from app.database import ensure_sqlite_directory  # importarlo registra anche i PRAGMA SQLite
 from app.extensions import db, migrate
 from app.services.theme import Theme, load_theme
 
@@ -23,9 +22,7 @@ MIGRATIONS_DIR = PROJECT_ROOT / "migrations"
 def create_app(config_name: str | None = None, overrides: Mapping[str, Any] | None = None) -> Flask:
     """Crea l'app. Se il tema attivo non è valido solleva ThemeValidationError e non parte."""
     app = Flask(__name__)
-    app.config.from_mapping(
-        build_config(config_name or os.environ.get("APP_ENV", "development"), os.environ)
-    )
+    app.config.from_mapping(build_config(config_name or os.environ.get("APP_ENV"), os.environ))
     if overrides:
         app.config.from_mapping(overrides)
 
