@@ -1,0 +1,73 @@
+[project]
+name = "thiasnet-cms"
+version = "0.1.0"
+description = "ThiasNET CMS — CMS proprietario per i siti dei clienti ThiasNET"
+requires-python = ">=3.12"
+dependencies = [
+    # Framework web previsto dallo stack (CLAUDE.md).
+    "Flask==3.1.3",
+    # Integrazione ORM con sessione per richiesta.
+    "Flask-SQLAlchemy==3.1.1",
+    # ORM 2.x previsto dallo stack.
+    "SQLAlchemy==2.1.4",
+    # Migrazioni Alembic obbligatorie (CLAUDE.md).
+    "Flask-Migrate==4.1.0",
+    # Validazione di theme.json e, dalla Fase 2, dei dati dei blocchi.
+    "jsonschema==4.26.0",
+    # Caricamento di .env in sviluppo.
+    "python-dotenv==1.2.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+    "ruff==0.17.0",
+    "mypy==2.4.0",
+    "types-jsonschema==4.26.0.20261006",
+    "pre-commit==4.6.2",
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.setuptools.package-data]
+app = ["schemas/*.json"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "S", "T20", "ANN", "RUF", "PTH", "DTZ"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "ANN", "S603"]
+"scripts/**" = ["S603", "S607", "T20"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["app"]
+
+[[tool.mypy.overrides]]
+module = ["flask_migrate"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
