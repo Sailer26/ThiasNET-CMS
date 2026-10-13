@@ -32,8 +32,7 @@ TOTP = f"{API}/auth/totp"
 def _enable(client: FlaskClient) -> str:
     secret: str = client.post(f"{TOTP}/setup").get_json()["data"]["secret"]
     response = client.post(
-        f"{TOTP}/enable",
-        json={"secret": secret, "code": pyotp.TOTP(secret).now(), "password": PASSWORD},
+        f"{TOTP}/enable", json={"code": pyotp.TOTP(secret).now(), "password": PASSWORD}
     )
     assert response.status_code == 200, response.get_json()
     return secret
@@ -68,15 +67,36 @@ def test_enable_requires_correct_code_and_password(app: Flask) -> None:
     client = api_client(app)
     login(client, "a@example.ch")
     secret = client.post(f"{TOTP}/setup").get_json()["data"]["secret"]
-    wrong_code = client.post(
-        f"{TOTP}/enable", json={"secret": secret, "code": "000000", "password": PASSWORD}
-    )
+    wrong_code = client.post(f"{TOTP}/enable", json={"code": "000000", "password": PASSWORD})
     assert wrong_code.status_code == 401
     wrong_pw = client.post(
         f"{TOTP}/enable",
-        json={"secret": secret, "code": pyotp.TOTP(secret).now(), "password": "Sbagliata-12345"},
+        json={"code": pyotp.TOTP(secret).now(), "password": "Sbagliata-12345"},
     )
     assert wrong_pw.status_code == 401
+    assert error_code(wrong_code) == error_code(wrong_pw)  # non rivela quale dei due è errato
+
+
+def test_client_cannot_choose_the_secret(app: Flask) -> None:
+    """Il segreto lo genera il server al setup: il client non può imporne uno debole."""
+    make_user(app, "a@example.ch")
+    client = api_client(app)
+    login(client, "a@example.ch")
+    client.post(f"{TOTP}/setup")
+    weak = "A" * 32
+    response = client.post(
+        f"{TOTP}/enable",
+        json={"secret": weak, "code": pyotp.TOTP(weak).now(), "password": PASSWORD},
+    )
+    assert response.status_code == 422
+
+
+def test_enable_without_setup_is_409(app: Flask) -> None:
+    make_user(app, "a@example.ch")
+    client = api_client(app)
+    login(client, "a@example.ch")
+    response = client.post(f"{TOTP}/enable", json={"code": "123456", "password": PASSWORD})
+    assert response.status_code == 409
 
 
 def test_secret_is_encrypted_in_database(app: Flask, totp_user: Any) -> None:
@@ -92,8 +112,7 @@ def test_enable_twice_is_409(totp_user: Any) -> None:
     client, _ = totp_user
     secret = client.post(f"{TOTP}/setup").get_json()["data"]["secret"]
     response = client.post(
-        f"{TOTP}/enable",
-        json={"secret": secret, "code": pyotp.TOTP(secret).now(), "password": PASSWORD},
+        f"{TOTP}/enable", json={"code": pyotp.TOTP(secret).now(), "password": PASSWORD}
     )
     assert response.status_code == 409
 
@@ -144,6 +163,62 @@ def test_wrong_totp_codes_count_in_rate_limit(app: Flask, totp_user: Any) -> Non
     for _ in range(rate_limit.MAX_PER_EMAIL_IP):
         assert client.post(TOTP_LOGIN_URL, json={"code": "000000"}).status_code == 401
     assert client.post(TOTP_LOGIN_URL, json={"code": "000000"}).status_code == 429
+
+
+def test_relogin_does_not_reset_totp_limit(app: Flask, totp_user: Any) -> None:
+    """Regressione (review sicurezza Fase 1): rifare login con la password giusta non deve
+    azzerare il conteggio dei codici sbagliati, altrimenti il codice si indovina all'infinito."""
+    client = api_client(app)
+    codes = []
+    for _ in range(3):
+        login(client, "a@example.ch")
+        for _ in range(4):
+            codes.append(error_code(client.post(TOTP_LOGIN_URL, json={"code": "000000"})))
+    assert "rate_limited" in codes
+    assert codes.index("rate_limited") == rate_limit.MAX_TOTP_PER_USER
+
+
+def test_totp_limit_is_per_account_across_ips(app: Flask, totp_user: Any) -> None:
+    for i in range(rate_limit.MAX_TOTP_PER_USER):
+        client = api_client(app, ip=f"198.51.100.{i}")
+        login(client, "a@example.ch")
+        assert client.post(TOTP_LOGIN_URL, json={"code": "000000"}).status_code == 401
+    other = api_client(app, ip="198.51.100.200")
+    login(other, "a@example.ch")
+    assert other.post(TOTP_LOGIN_URL, json={"code": "000000"}).status_code == 429
+
+
+def test_unreadable_secret_gives_clear_error(app: Flask, totp_user: Any) -> None:
+    """Se SECRET_KEY cambia il segreto non è più leggibile: errore chiaro, non 500."""
+    _, secret = totp_user
+    with app.app_context():
+        db.session.query(User).one().totp_secret_enc = "gAAAAABdatiFalsiNonDecifrabili=="
+        db.session.commit()
+    client = api_client(app)
+    login(client, "a@example.ch")
+    response = client.post(TOTP_LOGIN_URL, json={"code": _next_code(secret)})
+    assert response.status_code == 409
+    assert error_code(response) == "totp_unreadable"
+
+
+def test_disable_bruteforce_is_rate_limited(totp_user: Any) -> None:
+    client, _ = totp_user
+    for _ in range(rate_limit.MAX_PER_EMAIL_IP):
+        response = client.post(
+            f"{TOTP}/disable", json={"password": "Sbagliata-123456", "code": "000000"}
+        )
+        assert response.status_code == 401
+    response = client.post(f"{TOTP}/disable", json={"password": PASSWORD, "code": "000000"})
+    assert response.status_code == 429
+
+
+def test_disable_error_does_not_reveal_which_part_is_wrong(totp_user: Any) -> None:
+    client, secret = totp_user
+    wrong_pw = client.post(
+        f"{TOTP}/disable", json={"password": "Sbagliata-123456", "code": _next_code(secret)}
+    )
+    wrong_code = client.post(f"{TOTP}/disable", json={"password": PASSWORD, "code": "000000"})
+    assert wrong_pw.get_json()["error"] == wrong_code.get_json()["error"]
 
 
 def test_disable_requires_password_and_code(totp_user: Any) -> None:

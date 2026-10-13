@@ -4,17 +4,27 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from flask import g, request, session
+from flask import g, session
 from flask_login import login_user, logout_user
 from flask_wtf.csrf import generate_csrf
 
 from app.extensions import db
 from app.models.user import User
 from app.services import audit, passwords, rate_limit, totp, users
+from app.services.attempts import (
+    client_ip,
+    ensure_allowed,
+    ensure_totp_allowed,
+    record_failure,
+    record_totp_failure,
+)
 from app.services.errors import ServiceError
 
 PENDING_TOTP_TTL = timedelta(minutes=5)
+# La sessione dura 12 ore e si rinnova usando il pannello, ma mai oltre questo tetto (D-27).
+ABSOLUTE_SESSION_LIMIT = timedelta(days=7)
 PENDING_KEY = "pending_2fa"
+LOGIN_AT_KEY = "login_at"
 INVALID_CREDENTIALS = "Email o password non corretti"
 
 
@@ -22,39 +32,27 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-def _ip() -> str | None:
-    return request.remote_addr
-
-
 def _invalid() -> ServiceError:
     return ServiceError("invalid_credentials", INVALID_CREDENTIALS, 401)
 
 
-def _check_rate_limit(email: str) -> None:
-    wait = rate_limit.retry_after(email, _ip())
-    if wait is not None:
-        raise ServiceError(
-            "rate_limited",
-            "Troppi tentativi: riprova tra qualche minuto",
-            429,
-            retry_after=wait,
-        )
-
-
-def _fail(email: str, user_id: int | None, action: str) -> None:
-    """L'email digitata non finisce mai nell'audit (a volte contiene la password)."""
-    audit.record(action, actor_id=user_id)
-    rate_limit.register_failure(email, _ip())  # salva anche la riga di audit
+def _session_expired() -> bool:
+    login_at = session.get(LOGIN_AT_KEY)
+    if not isinstance(login_at, int | float):
+        return True
+    return _now().timestamp() - login_at > ABSOLUTE_SESSION_LIMIT.total_seconds()
 
 
 def load_user(user_id: str) -> User | None:
     """`user_loader` di Flask-Login: l'id include la versione di sessione (D-26)."""
     try:
         raw_id, raw_version = user_id.split(":")
-        user = db.session.get(User, int(raw_id))
-        version = int(raw_version)
+        numeric_id, version = int(raw_id), int(raw_version)
     except ValueError:
         return None
+    if _session_expired():
+        return None
+    user = db.session.get(User, numeric_id)
     if user is None or not user.active or user.session_version != version:
         return None
     return user
@@ -63,18 +61,21 @@ def load_user(user_id: str) -> User | None:
 def authenticate(email: str, password: str) -> User:
     """Verifica email e password. Stesso messaggio e stesso costo per email inesistenti."""
     email = email.strip().lower()
-    _check_rate_limit(email)
+    ensure_allowed(email)
     user = users.get_by_email(email)
     if user is None or not user.active:
         passwords.verify_dummy(password)
-        _fail(email, user.id if user else None, "auth.login_failed")
+        record_failure(email, user.id if user else None, "auth.login_failed")
         raise _invalid()
     if not passwords.verify_password(user.password_hash, password):
-        _fail(email, user.id, "auth.login_failed")
+        record_failure(email, user.id, "auth.login_failed")
         raise _invalid()
     if passwords.needs_rehash(user.password_hash):
         user.password_hash = passwords.hash_password(password)
-    rate_limit.clear(email, _ip())
+    if not user.totp_enabled:
+        # Con il TOTP il contatore si azzera solo dopo il codice corretto: altrimenti
+        # rifare login azzererebbe anche i tentativi sul codice (review sicurezza Fase 1).
+        rate_limit.clear(email, client_ip())
     return user
 
 
@@ -86,8 +87,10 @@ def _fresh_session() -> None:
 
 def _establish(user: User) -> str:
     _fresh_session()
-    login_user(user)
+    if not login_user(user):
+        raise _invalid()
     session.permanent = True
+    session[LOGIN_AT_KEY] = _now().timestamp()
     return str(generate_csrf())
 
 
@@ -123,11 +126,12 @@ def complete_totp(code: str) -> User:
     if user is None or not user.active or user.session_version != pending["ver"]:
         session.pop(PENDING_KEY, None)
         raise _invalid()
-    _check_rate_limit(user.email)
+    ensure_totp_allowed(user.email, user.id)
     if not totp.verify_code(user, code):
-        _fail(user.email, user.id, "auth.totp_failed")
+        record_totp_failure(user.email, user.id, "auth.totp_failed")
         raise ServiceError("invalid_code", "Codice non valido", 401)
-    rate_limit.clear(user.email, _ip())
+    rate_limit.clear(user.email, client_ip())
+    rate_limit.clear_totp(user.id)
     return user
 
 
@@ -154,9 +158,9 @@ def logout_everywhere(user: User) -> str:
 def change_password(user: User, current: str, new: str) -> str:
     """Le altre sessioni vengono chiuse; quella corrente resta valida con un nuovo token."""
     users.check_password(new)
-    _check_rate_limit(user.email)
+    ensure_allowed(user.email)
     if not passwords.verify_password(user.password_hash, current):
-        _fail(user.email, user.id, "auth.password_change_failed")
+        record_failure(user.email, user.id, "auth.password_change_failed")
         raise ServiceError("invalid_password", "La password attuale non è corretta", 401)
     users.set_password(user, new)
     audit.record("auth.password_changed", actor_id=user.id, entity="user", entity_id=user.id)

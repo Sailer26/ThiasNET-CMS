@@ -25,6 +25,15 @@ def test_blocks_after_max_failures_per_email_ip(app: Flask) -> None:
         assert rate_limit.retry_after("a@example.ch", "2.2.2.2") is None
 
 
+def test_ipv6_addresses_in_same_64_share_the_limit(app: Flask) -> None:
+    """Con IPv6 ognuno ha miliardi di indirizzi: si conta per rete /64."""
+    with app.app_context():
+        for i in range(rate_limit.MAX_PER_EMAIL_IP):
+            rate_limit.register_failure("a@example.ch", f"2001:db8:1:2::{i + 1}")
+        assert rate_limit.retry_after("a@example.ch", "2001:db8:1:2:ffff::9") is not None
+        assert rate_limit.retry_after("a@example.ch", "2001:db8:1:3::1") is None
+
+
 def test_email_is_case_insensitive(app: Flask) -> None:
     with app.app_context():
         for _ in range(rate_limit.MAX_PER_EMAIL_IP):

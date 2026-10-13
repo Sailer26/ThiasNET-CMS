@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import unicodedata
 from functools import cache
 
 from argon2 import PasswordHasher, Type
@@ -17,7 +18,14 @@ class PasswordPolicyError(ValueError):
     """Password non conforme: il messaggio è in italiano e mostrabile all'utente."""
 
 
+def _normalize(password: str) -> str:
+    """NFKC: la stessa password digitata su tastiere/dispositivi diversi dà lo stesso hash
+    (es. "è" come carattere unico oppure "e" + accento)."""
+    return unicodedata.normalize("NFKC", password)
+
+
 def validate_policy(password: str) -> None:
+    password = _normalize(password)
     if len(password) < MIN_PASSWORD_LENGTH:
         raise PasswordPolicyError(f"La password deve avere almeno {MIN_PASSWORD_LENGTH} caratteri")
     if len(password) > MAX_PASSWORD_LENGTH:
@@ -49,12 +57,12 @@ def _hasher() -> PasswordHasher:
 
 
 def hash_password(password: str) -> str:
-    return _hasher().hash(password)
+    return _hasher().hash(_normalize(password))
 
 
 def verify_password(hashed: str, password: str) -> bool:
     try:
-        return _hasher().verify(hashed, password)
+        return _hasher().verify(hashed, _normalize(password))
     except (VerificationError, InvalidHashError):
         return False
 
@@ -69,6 +77,12 @@ def needs_rehash(hashed: str) -> bool:
 @cache
 def _dummy_hash(time_cost: int, memory_cost: int, parallelism: int) -> str:
     return _hasher_for(time_cost, memory_cost, parallelism).hash(_DUMMY_PASSWORD)
+
+
+def warm_up() -> None:
+    """Calcola subito l'hash fittizio: anche la prima richiesta con email inesistente
+    costa come le altre (niente differenza di tempi misurabile)."""
+    _dummy_hash(*_params())
 
 
 def verify_dummy(password: str) -> bool:

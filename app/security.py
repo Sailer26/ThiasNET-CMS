@@ -7,6 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app.api import unauthorized
 from app.extensions import csrf, login_manager
+from app.services import passwords
 from app.services.auth import load_user
 
 
@@ -17,11 +18,14 @@ def init_security(app: Flask) -> None:
     login_manager.session_protection = "basic"
     login_manager.user_loader(load_user)
     login_manager.unauthorized_handler(unauthorized)
+    with app.app_context():
+        passwords.warm_up()
 
     proxies = int(app.config["TRUSTED_PROXY_COUNT"])
     if proxies:
         # Dietro Caddy l'IP vero è in X-Forwarded-For; senza proxy fidati l'header è ignorato,
         # altrimenti chiunque potrebbe falsificare l'IP e aggirare il rate limit (D-34).
+        # X-Forwarded-Host no: l'host servirà per canonical e sitemap (Fase 3).
         app.wsgi_app = ProxyFix(  # type: ignore[method-assign]
-            app.wsgi_app, x_for=proxies, x_proto=proxies, x_host=proxies
+            app.wsgi_app, x_for=proxies, x_proto=proxies, x_host=0
         )

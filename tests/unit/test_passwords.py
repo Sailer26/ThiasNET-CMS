@@ -39,6 +39,14 @@ def test_hash_is_argon2id_and_verifies(app: Flask) -> None:
         assert not verify_password(hashed, "Password-sbagliata-123")
 
 
+def test_unicode_password_is_normalized(app: Flask) -> None:
+    """ "è" composto (U+00E8) e "e" + accento (U+0065 U+0300) sono la stessa password."""
+    composed = "Caffè-al-bar-123"
+    decomposed = "Caffè-al-bar-123"
+    with app.app_context():
+        assert verify_password(hash_password(composed), decomposed)
+
+
 def test_verify_handles_garbage_hash(app: Flask) -> None:
     with app.app_context():
         assert not verify_password("non-un-hash", "Password-di-prova-123")

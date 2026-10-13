@@ -48,6 +48,25 @@ def unauthorized() -> Response:
     return fail(code, message, 401)
 
 
+API_SECURITY_HEADERS = {
+    "Cache-Control": "no-store",  # dati del pannello mai in cache (browser o proxy)
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+}
+
+
+def register_response_headers(app: Flask) -> None:
+    """Header di sicurezza sulle API. CSP e HSTS del sito arrivano in Fase 8 (Caddy)."""
+
+    @app.after_request
+    def _harden(response: Response) -> Response:
+        if request.path.startswith(API_PREFIX):
+            for name, value in API_SECURITY_HEADERS.items():
+                response.headers.setdefault(name, value)
+        return response
+
+
 def register_error_handlers(app: Flask) -> None:
     @app.errorhandler(ServiceError)
     def _service_error(exc: ServiceError) -> Response:

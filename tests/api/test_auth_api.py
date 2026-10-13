@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -13,7 +14,7 @@ from app import create_app
 from app.extensions import db
 from app.models.audit import AuditLog
 from app.models.user import User
-from app.services import passwords, rate_limit
+from app.services import auth, passwords, rate_limit
 from tests.helpers import (
     API,
     LOGIN_URL,
@@ -217,6 +218,24 @@ def test_password_is_rehashed_when_parameters_change(app: Flask, api: Any) -> No
         new_hash = db.session.get_one(User, user.id).password_hash
     assert new_hash != old_hash
     assert new_hash.startswith("$argon2id$")
+
+
+def test_session_has_absolute_limit(app: Flask, api: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    """La sessione si rinnova usando il pannello, ma non oltre un tetto assoluto (D-27)."""
+    make_user(app, "a@example.ch")
+    login(api, "a@example.ch")
+    assert api.get(ME_URL).status_code == 200
+    later = datetime.now(UTC) + auth.ABSOLUTE_SESSION_LIMIT + timedelta(minutes=1)
+    monkeypatch.setattr(auth, "_now", lambda: later)
+    assert api.get(ME_URL).status_code == 401
+
+
+def test_api_responses_are_hardened(api: Any) -> None:
+    response = api.get(ME_URL)
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Referrer-Policy"] == "no-referrer"
 
 
 # --- Rate limit -----------------------------------------------------------

@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from typing import Any
 
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.models.user import EMAIL_MAX_LENGTH, Role, User
@@ -39,12 +41,16 @@ def get_by_email(email: str) -> User | None:
 
 
 def get_target(actor: User, user_id: int) -> User:
-    """Utente gestibile da `actor`: 404 se non esiste, 403 se non può gestirlo."""
+    """Utente gestibile da `actor`.
+
+    404 sia se non esiste sia se non è gestibile: un admin non deve poter scoprire quali id
+    appartengono a owner o admin (review sicurezza Fase 1). Su se stessi: 403 (si usa /me).
+    """
     target = db.session.get(User, user_id)
-    if target is None:
-        raise not_found(USER_NOT_FOUND)
-    if not can_manage(actor, target):
+    if target is not None and target.id == actor.id:
         raise forbidden()
+    if target is None or not can_manage(actor, target):
+        raise not_found(USER_NOT_FOUND)
     return target
 
 
@@ -56,9 +62,24 @@ def check_password(password: str) -> None:
         raise ServiceError("weak_password", str(exc), 422) from exc
 
 
+def _email_taken() -> ServiceError:
+    return ServiceError("email_taken", "Esiste già un utente con questa email", 409)
+
+
 def _ensure_email_free(email: str) -> None:
     if get_by_email(email) is not None:
-        raise ServiceError("email_taken", "Esiste già un utente con questa email", 409)
+        raise _email_taken()
+
+
+@contextmanager
+def _unique_email_guard() -> Iterator[None]:
+    """Con richieste parallele il controllo preventivo non basta: decide il vincolo UNIQUE
+    del database, e l'errore diventa 409 invece di 500."""
+    try:
+        yield
+    except IntegrityError as exc:
+        db.session.rollback()
+        raise _email_taken() from exc
 
 
 def set_password(user: User, password: str) -> None:
@@ -75,16 +96,17 @@ def _insert(email: str, password: str, role: str, can_publish: bool, actor_id: i
     user = User(
         email=email, password_hash=hash_password(password), role=role, can_publish=can_publish
     )
-    db.session.add(user)
-    db.session.flush()
-    audit.record(
-        "user.created",
-        actor_id=actor_id,
-        entity="user",
-        entity_id=user.id,
-        diff={"email": email, "role": role, "can_publish": can_publish},
-    )
-    db.session.commit()
+    with _unique_email_guard():
+        db.session.add(user)
+        db.session.flush()
+        audit.record(
+            "user.created",
+            actor_id=actor_id,
+            entity="user",
+            entity_id=user.id,
+            diff={"email": email, "role": role, "can_publish": can_publish},
+        )
+        db.session.commit()
     return user
 
 
@@ -144,7 +166,8 @@ def update_user(actor: User, target: User, changes: Mapping[str, Any]) -> User:
         set_password(target, changes["password"])
         diff["credentials"] = "reset"
     audit.record("user.updated", actor_id=actor.id, entity="user", entity_id=target.id, diff=diff)
-    db.session.commit()
+    with _unique_email_guard():
+        db.session.commit()
     return target
 
 

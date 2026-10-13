@@ -125,8 +125,21 @@ def test_admin_cannot_touch_admin_or_owner(app: Flask, login_as: LoginAs) -> Non
     owner = make_user(app, "o@example.ch", "owner")
     admin, _ = login_as("admin")
     for target in (other_admin, owner):
-        assert admin.get(f"{USERS}/{target.id}").status_code == 403
-        assert admin.patch(f"{USERS}/{target.id}", json={"active": False}).status_code == 403
+        # 404 e non 403: un admin non deve poter scoprire quali id sono owner o admin
+        assert admin.get(f"{USERS}/{target.id}").status_code == 404
+        assert admin.patch(f"{USERS}/{target.id}", json={"active": False}).status_code == 404
+
+
+def test_concurrent_duplicate_email_is_409_not_500(
+    app: Flask, login_as: LoginAs, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Due richieste parallele passano entrambe il controllo: il vincolo del DB decide."""
+    from app.services import users as users_service
+
+    make_user(app, "ed@example.ch")
+    admin, _ = login_as("admin")
+    monkeypatch.setattr(users_service, "_ensure_email_free", lambda email: None)
+    assert admin.post(USERS, json=_new("ed@example.ch")).status_code == 409
 
 
 def test_admin_deactivates_editor_and_kills_sessions(app: Flask, login_as: LoginAs) -> None:

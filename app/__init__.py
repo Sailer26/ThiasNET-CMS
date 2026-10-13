@@ -9,7 +9,7 @@ from typing import Any, cast
 
 from flask import Flask, current_app
 
-from app.api import register_error_handlers
+from app.api import register_error_handlers, register_response_headers
 from app.api.admin import bp as admin_api
 from app.cli import register_cli
 from app.config import PROJECT_ROOT, build_config
@@ -38,6 +38,7 @@ def create_app(config_name: str | None = None, overrides: Mapping[str, Any] | No
     migrate.init_app(app, db, directory=str(MIGRATIONS_DIR))
     init_security(app)
     register_error_handlers(app)
+    register_response_headers(app)
     app.register_blueprint(admin_api)
     register_cli(app)
     return app

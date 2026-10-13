@@ -14,12 +14,14 @@ from app.extensions import db
 from app.services import audit, users
 from app.services.errors import ServiceError
 
-password_option = click.option(
-    "--password",
-    prompt="Password",
-    hide_input=True,
-    confirmation_prompt="Ripeti la password",
-)
+
+def _ask_password() -> str:
+    """Solo prompt nascosto: una password passata come argomento finirebbe nella cronologia
+    della shell e nell'elenco dei processi."""
+    password: str = click.prompt(
+        "Password", hide_input=True, confirmation_prompt="Ripeti la password"
+    )
+    return password
 
 
 def _abort(exc: ServiceError) -> click.ClickException:
@@ -29,10 +31,10 @@ def _abort(exc: ServiceError) -> click.ClickException:
 @click.command("create-owner")
 @click.option("--email", required=True, help="Email dell'owner")
 @click.option("--additional", is_flag=True, help="Consente un owner in più")
-@password_option
 @with_appcontext
-def create_owner_command(email: str, additional: bool, password: str) -> None:
+def create_owner_command(email: str, additional: bool) -> None:
     """Crea l'owner (Thias). È l'unico modo di creare un owner."""
+    password = _ask_password()
     try:
         owner = users.create_owner(email, password, additional=additional)
     except ServiceError as exc:
@@ -42,10 +44,10 @@ def create_owner_command(email: str, additional: bool, password: str) -> None:
 
 @click.command("set-password")
 @click.option("--email", required=True)
-@password_option
 @with_appcontext
-def set_password_command(email: str, password: str) -> None:
+def set_password_command(email: str) -> None:
     """Reimposta la password di un utente e chiude tutte le sue sessioni."""
+    password = _ask_password()
     try:
         user = users.require_by_email(email)
         users.set_password(user, password)

@@ -34,12 +34,8 @@ TOTP_LOGIN_SCHEMA = _schema(["code"], code=_CODE)
 PASSWORD_SCHEMA = _schema(
     ["current_password", "new_password"], current_password=_TEXT, new_password=_TEXT
 )
-TOTP_ENABLE_SCHEMA = _schema(
-    ["secret", "code", "password"],
-    secret={"type": "string", "maxLength": 64},
-    code=_CODE,
-    password=_TEXT,
-)
+# Niente "secret": lo genera e lo conserva il server al setup (additionalProperties: false).
+TOTP_ENABLE_SCHEMA = _schema(["code", "password"], code=_CODE, password=_TEXT)
 TOTP_DISABLE_SCHEMA = _schema(["password", "code"], password=_TEXT, code=_CODE)
 
 
@@ -98,7 +94,7 @@ def change_password() -> Response:
 @bp.post("/auth/totp/setup")
 @require_permission(Permission.PROFILE)
 def totp_setup() -> Response:
-    secret, uri = totp.new_secret(current())
+    secret, uri = totp.begin_setup(current())
     return ok({"secret": secret, "otpauth_uri": uri})
 
 
@@ -106,7 +102,7 @@ def totp_setup() -> Response:
 @require_permission(Permission.PROFILE)
 def totp_enable() -> Response:
     body = json_body(TOTP_ENABLE_SCHEMA)
-    totp.enable(current(), secret=body["secret"], code=body["code"], password=body["password"])
+    totp.enable(current(), code=body["code"], password=body["password"])
     return ok()
 
 
