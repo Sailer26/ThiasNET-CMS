@@ -59,7 +59,8 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "S", "T20", "ANN", "RUF", "PTH",
 ignore = ["ANN401"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "ANN", "S603", "E501"]
+# Nei test le password sono fittizie per definizione (S105/S106).
+"tests/**" = ["S101", "ANN", "S603", "E501", "S105", "S106"]
 "scripts/**" = ["S603", "S607", "T20"]
 
 [tool.mypy]

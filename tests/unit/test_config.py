@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 
 from app.config import ConfigError, build_config
@@ -78,6 +80,39 @@ def test_invalid_max_upload_raises(value: str) -> None:
 def test_max_upload_in_bytes() -> None:
     config = build_config("development", environ={"MAX_UPLOAD_MB": "2"})
     assert config["MAX_CONTENT_LENGTH"] == 2 * 1024 * 1024
+
+
+PROD_ENV = {"SECRET_KEY": "x" * 40, "DATABASE_URL": "sqlite:///x.db"}
+
+
+def test_production_session_cookies_hardened() -> None:
+    config = build_config("production", environ=PROD_ENV)
+    assert config["SESSION_COOKIE_NAME"] == "__Host-session"
+    assert config["REMEMBER_COOKIE_NAME"] == "__Host-remember_token"
+    assert config["REMEMBER_COOKIE_SECURE"] is True
+    assert config["REMEMBER_COOKIE_HTTPONLY"] is True
+    assert config["REMEMBER_COOKIE_SAMESITE"] == "Lax"
+    assert config["TRUSTED_PROXY_COUNT"] == 1
+
+
+def test_session_lifetime_12_hours_and_csrf_tied_to_session() -> None:
+    config = build_config("development", environ={})
+    assert config["PERMANENT_SESSION_LIFETIME"] == timedelta(hours=12)
+    assert config["SESSION_REFRESH_EACH_REQUEST"] is True
+    assert config["WTF_CSRF_TIME_LIMIT"] is None
+    assert config["TRUSTED_PROXY_COUNT"] == 0
+
+
+@pytest.mark.parametrize("value", ["x", "-1"])
+def test_invalid_proxy_count_raises(value: str) -> None:
+    with pytest.raises(ConfigError, match="TRUSTED_PROXY_COUNT"):
+        build_config("development", environ={"TRUSTED_PROXY_COUNT": value})
+
+
+def test_testing_uses_cheap_argon2() -> None:
+    config = build_config("testing", environ={})
+    assert config["ARGON2_TIME_COST"] == 1
+    assert config["ARGON2_MEMORY_COST"] <= 1024
 
 
 def test_unknown_config_name_raises() -> None:

@@ -17,3 +17,7 @@ NAMING_CONVENTION = {
 
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
+
+
+# Registra tutte le tabelle in Base.metadata (serve ad Alembic e ai test).
+from app.models import audit, login_attempt, user  # noqa: E402, F401
