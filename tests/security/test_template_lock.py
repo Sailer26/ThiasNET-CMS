@@ -105,9 +105,37 @@ def client():
 @pytest.fixture
 def owner_client(client):
     """Client loggato come owner: il ruolo più alto non deve comunque poter toccare il tema."""
-    pytest.skip("Attivare in Fase 1: implementare login owner nel fixture")
+    from app.extensions import db
+    from tests.helpers import ME_URL, adopt_csrf, make_user, refresh_csrf
+
+    app = client.application
+    with app.app_context():
+        db.create_all()  # solo nei test (CLAUDE.md)
+    owner = make_user(app, "owner@example.ch", "owner")
+    refresh_csrf(client)
+    resp = client.post(
+        "/api/admin/auth/login", json={"email": owner.email, "password": owner.password}
+    )
+    assert resp.status_code == 200, resp.get_json()
+    adopt_csrf(client, resp)
+    assert client.get(ME_URL).status_code == 200
+    return client
 
 
+# Skip mirati: la route non esiste ancora. test_golden_rule.py fallisce se la route compare
+# mentre lo skip è ancora presente, così lo skip non sopravvive alla sua fase.
+SKIP_UNTIL_MEDIA = pytest.mark.skip(reason="Attivare in Fase 4: route /api/admin/media assente")
+SKIP_UNTIL_SETTINGS = pytest.mark.skip(
+    reason="Attivare in Fase 6: route /api/admin/settings/appearance assente"
+)
+
+
+def test_owner_client_is_really_logged_in(owner_client):
+    me = owner_client.get("/api/admin/auth/me").get_json()["data"]
+    assert me["role"] == "owner"
+
+
+@SKIP_UNTIL_MEDIA
 @pytest.mark.parametrize("ext", FORBIDDEN_UPLOAD_EXT)
 def test_media_upload_rejects_renderable_files(owner_client, ext):
     before = _themes_hash()
@@ -121,6 +149,7 @@ def test_media_upload_rejects_renderable_files(owner_client, ext):
     assert _themes_hash() == before
 
 
+@SKIP_UNTIL_MEDIA
 def test_media_upload_rejects_disguised_svg(owner_client):
     svg = b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'
     resp = owner_client.post(
@@ -148,6 +177,7 @@ def test_jinja_in_content_is_not_executed(owner_client):
     )
 
 
+@SKIP_UNTIL_SETTINGS
 def test_unknown_theme_setting_rejected(owner_client):
     # Route su "appearance" e non "theme": vedi D-14 e test_no_admin_route_touches_theme_files.
     resp = owner_client.put(

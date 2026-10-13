@@ -118,6 +118,27 @@ def test_themes_unchanged_after_startup_and_theme_check() -> None:
     assert _themes_hash() == before
 
 
+SKIPPED_UNTIL_ROUTE = {
+    "test_media_upload_rejects_renderable_files": ("/api/admin/media", "POST"),
+    "test_media_upload_rejects_disguised_svg": ("/api/admin/media", "POST"),
+    "test_unknown_theme_setting_rejected": ("/api/admin/settings/appearance", "PUT"),
+}
+
+
+def test_skipped_lock_tests_have_no_route_yet() -> None:
+    """Uno skip del kit non può sopravvivere alla fase in cui nasce la sua route."""
+    from tests.security import test_template_lock as kit
+
+    app = create_app("testing")
+    routes = {(r.rule, m) for r in app.url_map.iter_rules() for m in (r.methods or ())}
+    stale = []
+    for name, (path, method) in SKIPPED_UNTIL_ROUTE.items():
+        marks = getattr(getattr(kit, name), "pytestmark", [])
+        if any(m.name == "skip" for m in marks) and (path, method) in routes:
+            stale.append(f"{name}: la route {method} {path} esiste, togliere lo skip")
+    assert not stale, stale
+
+
 def test_no_safe_filter_in_any_theme_template() -> None:
     offenders = []
     for pattern in ("*.html", "*.jinja", "*.j2", "*.xml", "*.txt"):

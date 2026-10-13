@@ -10,17 +10,22 @@ Una fase alla volta. Una fase è chiusa solo quando tutti i criteri sono spuntat
 - [x] CI (GitHub Actions): test + lint
 
 **Rimandati dalla review della Fase 0** (da chiudere nella fase indicata):
-- Fase 1: cookie `REMEMBER_*` di Flask-Login, `SESSION_COOKIE_NAME="__Host-session"` e `PERMANENT_SESSION_LIFETIME` in produzione; mypy esteso a `tests/` e `scripts/`.
+- ~~Fase 1: cookie `REMEMBER_*`, `__Host-session`, `PERMANENT_SESSION_LIFETIME`; mypy su `tests/` e `scripts/`~~ (fatto in Fase 1).
 - Fase 3: `theme-check` verifica che esistano i template (`layouts/*.html`, `blocks/<tipo>.html`) e avvisa sulle varianti di blocchi mai ammessi in una zona; controllo del formato reale delle miniature (WebP/PNG/JPG); il tema `default` riceve `block_variants` reali; aggiungere l'`Environment` di `services/render.py` all'allowlist di `tests/security/test_golden_rule.py`.
 - Fase 6: validazione server dei valori delle settings salvati dal pannello (url solo http(s)/relativo, colori nella palette).
 - Fase 8: immagine base Docker per digest, `pip install --require-hashes` o lockfile, action e hook fissati a SHA.
 
 ## Fase 1 — Utenti e autenticazione
-- [ ] Modello `users`, ruoli owner/admin/editor, Argon2
-- [ ] Login/logout, sessione, CSRF, rate limit login, TOTP opzionale
-- [ ] Decoratore permessi + test per ogni ruolo
-- [ ] Comando `flask create-owner`
-- [ ] `audit_log` base
+- [x] Modello `users`, ruoli owner/admin/editor, Argon2
+- [x] Login/logout, sessione, CSRF, rate limit login, TOTP opzionale
+- [x] Decoratore permessi + test per ogni ruolo
+- [x] Comando `flask create-owner`
+- [x] `audit_log` base
+
+**Rimandati dalla review della Fase 1** (da chiudere nella fase indicata):
+- Fase 2: `server_default` per le colonne NOT NULL con default (migrazione); rifiutare una nuova password uguale alla vecchia e una piccola lista di password comuni.
+- Fase 5: valutare `SameSite=Strict` per il cookie di sessione del pannello; teardown esplicito della fixture `app` nei test.
+- Fase 8: header CSP/HSTS in Caddy; verifica di `TRUSTED_PROXY_COUNT` nel deploy (D-34); retention o aggregazione di `audit_log` per i login falliti; limite globale per account contro attacchi distribuiti (oggi solo per email+IP, per IP e per il TOTP, D-24); limite di concorrenza su `/auth/login` in Caddy (costo Argon2).
 
 ## Fase 2 — Pagine e blocchi (backend)
 - [ ] Modelli pagine, blocchi, revisioni

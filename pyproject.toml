@@ -16,6 +16,16 @@ dependencies = [
     "jsonschema==4.26.0",
     # Caricamento di .env in sviluppo.
     "python-dotenv==1.2.4",
+    # Sessione utente e user_loader (stack CLAUDE.md).
+    "Flask-Login==0.6.3",
+    # Protezione CSRF (stack CLAUDE.md); WTForms arriva come dipendenza ma non lo usiamo.
+    "Flask-WTF==1.3.0",
+    # Hash delle password Argon2id con rehash (stack CLAUDE.md).
+    "argon2-cffi==25.1.0",
+    # TOTP RFC 6238 per il secondo fattore opzionale, senza dipendenze.
+    "pyotp==2.10.0",
+    # Fernet + HKDF: segreto TOTP cifrato a riposo e HMAC degli IP (D-28, D-30).
+    "cryptography==50.0.2",
 ]
 
 [project.optional-dependencies]
@@ -49,17 +59,27 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "S", "T20", "ANN", "RUF", "PTH",
 ignore = ["ANN401"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "ANN", "S603", "E501"]
+# Nei test le password sono fittizie per definizione (S105/S106).
+"tests/**" = ["S101", "ANN", "S603", "E501", "S105", "S106"]
 "scripts/**" = ["S603", "S607", "T20"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
-packages = ["app"]
+files = ["app", "tests", "scripts"]
 
 [[tool.mypy.overrides]]
-module = ["flask_migrate"]
+# Pacchetti senza type hints (niente py.typed).
+module = ["flask_migrate", "flask_login", "flask_login.*", "flask_wtf", "flask_wtf.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Nei test le fixture pytest non sono annotate: si controlla comunque il corpo delle funzioni.
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+check_untyped_defs = true
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

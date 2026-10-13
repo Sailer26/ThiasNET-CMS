@@ -24,7 +24,7 @@ COMMANDS: dict[str, list[list[str]]] = {
     "lint": [
         [PY, "-m", "ruff", "check", "."],
         [PY, "-m", "ruff", "format", "--check", "."],
-        [PY, "-m", "mypy", "app"],
+        [PY, "-m", "mypy"],
     ],
     "migrate": [[*FLASK, "db", "upgrade"]],
     "theme-check": [[PY, "-m", "app.theme_check"]],

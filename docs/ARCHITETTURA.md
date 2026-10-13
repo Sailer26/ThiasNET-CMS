@@ -26,7 +26,9 @@ themes/<nome>/  ← SOLO LETTURA a runtime, montato read-only nel container
 
 ## Modello dati (essenziale)
 ```
-users(id, email, password_hash, role[owner|admin|editor], totp_secret, active, last_login)
+users(id, email, password_hash, role[owner|admin|editor], active, can_publish, totp_secret_enc,
+      totp_last_counter, session_version, last_login_at, tour_completed_at, created_at, updated_at)
+login_attempts(id, email_key, ip_key, created_at)   -- rate limit su DB, solo chiavi HMAC (D-24)
 pages(id, parent_id, locale, translation_group, slug, path, title, layout, status[draft|published|scheduled],
       publish_at, seo_json, sort, created_by, updated_at)
 page_revisions(id, page_id, snapshot_json, author_id, created_at)
@@ -39,7 +41,7 @@ widgets(id, type, title, data_json, area, sort, visibility_json)
 menus(id, location, locale) · menu_items(id, menu_id, parent_id, label, target_type, target_id, url, sort)
 settings(key, value_json)       -- sito + settings esposti dal tema
 redirects(id, from_path, to_path, code)
-audit_log(id, user_id, action, entity, entity_id, diff_json, ip, created_at)
+audit_log(id, user_id, action, entity, entity_id, diff_json, ip_hash, created_at)   -- D-30
 page_drafts(page_id, data_json, author_id, updated_at)          -- autosave (D-07), mai pubblicato da solo
 contact_messages(id, form_page_id, name, email, message, ip_hash, created_at)   -- D-05
 support_requests(id, user_id, page_id, message, created_at, sent_at)           -- "Chiedi a Thias" (D-09)

@@ -9,10 +9,13 @@ from typing import Any, cast
 
 from flask import Flask, current_app
 
+from app.api import register_error_handlers, register_response_headers
+from app.api.admin import bp as admin_api
 from app.cli import register_cli
 from app.config import PROJECT_ROOT, build_config
 from app.database import ensure_sqlite_directory  # importarlo registra anche i PRAGMA SQLite
 from app.extensions import db, migrate
+from app.security import init_security
 from app.services.theme import Theme, load_theme
 
 ACTIVE_THEME_KEY = "thiasnet.active_theme"
@@ -33,6 +36,10 @@ def create_app(config_name: str | None = None, overrides: Mapping[str, Any] | No
     ensure_sqlite_directory(app.config["SQLALCHEMY_DATABASE_URI"])
     db.init_app(app)
     migrate.init_app(app, db, directory=str(MIGRATIONS_DIR))
+    init_security(app)
+    register_error_handlers(app)
+    register_response_headers(app)
+    app.register_blueprint(admin_api)
     register_cli(app)
     return app
 

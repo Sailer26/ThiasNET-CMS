@@ -4,11 +4,17 @@ from __future__ import annotations
 
 import copy
 import json
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 from typing import Any
 
 import pytest
+from flask import Flask
+from flask.testing import FlaskClient
+
+from app import create_app
+from app.extensions import db
+from tests.helpers import UserRef, api_client, login, make_user
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_THEME_DATA: dict[str, Any] = json.loads(
@@ -23,7 +29,37 @@ APP_ENV_VARS = (
     "THEMES_DIR",
     "ACTIVE_THEME",
     "MAX_UPLOAD_MB",
+    "TRUSTED_PROXY_COUNT",
 )
+LoginAs = Callable[..., tuple[FlaskClient, UserRef]]
+
+
+@pytest.fixture
+def app() -> Iterator[Flask]:
+    """App di test con database in memoria. Il contesto NON resta attivo durante le richieste
+    (altrimenti `g` e l'utente loggato verrebbero condivisi tra richieste diverse)."""
+    application = create_app("testing")
+    with application.app_context():
+        db.create_all()  # ammesso solo nei test (CLAUDE.md); la parità con Alembic è testata
+    yield application
+
+
+@pytest.fixture
+def api(app: Flask) -> FlaskClient:
+    return api_client(app)
+
+
+@pytest.fixture
+def login_as(app: Flask) -> LoginAs:
+    counter = iter(range(1, 1000))
+
+    def _login(role: str, **kwargs: Any) -> tuple[FlaskClient, UserRef]:
+        user = make_user(app, f"{role}{next(counter)}@example.ch", role, **kwargs)
+        client = api_client(app)
+        assert login(client, user.email).status_code == 200
+        return client, user
+
+    return _login
 
 
 @pytest.fixture(autouse=True)

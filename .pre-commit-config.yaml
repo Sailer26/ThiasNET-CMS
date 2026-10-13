@@ -16,8 +16,8 @@ repos:
   - repo: local
     hooks:
       - id: mypy
-        name: mypy app
-        entry: python -m mypy app
+        name: mypy
+        entry: python -m mypy
         language: system
         pass_filenames: false
         types: [python]
