@@ -60,9 +60,17 @@ Una fase alla volta. Una fase è chiusa solo quando tutti i criteri sono spuntat
 - Fase 8: CSP con l'host di Matomo e degli iframe, axe e Lighthouse automatici, dati strutturati, `python -m app.theme_check` nel build Docker, cron per `publish-scheduled`, `send-contact-messages` e `purge-contact-messages`; far rivedere i testi in romancio.
 
 ## Fase 4 — Media library
-- [ ] Upload con verifica MIME sui byte, allowlist, limite dimensione, SVG rifiutati
-- [ ] Re-encode, strip EXIF, varianti da `image_sizes`, focal point
-- [ ] Cartelle, ricerca, alt obbligatorio, dedup sha256, blocco eliminazione se in uso
+- [x] Upload con verifica del tipo sui byte, allowlist (JPG, PNG, WebP, GIF, PDF), 15 MB, 25 megapixel, SVG rifiutati, spazio per sito (D-70, D-71, D-78)
+- [x] Re-encode, strip EXIF/ICC, varianti WebP da `image_sizes`, focal point, `flask media-variants` dopo un cambio del tema (D-72, D-73, D-80)
+- [x] Cartelle, ricerca, alt obbligatorio per pubblicare, dedup sha256, blocco eliminazione se in uso, "Sostituisci file" con lo stesso indirizzo (D-76, D-77, D-79, D-82)
+- [x] Sito: `img()` responsive, `media_url()`, `media_file()`, `og:image`, distribuzione `/media` con cache e sandbox (D-75, D-81)
+- [x] Rimandi delle Fasi 2–3: `media_id` dei blocchi verificati in pubblicazione, test del kit `test_template_lock.py` sui media attivi
+
+**Rimandati dalla Fase 4** (da chiudere nella fase indicata):
+- Fase 5: media picker, caricamento multiplo, punto focale con un clic, avvisi alt e doppioni, elenco delle pagine che usano un media.
+- Fase 6: impostazioni `media` (logo, favicon) e widget come fonti di "in uso" + `page_cache.mark_changed()`.
+- Fase 7: alt per lingua; copertine delle collezioni come fonti di "in uso".
+- Fase 8: Caddy che serve `/media` dal volume, backup di `MEDIA_ROOT`, pulizia dei file orfani, limite di upload per utente, antivirus per i PDF.
 
 ## Fase 5 — Pannello admin (React)
 - [ ] Shell Vite+TS, login, layout, gestione errori/sessione scaduta

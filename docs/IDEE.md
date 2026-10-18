@@ -8,3 +8,7 @@ Ogni idea nuova finisce qui, non nel codice (PREMORTEM #1). Si rivaluta dopo la 
 - **"Salva versione" manuale**: revisione con un nome scelto dal cliente, oltre a quelle automatiche (D-40).
 - **Link di anteprima condivisibile** per chi non ha un account (es. il sindaco), valido qualche giorno (D-68: per ora no).
 - **Dati strutturati** (schema.org) per organizzazione, eventi e notizie.
+- **Altri formati di immagine**: HEIC (foto iPhone) e AVIF con `pillow-heif` (D-70: per ora solo JPG, PNG, WebP, GIF).
+- **Immagini decorative** con `alt=""` dichiarato esplicitamente dal cliente (D-77: oggi l'alt è obbligatorio).
+- **Indirizzi dei PDF col nome leggibile** (es. `/media/regolamento-2026.pdf`) e anteprima della prima pagina.
+- **Lightbox** per la galleria (ingrandimento al clic), nel tema e compatibile con la CSP.

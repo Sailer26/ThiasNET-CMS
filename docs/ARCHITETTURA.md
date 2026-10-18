@@ -20,7 +20,10 @@ themes/<nome>/  ← SOLO LETTURA a runtime, montato read-only nel container
 | `services/revisions.py` | storico, ripristino in bozza, potatura a 50 (D-40, D-42) |
 | `services/content.py` | forma del documento pagina e regole del tema (zone, blocchi ammessi, max, varianti) |
 | `services/blocks.py` · `sanitize.py` | registry dei 13 schemi, validazione bozza/pubblica, pulizia testo e rich text con nh3 (D-46, D-49) |
-| `services/media.py` | upload, verifica MIME reale, re-encode, varianti, focal point |
+| `services/media.py` | upload, modifica, "Sostituisci file", eliminazione, spazio per sito, varianti dopo un cambio del tema (D-76 … D-82) |
+| `services/media_types.py` · `media_images.py` · `media_storage.py` | tipo del file dai byte (senza Pillow) · decodifica con limiti, pulizia, master e varianti WebP in memoria · unico punto che scrive in `MEDIA_ROOT` (D-70 … D-74) |
+| `services/media_refs.py` · `media_library.py` · `media_folders.py` | media usati dalle pagine e controlli di pubblicazione · elenco, ricerca, indirizzi · cartelle |
+| `services/render_media.py` | `<img>` responsive, file scaricabili, tag social (D-81) |
 | `services/widgets.py` · `menus.py` · `collections.py` | come da nome |
 | `services/theme.py` | carica e valida `theme.json` all'avvio; espone zone, blocchi ammessi, settings. **Nessun metodo di scrittura.** |
 | `services/render.py` · `render_context.py` · `render_helpers.py` | unico ambiente Jinja in sandbox, loader limitato a `themes/<attivo>/` (anche contro i symlink), dati congelati e helper del contratto (D-52, D-53, D-56) |
@@ -44,8 +47,10 @@ blocks(id, page_id, uid, zone, type, variant, data_json, sort)   -- solo la vers
 page_redirects(id, page_id, locale, from_path, created_at)       -- vecchi indirizzi → 301 dalla Fase 3 (D-45)
 collections(id, key)            -- dichiarate dal tema, sincronizzate all'avvio
 entries(id, collection_id, locale, slug, title, fields_json, status, publish_at)
-media(id, folder_id, filename, mime, width, height, sha256, alt, focal_x, focal_y, variants_json)
-media_folders(id, parent_id, name)
+media(id, storage_key, kind[image|document], mime, ext, original_name, search_key, size_bytes, sha256 UNIQUE,
+      width, height, alt, focal_x, focal_y, variants_json, file_rev, version, folder_id, created_by, updated_by,
+      created_at, updated_at)   -- file in MEDIA_ROOT/<key[:2]>/<key>/r<rev>-..., mai nel database (D-74)
+media_folders(id, parent_id, name, name_key)   -- nome unico per cartella madre (indice parziale per la radice)
 widgets(id, type, title, data_json, area, sort, visibility_json)
 menus(id, location, locale) · menu_items(id, menu_id, parent_id, label, target_type, target_id, url, sort)
 settings(key, value_json)       -- sito + settings esposti dal tema
@@ -84,6 +89,20 @@ flask publish-scheduled ► rivalida l'istantanea; se il tema è cambiato e non 
 - `app/static/cms/preview.js` (file statico, compatibile CSP) evidenzia i blocchi via `data-block-id`, invia `cms:block-click` al pannello con `postMessage` e accetta `cms:highlight` solo dalla stessa origine e dalla finestra madre.
 - L'anteprima non scrive nulla: né bozze, né revisioni, né cache; il modulo contatti è visibile ma disattivato.
 
+## Media (D-70 … D-85)
+```
+POST /api/admin/media ─► sniff (magic bytes) ─► Pillow: limiti, EXIF/ICC→sRGB, master + varianti WebP (in memoria)
+                       └► media_storage.put (nome generato, creazione esclusiva) ─► riga `media` + audit
+GET /media/<key>/<file> ─► solo file della revisione corrente; immagini immutabili, PDF in download
+                           con `max-age=300`; `nosniff`, CSP `sandbox`, mai cookie di sessione
+```
+- `MEDIA_ROOT` sta fuori da `themes/` e da `app/` (controllato all'avvio, obbligatorio in produzione).
+- Ogni modifica che cambia i file (punto focale, sostituzione, `flask media-variants`) crea una nuova revisione
+  di file: l'indirizzo cambia e la cache dei browser non mostra mai il file vecchio. Il master non si ricodifica.
+- "In uso" (D-79): blocchi e SEO di tutte le pagine non cestinate, bozze e programmazioni. Un media in uso non si
+  elimina (409 con l'elenco delle pagine); l'alt non si toglie se una pagina online o programmata lo usa.
+- Pubblicare verifica che ogni `media_id` esista, sia del tipo giusto (immagine o PDF) e abbia l'alt.
+
 ## Rendering pubblico
 1. Risolvi `path` → pagina pubblicata (o redirect / 404 del tema).
 2. Carica layout dichiarato in `theme.json`, blocchi per zona, widget per area, menu.
@@ -94,7 +113,7 @@ flask publish-scheduled ► rivalida l'istantanea; se il tema è cambiato e non 
 ## Sicurezza (difesa in profondità per il lock del template)
 - Container: `themes/` montato `:ro`; l'utente del processo non ha permessi di scrittura.
 - Codice: `services/theme.py` senza metodi di scrittura; nessuna route accetta path di file.
-- Upload: allowlist MIME verificata sui byte (jpg, png, webp, gif, pdf); SVG rifiutati; immagini re-encodate con Pillow; nomi file rigenerati; storage fuori da `themes/` e da `static/` del codice.
+- Upload: allowlist verificata sui byte (jpg, png, webp, gif, pdf); SVG rifiutati; immagini re-encodate con Pillow senza metadati; nomi file rigenerati; storage fuori da `themes/` e da `app/`; solo `media_storage.py` scrive file (allowlist in `tests/security/test_golden_rule.py`).
 - Input: JSON Schema + nh3; i dati dei blocchi non sono mai interpretati come template.
 - Settings tema: solo chiavi dichiarate in `theme.json`, tipi validati (colore = regex hex, ecc.), nessun campo CSS/JS libero.
 - CSP restrittiva sul sito e sull'admin; cookie `Secure`, `HttpOnly`, `SameSite=Lax`.

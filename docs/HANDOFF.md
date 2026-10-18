@@ -9,8 +9,9 @@ Aggiornato: 2026-10-18. Leggi questo file **dopo** `CLAUDE.md` e prima di qualsi
 - **Fase 0 — Fondamenta:** chiusa e unita in `main`.
 - **Fase 1 — Utenti e autenticazione:** chiusa e unita in `main` (PR #1, commit `e2ae055`). 235 test verdi, copertura 96.6 %, CI verde su Linux e Windows.
 - **Fase 2 — Pagine e blocchi (backend):** chiusa e unita in `main` (PR #2).
-- **Fase 3 — Rendering pubblico:** completata sul branch `phase-3-rendering` (764 test verdi, copertura 95 %, review ECC fatta, problemi alti e medi corretti). In attesa della PR verso `main`. Piano e scelte in `docs/PIANO-FASE-3.md`. Prossima: **Fase 4 — Media library**.
-- Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-69). Prevalgono sugli altri documenti.
+- **Fase 3 — Rendering pubblico:** chiusa e unita in `main` (PR #3).
+- **Fase 4 — Media library:** completata sul branch `phase-4-media` (870 test verdi, copertura 94 %, review ECC fatta, problemi alti e medi corretti). In attesa della PR verso `main`. Piano e scelte in `docs/PIANO-FASE-4.md`. Prossima: **Fase 5 — Pannello admin (React)**.
+- Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-85). Prevalgono sugli altri documenti.
 
 ## 2. Preparare l'ambiente (se la `.venv` non c'è)
 ```bash
@@ -36,7 +37,7 @@ L'app non parte senza `APP_ENV` (D-20); `tasks.py` usa `development` di default.
 
 ## 4. Trappole note su questo progetto
 - **GateGuard (ECC)** blocca il primo Write/Edit di ogni file e il primo Bash della sessione: va ripetuta la stessa operazione dopo aver dichiarato i fatti richiesti (chi usa il file, dati toccati, istruzione dell'utente). Se Thias vuole evitarlo può impostare `GATEGUARD_EXEMPT_GLOBS` (è una sua impostazione: non cambiarla da soli).
-- **Regola d'oro:** `tests/security/test_golden_rule.py` vieta in `app/` qualsiasi chiamata di nome `copy`, `remove`, `move`, `rename`, `save`, `write_text`, `mkdir`… (allowlist: solo `database.py` → `mkdir`) e la costruzione di template (`Template`, `Environment`, `from_string`…). Quindi: niente `dict.copy()` o `list.remove()`; usare comprehension/`copy.deepcopy`; nominare le funzioni `move_page`, `trash_page`, `store_draft`. In Fase 3 l'`Environment` del renderer va aggiunto all'allowlist.
+- **Regola d'oro:** `tests/security/test_golden_rule.py` vieta in `app/` qualsiasi chiamata di nome `copy`, `remove`, `move`, `rename`, `save`, `write_text`, `mkdir`… (allowlist: `database.py` → `mkdir`; `media_storage.py` → `mkdir`/`open`/`unlink`/`rmdir`; `media_images.py` → `save` solo in un `BytesIO`) e la costruzione di template (`Template`, `Environment`, `from_string`…). Quindi: niente `dict.copy()` o `list.remove()`; usare comprehension/`copy.deepcopy`; nominare le funzioni `move_page`, `trash_page`, `store_draft`. In Fase 3 l'`Environment` del renderer va aggiunto all'allowlist.
 - **pre-commit** fa girare mypy su tutto il progetto: commit parziali con moduli che dipendono da file non ancora aggiunti falliscono. Fare commit coerenti (o un commit unico per l'area).
 - `mixed-line-ending` di pre-commit corregge file con CRLF e fa fallire il commit: rifare `git add` e ricommittare.
 - Test: la fixture `app` crea il DB in memoria con `create_all` e **non tiene il contesto attivo** durante le richieste (altrimenti `g`/utente loggato verrebbero condivisi). Usare `make_user(app, …)`, `api_client(app)`, `login(...)`, `adopt_csrf(...)` da `tests/helpers.py` e la fixture `login_as(role)`.
@@ -48,16 +49,23 @@ L'app non parte senza `APP_ENV` (D-20); `tasks.py` usa `development` di default.
 - Nei template dei blocchi i campi con il nome di un metodo dei dizionari si leggono con `.get(...)` (es. `block.data.get("items")`): `block.data.items` è il metodo.
 - Lo script della shell a volte rifiuta blocchi lunghi con virgolette (errore "unexpected EOF"): in quel caso scrivere lo script Python in un file dello scratchpad ed eseguirlo.
 - `migrations/env.py` usa `fileConfig(..., disable_existing_loggers=False)`: altrimenti, dopo una migrazione nello stesso processo (test), i logger dell'app restano spenti.
-- I test del kit in `tests/security/test_template_lock.py` su media (Fase 4) e settings (Fase 6) sono saltati con skip mirati: `test_golden_rule.py` fallisce se la route nasce e lo skip resta. Toglierli nella fase giusta.
+- I test del kit in `tests/security/test_template_lock.py` sui settings (Fase 6) sono saltati con skip mirati: `test_golden_rule.py` fallisce se la route nasce e lo skip resta. Quelli sui media sono attivi dalla Fase 4.
+- I commit vanno fatti con la `.venv` nel `PATH` (`export PATH="$PWD/.venv/Scripts:$PATH"`): gli hook di pre-commit mypy e template-lock usano il `python` del sistema, che non ha le dipendenze.
+- Pillow deve avere WebP: senza, l'app non parte (D-84). I test dei media usano `tests/media_fixtures.py`.
 
-## 5. Fase 3 — fatta
-Piano, risposte di Thias (banner con scelta, Matomo, messaggi 12 mesi, anteprima solo dal pannello) e
-dettagli in `docs/PIANO-FASE-3.md`; decisioni D-50 … D-69; rimandi alle fasi successive in ROADMAP.
+## 5. Fasi 3 e 4 — fatte
+- Fase 3: piano e risposte di Thias (banner con scelta, Matomo, messaggi 12 mesi, anteprima solo dal pannello)
+  in `docs/PIANO-FASE-3.md`; decisioni D-50 … D-69.
+- Fase 4: piano e risposte (solo PDF oltre alle immagini, 15 MB per file e 5 GB per sito, anche gli editor
+  eliminano i media non usati, "Sostituisci file" mantiene l'indirizzo) in `docs/PIANO-FASE-4.md`; decisioni D-70 … D-85.
+- Rimandi alle fasi successive in ROADMAP.
 
-## 6. Prossimo passo: Fase 4 — Media library
-1. Branch `phase-4-media` da `main` (dopo il merge della PR della Fase 3).
-2. Piano con `ecc:planner` (stesso formato di `docs/PIANO-FASE-3.md`), con al massimo 4 domande semplici per Thias.
-3. Da collegare: `img()` e `media_url()` del renderer (oggi vuoti, D-57), `registry.media_ids` per i media in uso,
-   `og:image`, link dei file scaricabili; attivare gli skip di `test_template_lock.py` sui media (Fase 4).
-4. Test prima, poi codice, poi le tre review ECC in parallelo (`ecc:code-reviewer`, `ecc:python-reviewer`, `ecc:security-reviewer`
-   con i controlli di `/check-template-lock`), correzioni, docs, push e link della PR per Thias.
+## 6. Prossimo passo: Fase 5 — Pannello admin (React)
+1. Branch `phase-5-admin` da `main` (dopo il merge della PR della Fase 4).
+2. Piano con `ecc:planner` (stesso formato di `docs/PIANO-FASE-4.md`), con al massimo 4 domande semplici per Thias.
+3. È la prima fase con il frontend in `admin/` (React + Vite + TypeScript, TipTap, dnd-kit): motivare ogni dipendenza npm.
+   Da collegare: API di pagine, bozze, blocchi, media e utenti già pronte; anteprima live (`/_preview/<id>`, D-55);
+   409 `version_conflict` con chi ha salvato; `uid` dei blocchi generati dal pannello (D-39); rimandi della Fase 5 in ROADMAP.
+4. Test prima (Vitest per il pannello, pytest per le API nuove), poi codice, poi le review ECC in parallelo
+   (`ecc:code-reviewer`, `ecc:typescript-reviewer`/`ecc:react-reviewer`, `ecc:security-reviewer` con `/check-template-lock`),
+   correzioni, docs, push e link della PR per Thias.

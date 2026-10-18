@@ -40,7 +40,7 @@ Tutti i temi condividono gli **stessi tipi di blocco e widget** (schema dati e e
 ## Regole per chi scrive un tema
 1. Ogni output di dati utente passa per autoescape; il rich text già sanitizzato si stampa con il filtro `|safe_html` (che ri-sanitizza), mai con `|safe`.
 2. Colori dalle settings → solo come variabili CSS nel file `/_vars.css` generato dal CMS con valori validati (D-59), es. `--accent-color`. Nessun `<style>` o `style=` nei template.
-3. Immagini sempre via helper `{{ img(media_id, size="card") }}` (srcset, width/height, lazy, alt).
+3. Immagini sempre via helper `{{ img(media_id, size="card") }}` (srcset, width/height, lazy, alt); mai `<img src=...>` scritto a mano con `media_url()`.
 4. Nessun JS inline; JS nei file `assets/`, compatibile con la CSP.
 5. Un tema nuovo o modificato entra solo con commit + build + deploy.
 6. Ogni blocco nel template ha l'attributo `data-block-id="{{ block.id }}"` sull'elemento radice: serve all'anteprima live per evidenziare e selezionare il blocco (D-02). In modalità pubblica l'attributo è innocuo.
@@ -64,7 +64,9 @@ I template sono eseguiti in sandbox (D-52): non possono leggere file fuori dal t
 | `cms_head()` · `cms_body_end()` | `<title>`, description, canonical, robots, `/_vars.css` · banner del consenso e script del CMS |
 | `render_zone(nome)` · `zone_has_blocks(nome)` | blocchi di una zona già renderizzati · se la zona ha blocchi |
 | `menu("main")` | voci `{title, url, current}` (fino alla Fase 6 menu automatico, D-58) |
-| `img(media_id, size=...)` · `media_url(id)` | immagine (`size` tra gli `image_sizes`) · indirizzo di un file; fino alla Fase 4 vuoti |
+| `img(media_id, size="card", sizes=None, eager=False, css_class=None)` | `<img>` responsive (D-81): `srcset` con larghezza normale e doppia, `width`/`height`, `alt`, `loading="lazy"` (con `eager=True` per l'immagine in cima, es. hero). `size` deve essere un `image_sizes` del tema (altrimenti errore del tema). `sizes` e `css_class` accettano solo testo semplice. Media mancante: niente sul sito, segnaposto in anteprima |
+| `media_url(id)` | indirizzo del file principale, o `None` |
+| `media_file(id)` | per i file da scaricare: `{url, name, ext, size_label}` (es. `PDF`, `340 kB`), o `None` |
 | `asset("css/site.css")` | indirizzo versionato di un file in `assets/` |
 | `embed(block)` | dati del segnaposto di video e mappe: `kind`, `src`, `link`, `title`, `provider` |
 | `contact_form(block)` | stato del modulo: `action`, `token`, `values`, `errors`, `sent`, `disabled` |
@@ -79,6 +81,11 @@ Per i campi che hanno il nome di un metodo dei dizionari (`items`) usare `block.
 - **Consenso**: il banner lo produce `cms_body_end()` (classi `.cms-consent*`); il tema lo stila e mette nel piè di pagina un pulsante con `data-cms-consent-open` per riaprirlo.
 - **Modulo contatti** (D-61): `method="post"`, `action="{{ form.action }}"`, campi `token` (nascosto), `name`, `email`, `phone`, `message` e il campo trappola `website` nascosto agli utenti (non `type="hidden"`); id del modulo `contatti-{{ block.id }}`.
 - **Anteprima**: la classe `.cms-preview-active` evidenzia il blocco selezionato; `.cms-media-placeholder` è il segnaposto delle immagini.
+- **Immagini** (D-80): `img()` mette le classi `cms-img cms-fx-N cms-fy-N` (N = 0…10, il punto focale) e il CMS carica `/static/cms/media.css`, che traduce le classi in `object-position`. Il tema decide la forma del riquadro (es. `object-fit: cover` e `aspect-ratio`): così il ritaglio segue il punto focale scelto dal cliente.
+- **Social**: `cms_head()` aggiunge Open Graph e Twitter con indirizzi assoluti da `SITE_URL`; l'immagine è quella scelta nella SEO della pagina o la prima del contenuto, nella variante `_og` (1200×630).
+
+## Formati delle immagini (`image_sizes`)
+Ogni voce ha `width` (pixel) e, se serve, `ratio` (es. `"16:9"`): il CMS crea due varianti WebP (normale e doppia) ritagliate attorno al punto focale. Le chiavi che iniziano con `_` sono riservate al CMS (`_panel` per le miniature del pannello, `_og` per i social). Dopo un deploy che cambia `image_sizes`, Thias lancia `flask media-variants` (con `--dry-run` per vedere quante immagini cambiano): fino ad allora `img()` usa il file principale, mai un buco.
 
 ## Cosa NON potrà mai fare un utente del pannello
 Modificare/caricare file del tema, cambiare tema attivo (solo owner da file di config/env, non da UI), inserire CSS/JS/HTML arbitrario, inserire codice Jinja nei contenuti, aggiungere zone o layout non dichiarati.
