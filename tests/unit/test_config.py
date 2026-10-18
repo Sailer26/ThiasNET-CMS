@@ -58,8 +58,16 @@ def test_production_requires_database_url() -> None:
 
 def test_production_config_ok() -> None:
     config = build_config(
-        "production", environ={"SECRET_KEY": "x" * 40, "DATABASE_URL": "sqlite:///x.db"}
+        "production",
+        environ={
+            "SECRET_KEY": "x" * 40,
+            "DATABASE_URL": "sqlite:///x.db",
+            "SITE_URL": "https://www.comune.example.ch/",
+        },
     )
+    assert config["SITE_URL"] == "https://www.comune.example.ch"
+    assert config["ROBOTS_ALLOW_INDEXING"] is True
+    assert config["MAIL_BACKEND"] == "smtp"
     assert config["DEBUG"] is False
     assert config["SESSION_COOKIE_SECURE"] is True
 
@@ -82,7 +90,11 @@ def test_max_upload_in_bytes() -> None:
     assert config["MAX_CONTENT_LENGTH"] == 2 * 1024 * 1024
 
 
-PROD_ENV = {"SECRET_KEY": "x" * 40, "DATABASE_URL": "sqlite:///x.db"}
+PROD_ENV = {
+    "SECRET_KEY": "x" * 40,
+    "DATABASE_URL": "sqlite:///x.db",
+    "SITE_URL": "https://www.comune.example.ch",
+}
 
 
 def test_production_session_cookies_hardened() -> None:
@@ -118,3 +130,48 @@ def test_testing_uses_cheap_argon2() -> None:
 def test_unknown_config_name_raises() -> None:
     with pytest.raises(ConfigError, match="staging"):
         build_config("staging", environ={})
+
+
+# --- Sito pubblico (D-57, D-62, D-66) -------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("site_url", "match"),
+    [
+        (None, "SITE_URL"),
+        ("http://www.comune.example.ch", "https"),
+        ("https://www.comune.example.ch/sito", "percorso"),
+        ("https://", "SITE_URL"),
+    ],
+)
+def test_production_site_url_is_required_and_https(site_url: str | None, match: str) -> None:
+    environ = {k: v for k, v in PROD_ENV.items() if k != "SITE_URL"}
+    if site_url is not None:
+        environ["SITE_URL"] = site_url
+    with pytest.raises(ConfigError, match=match):
+        build_config("production", environ=environ)
+
+
+def test_production_rejects_unencrypted_smtp() -> None:
+    with pytest.raises(ConfigError, match="SMTP_SECURITY"):
+        build_config("production", environ={**PROD_ENV, "SMTP_SECURITY": "none"})
+
+
+def test_matomo_needs_https_url_and_numeric_site_id() -> None:
+    with pytest.raises(ConfigError, match="MATOMO_URL"):
+        build_config("development", environ={"MATOMO_URL": "http://stat.example.ch"})
+    with pytest.raises(ConfigError, match="MATOMO_SITE_ID"):
+        build_config(
+            "development",
+            environ={"MATOMO_URL": "https://stat.example.ch", "MATOMO_SITE_ID": "uno"},
+        )
+
+
+def test_site_defaults_outside_production() -> None:
+    testing = build_config("testing", environ={})
+    assert testing["SITE_URL"] == "https://www.example.ch"
+    assert testing["MAIL_BACKEND"] == "memory"
+    assert testing["ROBOTS_ALLOW_INDEXING"] is False
+    development = build_config("development", environ={})
+    assert development["SITE_URL"] == "http://localhost:5000"
+    assert development["MAIL_BACKEND"] == "console"

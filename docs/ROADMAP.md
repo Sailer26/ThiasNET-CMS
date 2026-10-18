@@ -43,13 +43,21 @@ Una fase alla volta. Una fase è chiusa solo quando tutti i criteri sono spuntat
 - Fase 5: il pannello genera gli `uid` dei blocchi (D-39) e gestisce il 409 `version_conflict` mostrando chi ha salvato.
 
 ## Fase 3 — Rendering pubblico
-- [ ] Sandboxed Jinja, loader limitato al tema attivo, helper `img()` e `safe_html`
-- [ ] Tema `default` completo (layout, partials, blocchi), accessibile e responsive
-- [ ] Risoluzione path, 404 del tema, redirect, sitemap, robots, canonical
-- [ ] Cache HTML + invalidazione
-- [ ] Anteprima bozza per utenti loggati + endpoint anteprima live con `data-block-id` (D-02)
-- [ ] Banner consenso cookie, video/mappe "clicca per caricare", analytics solo dopo consenso (D-06)
-- [ ] Modulo contatti: invio SMTP, honeypot, rate limit, tempo minimo, `contact_messages` (D-05)
+- [x] Sandboxed Jinja, loader limitato al tema attivo, helper `img()` e `safe_html` (D-52, D-56)
+- [x] Tema `default` completo (layout, partials, blocchi), accessibile e responsive, varianti reali (D-64)
+- [x] Risoluzione path, 404 del tema, redirect, sitemap, robots, canonical (D-50, D-51, D-62, D-65)
+- [x] Cache HTML + invalidazione (D-54)
+- [x] Anteprima bozza per utenti loggati + endpoint anteprima live con `data-block-id` (D-02, D-55)
+- [x] Banner consenso cookie, video/mappe "clicca per caricare", analytics solo dopo consenso (D-06, D-60, D-66)
+- [x] Modulo contatti: invio SMTP, honeypot, rate limit, tempo minimo, `contact_messages` (D-05, D-61, D-67)
+- [x] Rimandi delle Fasi 0–2: theme-check sui template e sulle miniature (D-63), `block_variants` reali, Environment del renderer in allowlist, 301 da `page_redirects`, `ensure_due` a richiesta
+
+**Rimandati dalla Fase 3** (da chiudere nella fase indicata):
+- Fase 4: `img()` e `media_url()` veri (oggi vuoti sul sito, segnaposto in anteprima), `og:image`, link dei file scaricabili.
+- Fase 5: messaggi del modulo contatti nel pannello; il pannello usa l'anteprima live (`POST /_preview/<id>` con `target` sull'iframe, messaggi `cms:block-click` / `cms:highlight`); test automatici di `consent.js` e `preview.js`.
+- Fase 6: menu configurati (oggi menu automatico, D-58), widget, impostazioni del sito e del tema dal pannello con `page_cache.mark_changed()`.
+- Fase 7: hreflang e selettore lingua.
+- Fase 8: CSP con l'host di Matomo e degli iframe, axe e Lighthouse automatici, dati strutturati, `python -m app.theme_check` nel build Docker, cron per `publish-scheduled`, `send-contact-messages` e `purge-contact-messages`; far rivedere i testi in romancio.
 
 ## Fase 4 — Media library
 - [ ] Upload con verifica MIME sui byte, allowlist, limite dimensione, SVG rifiutati

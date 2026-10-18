@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import copy
 import json
+import re
+import shutil
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 from typing import Any
@@ -22,6 +24,12 @@ DEFAULT_THEME_DATA: dict[str, Any] = json.loads(
 )
 
 MakeTheme = Callable[..., Path]
+# Inizio dei file immagine veri (D-63): il tema li controlla sui byte, non sull'estensione.
+FAKE_IMAGES: dict[str, bytes] = {
+    ".png": bytes.fromhex("89504e470d0a1a0a0000000d49484452"),
+    ".jpg": bytes.fromhex("ffd8ffe000104a464946000101"),
+    ".webp": b"RIFF" + bytes.fromhex("24000000") + b"WEBPVP8 ",
+}
 APP_ENV_VARS = (
     "APP_ENV",
     "SECRET_KEY",
@@ -30,6 +38,19 @@ APP_ENV_VARS = (
     "ACTIVE_THEME",
     "MAX_UPLOAD_MB",
     "TRUSTED_PROXY_COUNT",
+    "SITE_URL",
+    "SITE_NAME",
+    "ROBOTS_ALLOW_INDEXING",
+    "CONTACT_RECIPIENT",
+    "MATOMO_URL",
+    "MATOMO_SITE_ID",
+    "MAIL_BACKEND",
+    "MAIL_FROM",
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "SMTP_USER",
+    "SMTP_PASSWORD",
+    "SMTP_SECURITY",
 )
 LoginAs = Callable[..., tuple[FlaskClient, UserRef]]
 
@@ -75,6 +96,22 @@ def theme_data() -> dict[str, Any]:
     return copy.deepcopy(DEFAULT_THEME_DATA)
 
 
+DEFAULT_THEME_DIR = ROOT / "themes" / "default"
+TEMPLATE_FOLDERS = ("layouts", "partials", "blocks", "assets/css", "assets/js")
+VALID_THUMBNAIL = re.compile(r"variants/[a-z0-9][a-z0-9_-]*[.](png|jpg|webp)")
+
+
+def _declared_thumbnails(data: dict[str, Any] | str) -> list[str]:
+    if isinstance(data, str):
+        return []
+    found = [
+        option.get("thumbnail", "")
+        for spec in data.get("block_variants", {}).values()
+        for option in spec.get("options", {}).values()
+    ]
+    return [t for t in found if isinstance(t, str) and VALID_THUMBNAIL.fullmatch(t)]
+
+
 @pytest.fixture
 def make_theme(tmp_path: Path) -> MakeTheme:
     """Crea `tmp_path/themes/<name>/theme.json` e restituisce la cartella `themes`."""
@@ -83,16 +120,24 @@ def make_theme(tmp_path: Path) -> MakeTheme:
     def _make(
         data: dict[str, Any] | str,
         name: str = "demo",
-        thumbnails: Iterable[str] = (),
+        thumbnails: Iterable[str] | None = None,
+        templates: bool = False,
     ) -> Path:
+        """`thumbnails=None`: crea le miniature valide dichiarate in block_variants.
+        `templates=True`: copia layout, partials, blocchi e asset del tema `default`."""
         theme_dir = themes_dir / name
         (theme_dir / "assets").mkdir(parents=True, exist_ok=True)
+        if templates:
+            for folder in TEMPLATE_FOLDERS:
+                shutil.copytree(DEFAULT_THEME_DIR / folder, theme_dir / folder, dirs_exist_ok=True)
         content = data if isinstance(data, str) else json.dumps({**data, "name": name})
         (theme_dir / "theme.json").write_text(content, encoding="utf-8")
+        if thumbnails is None:
+            thumbnails = _declared_thumbnails(data)
         for thumb in thumbnails:
             target = theme_dir / "assets" / thumb
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(b"thumbnail")
+            target.write_bytes(FAKE_IMAGES[target.suffix])
         return themes_dir
 
     return _make

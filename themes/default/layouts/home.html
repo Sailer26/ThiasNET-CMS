@@ -1,0 +1,11 @@
+{% extends "layouts/_base.html" %}
+{% block content %}
+{% if zone_has_blocks("hero") %}
+{{ render_zone("hero") }}
+{% else %}
+<div class="container"><h1 class="page-title">{{ page.title }}</h1></div>
+{% endif %}
+<div class="container zone zone--main">
+{{ render_zone("main") }}
+</div>
+{% endblock %}

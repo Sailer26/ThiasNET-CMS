@@ -20,7 +20,7 @@ from app.extensions import db
 from app.models.page import Block, Page, PageDraft, PageRevision, PageStatus, RevisionKind
 from app.models.types import utcnow
 from app.models.user import User
-from app.services import audit, drafts, pages, revisions
+from app.services import audit, drafts, page_cache, pages, revisions
 from app.services.blocks import Mode
 from app.services.content import validate_document
 from app.services.errors import ServiceError, version_conflict
@@ -76,6 +76,7 @@ def _apply(page: Page, document: Document, actor_id: int | None, now: datetime) 
     page.seo_json = copy.deepcopy(document["seo"])
     page.status, page.published_at, page.publish_at = PageStatus.PUBLISHED, now, None
     page.updated_by = actor_id
+    page_cache.mark_changed()
 
 
 def _drop_draft(page_id: int, draft_version: int) -> None:
@@ -183,6 +184,7 @@ def unpublish(actor: User, page: Page, version: int) -> Page:
     revisions.cancel_schedule(page.id)
     page.status, page.published_at, page.publish_at = PageStatus.DRAFT, None, None
     page.updated_by = actor.id
+    page_cache.mark_changed()
     audit.record("page.unpublished", actor_id=actor.id, entity="page", entity_id=page.id)
     revisions.prune(page.id)
     db.session.commit()

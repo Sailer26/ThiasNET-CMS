@@ -1,0 +1,2 @@
+{% set level = block.data.level if block.data.level in (2, 3, 4) else 2 %}
+<h{{ level }} class="block heading" data-block-id="{{ block.id }}"{% if block.data.anchor %} id="{{ block.data.anchor }}"{% endif %}>{{ block.data.text }}</h{{ level }}>

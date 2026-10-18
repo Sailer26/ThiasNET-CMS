@@ -106,9 +106,10 @@ def test_variant_on_block_without_variants(theme: Theme) -> None:
     assert ("zones/main/0/variant", "variant_not_supported") in _errors(theme, document)
 
 
-def test_default_theme_without_variants_stores_none() -> None:
+def test_block_without_variants_stores_none() -> None:
     default = load_theme(ROOT / "themes", "default")
-    result = validate_document(default, doc(zones={"main": [_text_image(1)]}), Mode.DRAFT)
+    image = {"uid": uid(1), "type": "image", "data": {"media_id": 1}}
+    result = validate_document(default, doc(zones={"main": [image]}), Mode.DRAFT)
     assert result["zones"]["main"][0]["variant"] is None
 
 

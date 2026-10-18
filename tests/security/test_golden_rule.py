@@ -43,14 +43,27 @@ WRITE_ALLOWLIST = {
 }
 TEMPLATE_CONSTRUCTS = {
     "render_template_string",
+    "render_template",  # l'Environment di Flask non è in sandbox ed espone config (D-52)
     "from_string",
     "Template",
     "Environment",
     "SandboxedEnvironment",
+    "ImmutableSandboxedEnvironment",
+    "NativeEnvironment",
     "compile_expression",
+    "DictLoader",
+    "FunctionLoader",
+    "FileSystemLoader",
+    "PackageLoader",
+    "ChoiceLoader",
+    "PrefixLoader",
+    "ThemeLoader",
 }
-# Dalla Fase 3 il solo Environment legittimo (services/render.py) andrà aggiunto qui.
-TEMPLATE_ALLOWLIST: set[tuple[str, str]] = set()
+# Il solo motore dei template legittimo (D-52): sandbox + loader limitato al tema attivo.
+TEMPLATE_ALLOWLIST: set[tuple[str, str]] = {
+    ("services/render.py", "ImmutableSandboxedEnvironment"),
+    ("services/render.py", "ThemeLoader"),
+}
 
 
 def _calls(path: Path) -> list[tuple[str, ast.Call]]:
@@ -147,3 +160,54 @@ def test_no_safe_filter_in_any_theme_template() -> None:
             if "|safe" in text:
                 offenders.append(str(p.relative_to(ROOT)))
     assert not offenders, f"Filtro |safe vietato: {offenders}"
+
+
+# --- Sito pubblico (Fase 3) ---------------------------------------------------------------
+
+READ_ONLY = {"GET", "HEAD", "OPTIONS"}
+# Ogni route fuori da /api, con i metodi che scrivono. Una route nuova va aggiunta qui di
+# proposito, dopo averne valutato i rischi.
+EXPECTED_PUBLIC_ROUTES = {
+    "/": set(),
+    "/<path:path>": set(),
+    "/assets/<path:filename>": set(),
+    "/_vars.css": set(),
+    "/sitemap.xml": set(),
+    "/robots.txt": set(),
+    "/static/<path:filename>": set(),
+    "/_preview/<int:page_id>": {"POST"},  # anteprima live: nessuna scrittura (D-55)
+    "/_contact": {"POST"},  # modulo contatti (D-61)
+}
+
+
+def test_public_routes_are_known() -> None:
+    app = create_app("testing")
+    found = {
+        rule.rule: set(rule.methods or ()) - READ_ONLY
+        for rule in app.url_map.iter_rules()
+        if not rule.rule.startswith("/api/")
+    }
+    assert found == EXPECTED_PUBLIC_ROUTES
+
+
+def test_themes_unchanged_after_every_public_route() -> None:
+    from app.extensions import db
+
+    before = _themes_hash()
+    app = create_app("testing")
+    with app.app_context():
+        db.create_all()
+    client = app.test_client()
+    for path in (
+        "/",
+        "/x",
+        "/de/",
+        "/assets/css/site.css",
+        "/_vars.css",
+        "/sitemap.xml",
+        "/robots.txt",
+        "/_preview/1",
+    ):
+        client.get(path)
+    client.post("/_contact", data={"token": "x"})
+    assert _themes_hash() == before

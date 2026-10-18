@@ -39,12 +39,46 @@ Tutti i temi condividono gli **stessi tipi di blocco e widget** (schema dati e e
 
 ## Regole per chi scrive un tema
 1. Ogni output di dati utente passa per autoescape; il rich text già sanitizzato si stampa con il filtro `|safe_html` (che ri-sanitizza), mai con `|safe`.
-2. Colori dalle settings → solo come variabili CSS in un `<style>` generato dal CMS con valori validati.
+2. Colori dalle settings → solo come variabili CSS nel file `/_vars.css` generato dal CMS con valori validati (D-59), es. `--accent-color`. Nessun `<style>` o `style=` nei template.
 3. Immagini sempre via helper `{{ img(media_id, size="card") }}` (srcset, width/height, lazy, alt).
 4. Nessun JS inline; JS nei file `assets/`, compatibile con la CSP.
 5. Un tema nuovo o modificato entra solo con commit + build + deploy.
 6. Ogni blocco nel template ha l'attributo `data-block-id="{{ block.id }}"` sull'elemento radice: serve all'anteprima live per evidenziare e selezionare il blocco (D-02). In modalità pubblica l'attributo è innocuo.
 7. Il tema fornisce lo stile del banner cookie e dei segnaposto "clicca per caricare" (video/mappe), ma il comportamento è del CMS (D-06).
+
+## Template obbligatori (controllati da `theme-check`, D-63)
+- `layouts/<layout>.html` per ogni layout dichiarato e `layouts/404.html`;
+- `blocks/<tipo>.html` per ogni tipo ammesso in almeno una zona;
+- `partials/contact_form.html` se il blocco `contacts` è ammesso;
+- in qualche template devono comparire `{{ cms_head() }}` (nel `<head>`) e `{{ cms_body_end() }}` (prima di `</body>`).
+I template sono eseguiti in sandbox (D-52): non possono leggere file fuori dal tema né raggiungere Python.
+
+## Cosa ricevono i template (D-56)
+| Nome | Contenuto |
+|---|---|
+| `page` | `title`, `locale`, `layout`, `path`, `seo`, `is_home`, `noindex`, `zones` |
+| `site` | `name`, `base_url`, `locale` (lingua principale), `year` |
+| `settings` | impostazioni del tema (fino alla Fase 6: i `default` di `theme.json`) |
+| `breadcrumbs` | elenco di `{title, url, current}` |
+| `preview` | `true` dentro l'anteprima del pannello |
+| `cms_head()` · `cms_body_end()` | `<title>`, description, canonical, robots, `/_vars.css` · banner del consenso e script del CMS |
+| `render_zone(nome)` · `zone_has_blocks(nome)` | blocchi di una zona già renderizzati · se la zona ha blocchi |
+| `menu("main")` | voci `{title, url, current}` (fino alla Fase 6 menu automatico, D-58) |
+| `img(media_id, size=...)` · `media_url(id)` | immagine (`size` tra gli `image_sizes`) · indirizzo di un file; fino alla Fase 4 vuoti |
+| `asset("css/site.css")` | indirizzo versionato di un file in `assets/` |
+| `embed(block)` | dati del segnaposto di video e mappe: `kind`, `src`, `link`, `title`, `provider` |
+| `contact_form(block)` | stato del modulo: `action`, `token`, `values`, `errors`, `sent`, `disabled` |
+| `cms_text("chiave")` | testi del CMS nella lingua della pagina (consenso, modulo, 404…) |
+| filtri `safe_html` · `clean_url` | rich text ripulito · link solo se sicuro, altrimenti vuoto |
+
+Nel template di un blocco: `block.id` (va in `data-block-id`), `block.type`, `block.variant`, `block.data`.
+Per i campi che hanno il nome di un metodo dei dizionari (`items`) usare `block.data.get("items")`.
+
+## Markup che il CMS si aspetta
+- **Video e mappe** (D-60): un contenitore con `data-cms-embed="video|map"`, `data-cms-embed-src`, `data-cms-embed-title`, un pulsante `.cms-embed__load` e un link esterno. `consent.js` crea l'iframe solo verso YouTube (nocookie), Vimeo e OpenStreetMap.
+- **Consenso**: il banner lo produce `cms_body_end()` (classi `.cms-consent*`); il tema lo stila e mette nel piè di pagina un pulsante con `data-cms-consent-open` per riaprirlo.
+- **Modulo contatti** (D-61): `method="post"`, `action="{{ form.action }}"`, campi `token` (nascosto), `name`, `email`, `phone`, `message` e il campo trappola `website` nascosto agli utenti (non `type="hidden"`); id del modulo `contatti-{{ block.id }}`.
+- **Anteprima**: la classe `.cms-preview-active` evidenzia il blocco selezionato; `.cms-media-placeholder` è il segnaposto delle immagini.
 
 ## Cosa NON potrà mai fare un utente del pannello
 Modificare/caricare file del tema, cambiare tema attivo (solo owner da file di config/env, non da UI), inserire CSS/JS/HTML arbitrario, inserire codice Jinja nei contenuti, aggiungere zone o layout non dichiarati.

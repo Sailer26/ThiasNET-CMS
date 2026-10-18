@@ -13,9 +13,11 @@ import click
 from flask import Flask, current_app
 from flask.cli import with_appcontext
 
+from app.cli_contact import CONTACT_COMMANDS
 from app.cli_pages import PAGE_COMMANDS
 from app.cli_users import USER_COMMANDS
 from app.services.theme import ThemeValidationError, load_theme
+from app.services.theme_lint import lint_theme
 
 
 def check_all_themes(themes_dir: Path) -> tuple[list[str], int]:
@@ -29,10 +31,16 @@ def check_all_themes(themes_dir: Path) -> tuple[list[str], int]:
     )
     for candidate in candidates:
         try:
-            load_theme(themes_dir, candidate.name)
+            theme = load_theme(themes_dir, candidate.name)
         except ThemeValidationError as exc:
             failures += 1
             lines.append(f"ERRORE {exc}")
+            continue
+        errors, warnings = lint_theme(theme)  # template (D-63)
+        lines += [f"AVVISO {warning}" for warning in warnings]
+        if errors:
+            failures += 1
+            lines += [f"ERRORE {error}" for error in errors]
         else:
             lines.append(f"OK     {candidate.name}")
     return lines, failures
@@ -51,5 +59,5 @@ def theme_check_command() -> None:
 
 def register_cli(app: Flask) -> None:
     app.cli.add_command(theme_check_command)
-    for command in (*USER_COMMANDS, *PAGE_COMMANDS):
+    for command in (*USER_COMMANDS, *PAGE_COMMANDS, *CONTACT_COMMANDS):
         app.cli.add_command(command)

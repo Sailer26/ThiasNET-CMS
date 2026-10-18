@@ -1,0 +1,16 @@
+<header class="site-header">
+<div class="container site-header__inner">
+<a class="site-name" href="{{ '/' if page.locale == site.locale else '/' ~ page.locale ~ '/' }}">{{ site.name }}</a>
+{% set items = menu("main") %}
+{% if items %}
+<button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav">{{ cms_text('menu_toggle') }}</button>
+<nav class="site-nav" id="site-nav" aria-label="{{ cms_text('menu_label') }}">
+<ul>
+{% for item in items %}
+<li><a href="{{ item.url }}"{% if item.current %} aria-current="page"{% endif %}>{{ item.title }}</a></li>
+{% endfor %}
+</ul>
+</nav>
+{% endif %}
+</div>
+</header>

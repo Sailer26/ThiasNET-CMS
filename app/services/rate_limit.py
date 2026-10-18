@@ -31,7 +31,7 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-def _ip_bucket(ip: str | None) -> str:
+def ip_bucket(ip: str | None) -> str:
     """IPv6: si conta per rete /64, perché chiunque ne ha miliardi di indirizzi a disposizione."""
     if not ip:
         return "-"
@@ -45,7 +45,7 @@ def _ip_bucket(ip: str | None) -> str:
 
 
 def _ip_key(ip: str | None) -> str:
-    return keyed_hash(_ip_bucket(ip), "login-ip-v1")
+    return keyed_hash(ip_bucket(ip), "login-ip-v1")
 
 
 def _keys(email: str, ip: str | None) -> tuple[str, str]:

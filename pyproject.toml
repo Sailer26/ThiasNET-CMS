@@ -28,6 +28,12 @@ dependencies = [
     "cryptography==50.0.2",
     # Sanitizzazione del rich text dei blocchi con allowlist (stack CLAUDE.md, D-49).
     "nh3==0.3.7",
+    # Motore dei template del sito in sandbox (D-52); già usato da Flask, ora anche direttamente.
+    "Jinja2==3.1.6",
+    # Markup con escape automatico per gli helper del CMS (D-56).
+    "MarkupSafe==3.0.4",
+    # Token firmati del modulo contatti (D-61); già dipendenza di Flask.
+    "itsdangerous==2.2.0",
 ]
 
 [project.optional-dependencies]

@@ -172,9 +172,30 @@ def test_no_admin_route_touches_theme_files(client):
 
 def test_jinja_in_content_is_not_executed(owner_client):
     """Un blocco testo con sintassi Jinja deve uscire come testo, non essere eseguito."""
-    pytest.skip(
-        "Attivare in Fase 3: creare pagina con blocco text '{{ 7*7 }}' e verificare che '49' non compaia"
+    jinja = "{{ 7*7 }}"
+    created = owner_client.post(
+        "/api/admin/pages", json={"title": jinja, "layout": "page", "slug": "prova"}
     )
+    assert created.status_code == 201, created.get_json()
+    page_id = created.get_json()["data"]["id"]
+    blocks = [
+        {"uid": "1" * 32, "type": "text", "data": {"body": f"<p>{jinja}</p>"}},
+        {"uid": "2" * 32, "type": "heading", "data": {"text": jinja}},
+        {"uid": "3" * 32, "type": "quote", "data": {"text": jinja}},
+    ]
+    document = {
+        "version": 1,
+        "title": jinja,
+        "layout": "page",
+        "seo": {"title": jinja, "description": jinja},
+        "zones": {"main": blocks, "sidebar": []},
+    }
+    assert owner_client.put(f"/api/admin/pages/{page_id}/draft", json=document).status_code == 200
+    published = owner_client.post(f"/api/admin/pages/{page_id}/publish", json={"draft_version": 2})
+    assert published.status_code == 200, published.get_json()
+    html = owner_client.get("/prova").get_data(as_text=True)
+    assert "49" not in html
+    assert html.count(jinja) >= 5
 
 
 @SKIP_UNTIL_SETTINGS

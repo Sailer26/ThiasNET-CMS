@@ -1,0 +1,4 @@
+<figure class="block quote quote--{{ block.variant }}" data-block-id="{{ block.id }}">
+<blockquote><p>{{ block.data.text }}</p></blockquote>
+{% if block.data.author %}<figcaption>{{ block.data.author }}{% if block.data.role %}, <span class="quote__role">{{ block.data.role }}</span>{% endif %}</figcaption>{% endif %}
+</figure>

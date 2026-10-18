@@ -88,9 +88,11 @@ def register_error_handlers(app: Flask) -> None:
         return fail("csrf", "Sessione scaduta o richiesta non valida: ricarica la pagina", 403)
 
     @app.errorhandler(HTTPException)
-    def _http_error(exc: HTTPException) -> Response | HTTPException:
+    def _http_error(exc: HTTPException) -> Response:
         if not request.path.startswith(API_PREFIX):
-            return exc
+            from app.public.errors import html_error  # il sito ha le sue pagine d'errore
+
+            return html_error(exc)
         status = exc.code or 500
         code, message = HTTP_MESSAGES.get(status, ("error", "Richiesta non valida"))
         return fail(code, message, status)

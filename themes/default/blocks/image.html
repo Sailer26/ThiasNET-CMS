@@ -1,0 +1,5 @@
+<figure class="block image" data-block-id="{{ block.id }}">
+{% set url = block.data.link | clean_url %}
+{% if url %}<a href="{{ url }}">{{ img(block.data.media_id, size="content") }}</a>{% else %}{{ img(block.data.media_id, size="content") }}{% endif %}
+{% if block.data.caption %}<figcaption>{{ block.data.caption }}</figcaption>{% endif %}
+</figure>

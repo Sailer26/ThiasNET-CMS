@@ -1,0 +1,8 @@
+{% extends "layouts/_base.html" %}
+{% block content %}
+<div class="container not-found">
+<h1 class="page-title">{{ cms_text('not_found_title') }}</h1>
+<p>{{ cms_text('not_found_text') }}</p>
+<p><a class="button" href="{{ '/' if page.locale == site.locale else '/' ~ page.locale ~ '/' }}">{{ cms_text('back_home') }}</a></p>
+</div>
+{% endblock %}
