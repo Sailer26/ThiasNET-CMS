@@ -34,6 +34,8 @@ dependencies = [
     "MarkupSafe==3.0.4",
     # Token firmati del modulo contatti (D-61); già dipendenza di Flask.
     "itsdangerous==2.2.0",
+    # Media: verifica del formato, re-encode senza metadati, varianti WebP (stack CLAUDE.md, D-84).
+    "Pillow==13.0.0",
 ]
 
 [project.optional-dependencies]

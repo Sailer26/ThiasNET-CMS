@@ -6,10 +6,11 @@ Fino alla Fase 6 queste impostazioni le decide Thias al deploy, in `.env`.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from app.config import ConfigError
+from app.config import PROJECT_ROOT, ConfigError
 
 SITE_DEFAULTS = {
     "development": "http://localhost:5000",
@@ -21,6 +22,13 @@ DEFAULT_SMTP_PORT = 587
 DEFAULT_CACHE_ENTRIES = 500
 DEFAULT_CACHE_BYTES = 32 * 1024 * 1024
 TRUE_VALUES = frozenset({"1", "true", "yes", "si", "sì"})
+APP_DIR = (PROJECT_ROOT / "app").resolve()
+MEDIA_DEFAULTS = {
+    "development": PROJECT_ROOT / "data" / "media",
+    "testing": PROJECT_ROOT / "data" / "media-test",  # i test usano sempre una cartella temporanea
+}
+DEFAULT_MAX_PIXELS = 40_000_000  # D-71
+DEFAULT_QUOTA_MB = 5 * 1024  # D-71: 5 GB per sito
 
 
 def _flag(environ: Mapping[str, str], name: str, default: bool) -> bool:
@@ -84,8 +92,33 @@ def _mail(name: str, environ: Mapping[str, str]) -> dict[str, Any]:
     }
 
 
+def _inside(child: Path, parent: Path) -> bool:
+    return child == parent or child.is_relative_to(parent)
+
+
+def _media_root(name: str, environ: Mapping[str, str]) -> Path:
+    """D-74: i file caricati stanno lontano dal tema e dal codice, mai dentro o sopra."""
+    raw = (environ.get("MEDIA_ROOT") or "").strip()
+    if not raw:
+        if name == "production":
+            raise ConfigError("MEDIA_ROOT mancante: cartella dei file caricati, fuori dal progetto")
+        raw = str(MEDIA_DEFAULTS.get(name, PROJECT_ROOT / "data" / "media"))
+    root = Path(raw)
+    root = (root if root.is_absolute() else PROJECT_ROOT / root).resolve()
+    themes = Path(environ.get("THEMES_DIR", str(PROJECT_ROOT / "themes"))).resolve()
+    for protected in (themes, APP_DIR):
+        if _inside(root, protected) or _inside(protected, root):
+            raise ConfigError(
+                f"MEDIA_ROOT non può stare dentro o sopra {protected}: scegli una cartella separata"
+            )
+    return root
+
+
 def site_config(name: str, environ: Mapping[str, str]) -> dict[str, Any]:
     return {
+        "MEDIA_ROOT": _media_root(name, environ),
+        "MEDIA_MAX_PIXELS": _int(environ, "MEDIA_MAX_PIXELS", DEFAULT_MAX_PIXELS),
+        "MEDIA_QUOTA_MB": _int(environ, "MEDIA_QUOTA_MB", DEFAULT_QUOTA_MB),
         "SITE_URL": _site_url(name, environ),
         "SITE_NAME": (environ.get("SITE_NAME") or "").strip() or "Sito",
         # Fuori produzione i motori di ricerca non devono indicizzare (D-62).

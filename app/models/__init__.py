@@ -20,4 +20,4 @@ class Base(DeclarativeBase):
 
 
 # Registra tutte le tabelle in Base.metadata (serve ad Alembic e ai test).
-from app.models import audit, contact, login_attempt, page, site, user  # noqa: E402, F401
+from app.models import audit, contact, login_attempt, media, page, site, user  # noqa: E402, F401

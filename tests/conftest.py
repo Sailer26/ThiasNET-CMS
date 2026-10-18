@@ -51,6 +51,9 @@ APP_ENV_VARS = (
     "SMTP_USER",
     "SMTP_PASSWORD",
     "SMTP_SECURITY",
+    "MEDIA_ROOT",
+    "MEDIA_MAX_PIXELS",
+    "MEDIA_QUOTA_MB",
 )
 LoginAs = Callable[..., tuple[FlaskClient, UserRef]]
 
@@ -84,10 +87,14 @@ def login_as(app: Flask) -> LoginAs:
 
 
 @pytest.fixture(autouse=True)
-def _isolated_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+def _isolated_environment(
+    monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempPathFactory
+) -> None:
     """I test non dipendono mai dalle variabili d'ambiente della shell o della CI."""
     for var in APP_ENV_VARS:
         monkeypatch.delenv(var, raising=False)
+    # Ogni test ha la sua cartella dei media: nessun file finisce nel progetto (D-74).
+    monkeypatch.setenv("MEDIA_ROOT", str(tmp_path_factory.mktemp("media")))
 
 
 @pytest.fixture

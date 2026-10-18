@@ -40,6 +40,14 @@ WRITE_METHODS = {
 # (file relativo ad app/, metodo): ogni voce va motivata.
 WRITE_ALLOWLIST = {
     ("database.py", "mkdir"),  # crea la cartella del file SQLite da DATABASE_URL (mai themes/)
+    # Archivio dei media (D-74): solo in MEDIA_ROOT, che la configurazione tiene lontana da
+    # themes/ e app/, con nomi generati e ricontrollati dopo resolve().
+    ("services/media_storage.py", "mkdir"),
+    ("services/media_storage.py", "open"),
+    ("services/media_storage.py", "unlink"),
+    ("services/media_storage.py", "rmdir"),
+    # Pillow: l'unica Image.save scrive in un io.BytesIO (test qui sotto).
+    ("services/media_images.py", "save"),
 }
 TEMPLATE_CONSTRUCTS = {
     "render_template_string",
@@ -97,7 +105,8 @@ def test_no_filesystem_writes_in_app_outside_allowlist() -> None:
         rel = path.relative_to(APP_DIR).as_posix()
         for name, call in _calls(path):
             forbidden = name in WRITE_METHODS and (rel, name) not in WRITE_ALLOWLIST
-            if forbidden or (name == "open" and _is_write_mode(call)):
+            allowed_open = (rel, "open") in WRITE_ALLOWLIST
+            if forbidden or (name == "open" and _is_write_mode(call) and not allowed_open):
                 offenders.append(f"app/{rel}:{call.lineno}: {ast.unparse(call)}")
     assert not offenders, f"Scritture su filesystem non autorizzate: {offenders}"
 
@@ -211,3 +220,27 @@ def test_themes_unchanged_after_every_public_route() -> None:
         client.get(path)
     client.post("/_contact", data={"token": "x"})
     assert _themes_hash() == before
+
+
+def test_media_images_writes_only_to_memory() -> None:
+    """L'eccezione per `save` vale solo se scrive in un BytesIO e il modulo non tocca file."""
+    path = APP_DIR / "services" / "media_images.py"
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    saves = [call for name, call in _calls(path) if name == "save"]
+    assert len(saves) == 1
+    assert isinstance(saves[0].args[0], ast.Name) and saves[0].args[0].id == "buffer"
+    imported = {
+        alias.name.split(".")[0]
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Import | ast.ImportFrom)
+        for alias in node.names
+    } | {
+        node.module.split(".")[0]
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.module
+    }
+    assert not imported & {"os", "shutil", "pathlib", "tempfile"}
+    for name, call in _calls(path):  # si aprono solo byte già in memoria
+        if name == "open":
+            source = call.args[0] if call.args else None
+            assert isinstance(source, ast.Call) and getattr(source.func, "attr", "") == "BytesIO"

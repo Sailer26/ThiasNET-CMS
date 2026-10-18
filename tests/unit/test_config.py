@@ -63,6 +63,7 @@ def test_production_config_ok() -> None:
             "SECRET_KEY": "x" * 40,
             "DATABASE_URL": "sqlite:///x.db",
             "SITE_URL": "https://www.comune.example.ch/",
+            "MEDIA_ROOT": "/srv/thiasnet/media",
         },
     )
     assert config["SITE_URL"] == "https://www.comune.example.ch"
@@ -94,6 +95,7 @@ PROD_ENV = {
     "SECRET_KEY": "x" * 40,
     "DATABASE_URL": "sqlite:///x.db",
     "SITE_URL": "https://www.comune.example.ch",
+    "MEDIA_ROOT": "/srv/thiasnet/media",
 }
 
 
@@ -175,3 +177,29 @@ def test_site_defaults_outside_production() -> None:
     development = build_config("development", environ={})
     assert development["SITE_URL"] == "http://localhost:5000"
     assert development["MAIL_BACKEND"] == "console"
+
+
+# --- Media (D-71, D-74) ---------------------------------------------------------------
+
+
+def test_media_defaults_in_development() -> None:
+    from app.config import PROJECT_ROOT
+
+    config = build_config("development", environ={})
+    assert config["MEDIA_ROOT"] == (PROJECT_ROOT / "data" / "media").resolve()
+    assert config["MEDIA_MAX_PIXELS"] == 40_000_000
+    assert config["MEDIA_QUOTA_MB"] == 5120
+
+
+def test_production_requires_media_root() -> None:
+    environ = {k: v for k, v in PROD_ENV.items() if k != "MEDIA_ROOT"}
+    with pytest.raises(ConfigError, match="MEDIA_ROOT"):
+        build_config("production", environ=environ)
+
+
+@pytest.mark.parametrize("inside", ["themes", "themes/default/assets", "app/static", "."])
+def test_media_root_never_near_the_theme_or_the_code(inside: str) -> None:
+    from app.config import PROJECT_ROOT
+
+    with pytest.raises(ConfigError, match="MEDIA_ROOT"):
+        build_config("development", environ={"MEDIA_ROOT": str(PROJECT_ROOT / inside)})
