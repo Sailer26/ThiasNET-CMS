@@ -6,14 +6,18 @@
   "properties": {
     "text": {
       "type": "string",
+      "title": "Citazione",
       "maxLength": 600
     },
     "author": {
       "type": "string",
+      "title": "Autore",
       "maxLength": 120
     },
     "role": {
       "type": "string",
+      "title": "Ruolo dell'autore",
+      "description": "Per esempio \"Sindaco\" o \"Cliente dal 2019\".",
       "maxLength": 120
     }
   },

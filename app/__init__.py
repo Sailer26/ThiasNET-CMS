@@ -48,6 +48,7 @@ def create_app(config_name: str | None = None, overrides: Mapping[str, Any] | No
     db.init_app(app)
     migrate.init_app(app, db, directory=str(MIGRATIONS_DIR))
     init_security(app)
+    app.json.sort_keys = False  # type: ignore[attr-defined]  # D-106: l'ordine dei file conta
     register_error_handlers(app)
     register_response_headers(app)
     app.register_blueprint(admin_api)

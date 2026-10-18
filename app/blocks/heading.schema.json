@@ -6,19 +6,29 @@
   "properties": {
     "text": {
       "type": "string",
+      "title": "Testo del titolo",
       "maxLength": 200
     },
     "level": {
       "type": "integer",
+      "title": "Grandezza",
+      "description": "Titolo grande per le sezioni, più piccolo per le sottosezioni.",
       "enum": [
         2,
         3,
         4
       ],
-      "default": 2
+      "default": 2,
+      "x-enum-titles": [
+        "Grande",
+        "Medio",
+        "Piccolo"
+      ]
     },
     "anchor": {
       "type": "string",
+      "title": "Nome per i link interni",
+      "description": "Facoltativo: permette di creare un link diretto a questo punto (es. orari).",
       "maxLength": 60,
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
       "not": {

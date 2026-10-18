@@ -47,7 +47,16 @@ def test_zone_label_kept(make_theme: MakeTheme, theme_data: dict[str, Any]) -> N
     theme_data["layouts"]["page"]["zones"]["sidebar"]["label"] = "Colonna"
     theme = load_theme(make_theme(theme_data), "demo")
     assert theme.layouts["page"].zones["sidebar"].label == "Colonna"
-    assert theme.layouts["page"].zones["main"].label == "main"
+    theme_data["layouts"]["page"]["zones"]["main"].pop("label")
+    theme = load_theme(make_theme(theme_data), "demo")
+    assert theme.layouts["page"].zones["main"].label == "main"  # senza etichetta: il nome
+
+
+def test_default_theme_zones_have_italian_labels(theme_data: dict[str, Any]) -> None:
+    """D-106: il pannello mostra le zone con il loro nome italiano."""
+    for layout in theme_data["layouts"].values():
+        for name, zone in layout["zones"].items():
+            assert zone.get("label"), name
 
 
 def test_zone_max(theme: Theme) -> None:

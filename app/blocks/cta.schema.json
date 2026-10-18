@@ -6,18 +6,25 @@
   "properties": {
     "title": {
       "type": "string",
+      "title": "Titolo",
       "maxLength": 120
     },
     "text": {
       "type": "string",
+      "title": "Testo",
+      "description": "Una o due frasi che invitano a fare qualcosa.",
       "maxLength": 300
     },
     "button_label": {
       "type": "string",
+      "title": "Testo del pulsante",
+      "description": "Breve: per esempio \"Iscriviti\" o \"Scopri di più\".",
       "maxLength": 40
     },
     "url": {
       "type": "string",
+      "title": "Link del pulsante",
+      "description": "Una pagina del sito (es. /contatti) oppure un indirizzo completo (https://…).",
       "maxLength": 2048,
       "format": "safe-url"
     }

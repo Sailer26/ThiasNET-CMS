@@ -6,23 +6,30 @@
   "properties": {
     "title": {
       "type": "string",
+      "title": "Titolo",
       "maxLength": 120
     },
     "items": {
       "type": "array",
+      "title": "File",
+      "description": "I documenti PDF da scaricare, nell'ordine in cui appaiono.",
       "minItems": 1,
       "maxItems": 50,
       "items": {
         "type": "object",
+        "title": "File",
         "additionalProperties": false,
         "properties": {
           "media_id": {
             "type": "integer",
+            "title": "Documento",
             "minimum": 1,
             "x-media": "file"
           },
           "label": {
             "type": "string",
+            "title": "Nome da mostrare",
+            "description": "Se vuoto si usa il nome del file.",
             "maxLength": 120
           }
         },

@@ -6,15 +6,19 @@
   "properties": {
     "media_id": {
       "type": "integer",
+      "title": "Immagine",
       "minimum": 1,
       "x-media": "image"
     },
     "caption": {
       "type": "string",
+      "title": "Didascalia",
       "maxLength": 300
     },
     "link": {
       "type": "string",
+      "title": "Link dell'immagine",
+      "description": "Facoltativo: dove porta un clic sull'immagine. Una pagina del sito (es. /contatti) oppure un indirizzo completo (https://…).",
       "maxLength": 2048,
       "format": "safe-url"
     }

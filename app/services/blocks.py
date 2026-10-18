@@ -4,7 +4,8 @@ Gli schemi stanno in `app/blocks/<tipo>.schema.json` e si caricano all'avvio: se
 sono in più o non sono validi, l'app non parte. Annotazioni proprie:
 - `x-richtext`: stringa HTML da ripulire con nh3 (tutte le altre sono testo semplice);
 - `x-media`: id di un media (intero >= 1), esistenza verificata dalla Fase 4;
-- formato `safe-url`: http(s), mailto, tel o percorso del sito.
+- formato `safe-url`: http(s), mailto, tel o percorso del sito;
+- `title`/`description` dei campi e `x-enum-titles`: etichette italiane del pannello (D-106).
 """
 
 from __future__ import annotations
@@ -255,6 +256,21 @@ class BlockRegistry:
         return tuple(ref.media_id for ref in self.media_refs(block_type, data))
 
 
+def _check_labels(schema: Mapping[str, Any], name: str, prefix: str = "") -> None:
+    """D-106: ogni campo ha un'etichetta italiana; ogni enum le sue etichette, una per valore."""
+    for field, spec in schema.get("properties", {}).items():
+        where = f"{name}.{prefix}{field}"
+        if not isinstance(spec.get("title"), str) or not spec["title"].strip():
+            raise BlockRegistryError(f"Schema del blocco '{where}': manca l'etichetta (title)")
+        titles = spec.get("x-enum-titles")
+        if "enum" in spec and (not isinstance(titles, list) or len(titles) != len(spec["enum"])):
+            raise BlockRegistryError(
+                f"Schema del blocco '{where}': x-enum-titles deve avere un'etichetta per valore"
+            )
+        if spec.get("type") == "array" and isinstance(spec.get("items"), Mapping):
+            _check_labels(spec["items"], name, f"{prefix}{field}.")
+
+
 def _read_schema(path: Path, name: str) -> dict[str, Any]:
     try:
         schema = json.loads(path.read_text(encoding="utf-8"))
@@ -263,6 +279,7 @@ def _read_schema(path: Path, name: str) -> dict[str, Any]:
         raise BlockRegistryError(f"Schema del blocco '{name}' non valido: {exc}") from exc
     if schema.get("type") != "object" or schema.get("additionalProperties") is not False:
         raise BlockRegistryError(f"Schema del blocco '{name}': serve un oggetto chiuso")
+    _check_labels(schema, name)
     return dict(schema)
 
 

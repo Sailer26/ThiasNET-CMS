@@ -12,6 +12,7 @@ from werkzeug.exceptions import HTTPException
 from app.services.errors import ServiceError
 
 API_PREFIX = "/api/"
+PREVIEW_PREFIX = "/_preview/"
 HTTP_MESSAGES = {
     400: ("bad_request", "Richiesta non valida"),
     401: ("unauthorized", "Accesso richiesto"),
@@ -84,6 +85,13 @@ def register_error_handlers(app: Flask) -> None:
 
     @app.errorhandler(CSRFError)
     def _csrf_error(_exc: CSRFError) -> Response:
+        if request.path.startswith(PREVIEW_PREFIX):
+            # D-107: l'anteprima sta in un iframe del pannello: serve una pagina, non un JSON.
+            from app.public.preview import (
+                csrf_failed,
+            )  # il sito dipende dalle API, non il contrario
+
+            return csrf_failed()
         # 403 (non 400): un test che accetta 400 non passa "per sbaglio" a causa del CSRF.
         return fail("csrf", "Sessione scaduta o richiesta non valida: ricarica la pagina", 403)
 

@@ -6,23 +6,31 @@
   "properties": {
     "title": {
       "type": "string",
+      "title": "Titolo",
       "maxLength": 120
     },
     "subtitle": {
       "type": "string",
+      "title": "Sottotitolo",
       "maxLength": 300
     },
     "media_id": {
       "type": "integer",
+      "title": "Immagine di sfondo",
+      "description": "Meglio una foto larga e luminosa.",
       "minimum": 1,
       "x-media": "image"
     },
     "cta_label": {
       "type": "string",
+      "title": "Testo del pulsante",
+      "description": "Facoltativo. Se lo scrivi, serve anche il link.",
       "maxLength": 40
     },
     "cta_url": {
       "type": "string",
+      "title": "Link del pulsante",
+      "description": "Una pagina del sito (es. /contatti) oppure un indirizzo completo (https://…).",
       "maxLength": 2048,
       "format": "safe-url"
     }

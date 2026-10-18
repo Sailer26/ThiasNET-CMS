@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -134,6 +134,117 @@ def test_broken_schema_fails_loading(tmp_path: Path) -> None:
     directory = _copy_schemas(tmp_path / "blocks")
     (directory / "divider.schema.json").write_text(json.dumps({"type": "oggetto"}))
     with pytest.raises(BlockRegistryError, match="divider"):
+        load_registry(directory)
+
+
+# --- Etichette e parole chiave per il pannello (D-106) ----------------------------------
+
+# Il validatore del pannello conosce solo queste parole chiave: una nuova va aggiunta anche lì.
+PANEL_KEYWORDS = frozenset(
+    {
+        "$schema",
+        "title",
+        "description",
+        "type",
+        "additionalProperties",
+        "properties",
+        "required",
+        "dependentRequired",
+        "maxLength",
+        "pattern",
+        "format",
+        "enum",
+        "default",
+        "not",
+        "minimum",
+        "maximum",
+        "items",
+        "minItems",
+        "maxItems",
+        "allOf",
+        "if",
+        "then",
+        "const",
+        "x-media",
+        "x-richtext",
+        "x-enum-titles",
+    }
+)
+
+
+def _keywords(node: object) -> Iterator[str]:
+    if isinstance(node, dict):
+        for key, value in node.items():
+            yield key
+            if key == "properties":
+                for spec in value.values():
+                    yield from _keywords(spec)
+            elif key not in {"enum", "x-enum-titles", "required", "default", "const"}:
+                yield from _keywords(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from _keywords(item)
+
+
+def _fields(schema: dict[str, Any], prefix: str = "") -> Iterator[tuple[str, dict[str, Any]]]:
+    for name, spec in schema.get("properties", {}).items():
+        yield prefix + name, spec
+        if spec.get("type") == "array":
+            yield from _fields(spec["items"], f"{prefix}{name}.")
+
+
+def _schema_file(block_type: str) -> dict[str, Any]:
+    data: dict[str, Any] = json.loads(
+        (BLOCKS_DIR / f"{block_type}.schema.json").read_text(encoding="utf-8")
+    )
+    return data
+
+
+@pytest.mark.parametrize("block_type", sorted(BLOCK_TYPES))
+def test_schemas_use_only_keywords_the_panel_knows(
+    registry: BlockRegistry, block_type: str
+) -> None:
+    unknown = set(_keywords(dict(registry.schema(block_type)))) - PANEL_KEYWORDS
+    assert not unknown, f"{block_type}: parole chiave sconosciute al pannello {sorted(unknown)}"
+
+
+@pytest.mark.parametrize("block_type", sorted(BLOCK_TYPES))
+def test_every_field_has_an_italian_label(block_type: str) -> None:
+    for name, spec in _fields(_schema_file(block_type)):
+        assert spec.get("title"), f"{block_type}.{name} senza etichetta"
+        if "enum" in spec:
+            assert len(spec["x-enum-titles"]) == len(spec["enum"]), f"{block_type}.{name}"
+
+
+def _rewrite(directory: Path, name: str, change: Callable[[dict[str, Any]], None]) -> None:
+    path = directory / f"{name}.schema.json"
+    schema = json.loads(path.read_text(encoding="utf-8"))
+    change(schema)
+    path.write_text(json.dumps(schema), encoding="utf-8")
+
+
+def test_field_without_label_fails_loading(tmp_path: Path) -> None:
+    directory = _copy_schemas(tmp_path / "blocks")
+    _rewrite(directory, "quote", lambda s: s["properties"]["author"].pop("title"))
+    with pytest.raises(BlockRegistryError, match=r"quote.*author"):
+        load_registry(directory)
+
+
+def test_item_field_without_label_fails_loading(tmp_path: Path) -> None:
+    directory = _copy_schemas(tmp_path / "blocks")
+    _rewrite(
+        directory,
+        "gallery",
+        lambda s: s["properties"]["items"]["items"]["properties"]["caption"].pop("title"),
+    )
+    with pytest.raises(BlockRegistryError, match=r"gallery.*caption"):
+        load_registry(directory)
+
+
+def test_enum_labels_must_match_values(tmp_path: Path) -> None:
+    directory = _copy_schemas(tmp_path / "blocks")
+    _rewrite(directory, "heading", lambda s: s["properties"]["level"]["x-enum-titles"].pop())
+    with pytest.raises(BlockRegistryError, match=r"heading.*level"):
         load_registry(directory)
 
 

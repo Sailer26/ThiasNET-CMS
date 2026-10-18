@@ -2,7 +2,8 @@
 // - evidenzia i blocchi ([data-block-id]) e comunica il click al pannello con postMessage;
 // - accetta messaggi solo dal pannello della stessa origine;
 // - nell'anteprima i link non portano altrove e i moduli non si inviano;
-// - lo scorrimento resta dov'era quando l'anteprima si aggiorna.
+// - lo scorrimento resta dov'era quando l'anteprima si aggiorna (il pannello crea un iframe
+//   nuovo a ogni modifica, D-107: la posizione si salva mentre si scorre).
 (function () {
   "use strict";
   var ORIGIN = window.location.origin;
@@ -24,12 +25,12 @@
     }
   }
 
-  function highlight(uid) {
+  function highlight(uid, scroll) {
     var blocks = document.querySelectorAll("[data-block-id]");
     for (var i = 0; i < blocks.length; i++) {
       var match = blocks[i].getAttribute("data-block-id") === uid;
       blocks[i].classList.toggle(ACTIVE, match);
-      if (match) {
+      if (match && scroll) {
         blocks[i].scrollIntoView({ block: "center", behavior: "auto" });
       }
     }
@@ -55,7 +56,7 @@
     }
     var data = event.data || {};
     if (data.type === "cms:highlight" && typeof data.uid === "string") {
-      highlight(data.uid);
+      highlight(data.uid, data.scroll !== false);
     }
   });
 
@@ -64,8 +65,16 @@
     if (saved !== null) {
       window.scrollTo(0, parseInt(saved, 10) || 0);
     }
-    window.addEventListener("beforeunload", function () {
-      window.sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
+    var pending = false;
+    window.addEventListener("scroll", function () {
+      if (pending) {
+        return;
+      }
+      pending = true; // al massimo una scrittura per fotogramma
+      window.requestAnimationFrame(function () {
+        pending = false;
+        window.sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
+      });
     });
   } catch (error) {
     // sessionStorage non disponibile: l'anteprima funziona lo stesso.

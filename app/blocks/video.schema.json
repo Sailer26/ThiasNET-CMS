@@ -6,18 +6,27 @@
   "properties": {
     "provider": {
       "type": "string",
+      "title": "Piattaforma",
       "enum": [
         "youtube",
         "vimeo"
+      ],
+      "x-enum-titles": [
+        "YouTube",
+        "Vimeo"
       ]
     },
     "video_id": {
       "type": "string",
+      "title": "Codice del video",
+      "description": "La parte finale dell'indirizzo del video.",
       "maxLength": 12,
       "pattern": "^[A-Za-z0-9_-]{1,12}$"
     },
     "title": {
       "type": "string",
+      "title": "Titolo del video",
+      "description": "Serve a chi usa un lettore di schermo.",
       "maxLength": 200
     }
   },

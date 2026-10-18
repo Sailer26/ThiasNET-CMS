@@ -34,6 +34,15 @@ ERROR_PAGE = (
 )
 
 
+CSRF_MESSAGE = "La sessione è cambiata: l'anteprima si aggiorna alla prossima modifica."
+CSRF_STATUS = 403
+
+
+def csrf_failed() -> Response:
+    """Token CSRF scaduto: pagina d'errore che l'iframe del pannello può mostrare."""
+    return _with_headers(html_page(ERROR_PAGE.format(message=escape(CSRF_MESSAGE)), CSRF_STATUS))
+
+
 def _editable_page(page_id: int) -> Page | None:
     if not current_user.is_authenticated:
         return None

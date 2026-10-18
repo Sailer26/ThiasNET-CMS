@@ -7,21 +7,21 @@
     "home": {
       "label": "Homepage",
       "zones": {
-        "hero": { "blocks": ["hero"], "max": 1 },
-        "main": { "blocks": ["heading", "text", "image", "text_image", "gallery", "cta", "quote", "video", "files", "map", "contacts", "divider"] }
+        "hero": { "label": "Apertura", "blocks": ["hero"], "max": 1 },
+        "main": { "label": "Contenuto principale", "blocks": ["heading", "text", "image", "text_image", "gallery", "cta", "quote", "video", "files", "map", "contacts", "divider"] }
       }
     },
     "page": {
       "label": "Pagina standard",
       "zones": {
-        "main": { "blocks": ["heading", "text", "image", "text_image", "gallery", "cta", "quote", "video", "files", "map", "contacts", "divider"] },
-        "sidebar": { "blocks": ["text", "cta", "image"], "max": 4 }
+        "main": { "label": "Contenuto principale", "blocks": ["heading", "text", "image", "text_image", "gallery", "cta", "quote", "video", "files", "map", "contacts", "divider"] },
+        "sidebar": { "label": "Barra laterale", "blocks": ["text", "cta", "image"], "max": 4 }
       }
     },
     "full": {
       "label": "Pagina larga (senza sidebar)",
       "zones": {
-        "main": { "blocks": ["heading", "text", "image", "text_image", "gallery", "cta", "quote", "video", "files", "map", "divider"] }
+        "main": { "label": "Contenuto principale", "blocks": ["heading", "text", "image", "text_image", "gallery", "cta", "quote", "video", "files", "map", "divider"] }
       }
     }
   },

@@ -86,7 +86,13 @@ def test_live_preview_renders_the_posted_document_without_writing(
 
 def test_live_preview_needs_csrf(editor: FlaskClient, page: dict[str, Any]) -> None:
     editor.environ_base.pop(CSRF_HEADER)
-    assert _post(editor, page["id"], doc()).status_code == 403
+    response = _post(editor, page["id"], doc())
+    assert response.status_code == 403
+    # D-107: una pagina HTML che l'iframe del pannello può mostrare, non un JSON bloccato.
+    assert response.mimetype == "text/html"
+    assert "frame-ancestors 'self'" in response.headers["Content-Security-Policy"]
+    assert response.headers["X-Frame-Options"] == "SAMEORIGIN"
+    assert "Anteprima non disponibile" in response.get_data(as_text=True)
 
 
 @pytest.mark.parametrize(

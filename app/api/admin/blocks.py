@@ -12,6 +12,7 @@ from app.api.admin import bp
 from app.api.admin.decorators import require_permission
 from app.services.blocks import get_registry
 from app.services.permissions import Permission
+from app.services.public_render import renderer
 from app.services.theme import Theme, active_theme
 
 
@@ -38,11 +39,16 @@ def _layouts(theme: Theme) -> dict[str, Any]:
 
 
 def _variants(theme: Theme) -> dict[str, Any]:
+    assets = renderer()  # miniature con la versione nel nome: cache lunga, sempre aggiornate
     return {
         block: {
             "default": variants.default,
             "options": {
-                key: {"label": option.label, "thumbnail": option.thumbnail}
+                key: {
+                    "label": option.label,
+                    "thumbnail": option.thumbnail,
+                    "thumbnail_url": assets.asset_url(option.thumbnail),
+                }
                 for key, option in variants.options.items()
             },
         }

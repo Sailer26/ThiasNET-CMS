@@ -6,26 +6,34 @@
   "properties": {
     "lat": {
       "type": "number",
+      "title": "Latitudine",
+      "description": "Il numero che va da -90 a 90 (es. 46.0037).",
       "minimum": -90,
       "maximum": 90
     },
     "lng": {
       "type": "number",
+      "title": "Longitudine",
+      "description": "Il numero che va da -180 a 180 (es. 8.9511).",
       "minimum": -180,
       "maximum": 180
     },
     "zoom": {
       "type": "integer",
+      "title": "Ingrandimento",
+      "description": "Da 1 (mondo) a 19 (strada). 15 va bene per un edificio.",
       "minimum": 1,
       "maximum": 19,
       "default": 15
     },
     "label": {
       "type": "string",
+      "title": "Nome del luogo",
       "maxLength": 120
     },
     "address": {
       "type": "string",
+      "title": "Indirizzo",
       "maxLength": 300
     }
   },

@@ -6,28 +6,38 @@
   "properties": {
     "title": {
       "type": "string",
+      "title": "Titolo",
       "maxLength": 120
     },
     "intro": {
       "type": "string",
+      "title": "Introduzione",
+      "description": "Due righe prima dei contatti (facoltativo).",
       "maxLength": 500
     },
     "address": {
       "type": "string",
+      "title": "Indirizzo",
+      "description": "Via, numero, CAP e località.",
       "maxLength": 300
     },
     "phone": {
       "type": "string",
+      "title": "Telefono",
+      "description": "Per esempio +41 91 123 45 67.",
       "maxLength": 30,
       "pattern": "^\\+?[0-9][0-9 ()./-]{2,29}$"
     },
     "email": {
       "type": "string",
+      "title": "Email",
       "maxLength": 254,
       "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
     },
     "show_form": {
-      "type": "boolean"
+      "type": "boolean",
+      "title": "Mostra il modulo di contatto",
+      "description": "I messaggi arrivano all'indirizzo email del sito."
     }
   }
 }

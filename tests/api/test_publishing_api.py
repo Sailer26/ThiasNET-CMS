@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
@@ -397,16 +398,26 @@ def test_blocks_catalog_for_the_panel(admin: FlaskClient) -> None:
     assert body["types"]["hero"]["label"] == "Apertura"
     assert body["types"]["hero"]["schema"]["properties"]["title"]["maxLength"] == 120
     assert body["layouts"]["home"]["zones"]["hero"] == {
-        "label": "hero",
+        "label": "Apertura",
         "blocks": ["hero"],
         "max": 1,
     }
     assert body["locales"] == ["it", "de", "rm", "en"]
     assert body["variants"]["text_image"]["default"] == "image_left"
-    assert body["variants"]["cta"]["options"]["dark"] == {
-        "label": "Scuro",
-        "thumbnail": "variants/cta-dark.png",
-    }
+    dark = body["variants"]["cta"]["options"]["dark"]
+    assert (dark["label"], dark["thumbnail"]) == ("Scuro", "variants/cta-dark.png")
+    assert dark["thumbnail_url"].startswith("/assets/variants/cta-dark.png?v=")
+
+
+def test_catalog_keeps_the_order_of_the_files(admin: FlaskClient) -> None:
+    """D-106: i campi e le opzioni arrivano nell'ordine scritto, non in ordine alfabetico."""
+    raw = admin.get("/api/admin/blocks").get_data(as_text=True)
+    body = json.loads(raw)["data"]
+    hero = list(body["types"]["hero"]["schema"]["properties"])
+    assert hero == ["title", "subtitle", "media_id", "cta_label", "cta_url"]
+    assert list(body["layouts"]["page"]["zones"]) == ["main", "sidebar"]
+    assert next(iter(body["variants"]["text_image"]["options"])) == "image_left"
+    assert list(body["layouts"]) == ["home", "page", "full"]
 
 
 # --- Regressioni dalla review ECC della Fase 2 -------------------------------------------
