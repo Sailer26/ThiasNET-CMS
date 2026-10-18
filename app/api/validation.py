@@ -19,7 +19,10 @@ def _invalid(message: str) -> ServiceError:
 
 
 def json_body(schema: Mapping[str, Any]) -> dict[str, Any]:
-    data = request.get_json(silent=True)
+    try:
+        data = request.get_json(silent=True)
+    except RecursionError:  # annidamento enorme: silent cattura solo ValueError
+        data = None
     if not isinstance(data, dict):
         raise _invalid("Il corpo della richiesta deve essere un oggetto JSON")
     errors = sorted(Draft202012Validator(schema).iter_errors(data), key=lambda e: e.json_path)

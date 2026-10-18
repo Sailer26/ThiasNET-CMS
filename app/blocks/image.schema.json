@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Immagine",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "media_id": {
+      "type": "integer",
+      "minimum": 1,
+      "x-media": true
+    },
+    "caption": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "link": {
+      "type": "string",
+      "maxLength": 2048,
+      "format": "safe-url"
+    }
+  },
+  "required": [
+    "media_id"
+  ]
+}

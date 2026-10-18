@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Invito all'azione",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "text": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "button_label": {
+      "type": "string",
+      "maxLength": 40
+    },
+    "url": {
+      "type": "string",
+      "maxLength": 2048,
+      "format": "safe-url"
+    }
+  },
+  "required": [
+    "title",
+    "button_label",
+    "url"
+  ]
+}

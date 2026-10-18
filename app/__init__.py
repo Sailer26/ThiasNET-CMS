@@ -5,9 +5,9 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
-from flask import Flask, current_app
+from flask import Flask
 
 from app.api import register_error_handlers, register_response_headers
 from app.api.admin import bp as admin_api
@@ -16,9 +16,9 @@ from app.config import PROJECT_ROOT, build_config
 from app.database import ensure_sqlite_directory  # importarlo registra anche i PRAGMA SQLite
 from app.extensions import db, migrate
 from app.security import init_security
-from app.services.theme import Theme, load_theme
+from app.services.theme import ACTIVE_THEME_KEY, Theme, active_theme, load_theme
 
-ACTIVE_THEME_KEY = "thiasnet.active_theme"
+__all__ = ["ACTIVE_THEME_KEY", "create_app", "get_theme"]
 MIGRATIONS_DIR = PROJECT_ROOT / "migrations"
 
 
@@ -46,4 +46,4 @@ def create_app(config_name: str | None = None, overrides: Mapping[str, Any] | No
 
 def get_theme() -> Theme:
     """Tema attivo dell'app corrente (sola lettura)."""
-    return cast(Theme, current_app.extensions[ACTIVE_THEME_KEY])
+    return active_theme()
