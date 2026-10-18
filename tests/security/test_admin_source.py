@@ -36,7 +36,8 @@ LOCATION_WRITE = re.compile(r"location\.(href\s*=|assign\(|replace\()")
 STRING_TIMER = re.compile(r"setTimeout\(\s*['\"`]")
 BLANK_WITHOUT_REL = re.compile(r"target=\"_blank\"(?![^>]*rel=\"noopener noreferrer\")")
 PROTOCOL_RELATIVE = re.compile(r"['\"`]//[a-z0-9]", re.IGNORECASE)
-EXTERNAL_URL = re.compile(r"https?://[^\s'\"`)]+")
+# Un host vero dopo "//": "https://" dentro un messaggio o un modello di testo non conta.
+EXTERNAL_URL = re.compile(r"https?://[A-Za-z0-9][^\s'\"`)]*")
 ALLOWED_URLS = frozenset({"http://www.w3.org/2000/svg"})  # namespace SVG, non una richiesta
 POST_MESSAGE_ANY = re.compile(r"postMessage\([^)]*['\"]\*['\"]")
 
