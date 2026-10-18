@@ -41,7 +41,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    (async () => {
+    void (async () => {
       try {
         await refreshCsrf();
         const loaded = await loadSession();
@@ -89,7 +89,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const leave = useCallback(async (end: () => Promise<void>) => {
-    await end();
+    try {
+      await end();
+    } catch (error) {
+      // Sessione già scaduta: si è comunque fuori, si va all'accesso.
+      if (!(error instanceof ApiError && error.status === 401)) throw error;
+    }
     setExpired(false);
     setState({ status: "anonymous" });
   }, []);
@@ -108,16 +113,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [state, reloadKey, leave]);
 
   if (state.status === "loading") {
-    return <p className="boot" role="status">{it.loading}</p>;
+    return (
+      <main className="boot">
+        <p role="status">{it.loading}</p>
+      </main>
+    );
   }
   if (state.status === "failed") {
     return (
-      <div className="boot">
+      <main className="boot">
+        <h1>{it.brand}</h1>
         <p role="alert">{state.message}</p>
         <button type="button" className="button" onClick={browser.reload}>
-          {it.dialog.confirm}
+          {it.retry}
         </button>
-      </div>
+      </main>
     );
   }
   if (state.status === "anonymous" || session === null) {
@@ -135,7 +145,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     <SessionContext.Provider value={session}>
       {children}
       {expired && (
-        <Dialog title={it.login.expiredTitle} onClose={() => undefined}>
+        <Dialog title={it.login.expiredTitle} onClose={() => undefined} opaque>
           <p className="hint">{it.login.expiredHelp}</p>
           <LoginForm initialEmail={session.user.email} lockEmail onLoggedIn={reenter} />
         </Dialog>

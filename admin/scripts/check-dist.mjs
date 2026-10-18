@@ -1,6 +1,6 @@
 // Dopo la build: il pannello compilato deve rispettare la CSP (D-88).
 // Fallisce con script o stili inline, attributi style, data: o indirizzi esterni.
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -15,13 +15,11 @@ function walk(dir) {
   });
 }
 
-let files;
-try {
-  files = walk(DIST);
-} catch {
-  console.error("dist/ mancante: esegui prima la build");
+if (!existsSync(join(DIST, "index.html"))) {
+  console.error("dist/index.html mancante: esegui prima la build");
   process.exit(1);
 }
+const files = walk(DIST);
 
 for (const file of files) {
   const text = readFileSync(file, "utf8");
@@ -33,6 +31,8 @@ for (const file of files) {
     if (/\son[a-z]+=/i.test(text)) problems.push(`${file}: gestore di evento inline`);
   }
   if ([".html", ".css"].includes(ext) && /data:/i.test(text)) problems.push(`${file}: data:`);
+  if (ext === ".js" && /\beval\(|new Function\(/.test(text)) problems.push(`${file}: codice costruito al volo`);
+  if (![".html", ".css", ".js", ".woff2", ".png"].includes(ext)) problems.push(`${file}: tipo di file non servito`);
   if ([".html", ".css"].includes(ext)) {
     for (const url of text.match(/https?:\/\/[^\s"'`)]+/g) ?? []) {
       if (!ALLOWED_URLS.has(url)) problems.push(`${file}: indirizzo esterno ${url}`);

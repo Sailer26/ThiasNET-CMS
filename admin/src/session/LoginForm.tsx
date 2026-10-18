@@ -64,6 +64,8 @@ export function LoginForm({ initialEmail = "", lockEmail = false, onLoggedIn }: 
         <label className="field">
           <span>{it.login.totpLabel}</span>
           <input
+            // Al passaggio al codice il pulsante "Accedi" sparisce: il focus va sul campo nuovo.
+            autoFocus
             name="code"
             inputMode="numeric"
             autoComplete="one-time-code"

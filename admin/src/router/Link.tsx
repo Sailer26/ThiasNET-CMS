@@ -7,12 +7,13 @@ export function Link({ to, onClick, children, ...rest }: Props) {
   function handle(event: MouseEvent<HTMLAnchorElement>) {
     onClick?.(event);
     const modified = event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
-    if (event.defaultPrevented || event.button !== 0 || modified) return;
+    const elsewhere = rest.target !== undefined && rest.target !== "_self";
+    if (event.defaultPrevented || event.button !== 0 || modified || elsewhere) return;
     event.preventDefault();
     navigate(to);
   }
   return (
-    <a href={to} onClick={handle} {...rest}>
+    <a {...rest} href={to} onClick={handle}>
       {children}
     </a>
   );

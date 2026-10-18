@@ -63,7 +63,8 @@ def test_assets_are_served_immutable(panel: FlaskClient) -> None:
     assert response.status_code == 200
     assert "immutable" in response.headers["Cache-Control"]
     assert response.headers["X-Content-Type-Options"] == "nosniff"
-    assert panel.get("/admin/assets/app-1.css").status_code == 200
+    assert response.mimetype == "text/javascript"
+    assert panel.get("/admin/assets/app-1.css").mimetype == "text/css"
 
 
 @pytest.mark.parametrize(
@@ -75,6 +76,7 @@ def test_assets_are_served_immutable(panel: FlaskClient) -> None:
         "/admin/assets/%2e%2e/%2e%2e/segreto.js",
         "/admin/assets/..%5c..%5csegreto.js",
         "/admin/assets/",
+        "/admin/assets/a%00.js",
     ],
 )
 def test_only_existing_build_files_are_served(panel: FlaskClient, path: str) -> None:
@@ -94,8 +96,8 @@ def test_symlinks_leaving_the_build_are_refused(panel: FlaskClient, dist: Path) 
 
 def test_panel_routes_are_read_only(panel: FlaskClient) -> None:
     for method in (panel.post, panel.put, panel.delete):
-        assert method("/admin/pagine").status_code in {400, 405}
-        assert method("/admin/assets/app-1.js").status_code in {400, 405}
+        assert method("/admin/pagine").status_code == 405
+        assert method("/admin/assets/app-1.js").status_code == 405
 
 
 def test_missing_build_explains_what_to_do(tmp_path: Path) -> None:

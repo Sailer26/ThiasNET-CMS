@@ -25,7 +25,17 @@ FORBIDDEN = {
     "localStorage": "dati nel browser (D-90: il token CSRF vive solo in memoria)",
     "sessionStorage": "dati nel browser (D-90: il token CSRF vive solo in memoria)",
     "setInterval": "timer che terrebbero viva la sessione (D-90)",
+    "Function(": "codice costruito al volo",
+    "javascript:": "link che eseguono codice",
+    "srcDoc": "HTML inserito come stringa",
+    "document.cookie": "il cookie di sessione non si tocca dal pannello",
+    "window.open": "nuove finestre solo con link e rel=noopener",
 }
+# Navigazione verso indirizzi costruiti con dati: niente redirect aperti.
+LOCATION_WRITE = re.compile(r"location\.(href\s*=|assign\(|replace\()")
+STRING_TIMER = re.compile(r"setTimeout\(\s*['\"`]")
+BLANK_WITHOUT_REL = re.compile(r"target=\"_blank\"(?![^>]*rel=\"noopener noreferrer\")")
+PROTOCOL_RELATIVE = re.compile(r"['\"`]//[a-z0-9]", re.IGNORECASE)
 EXTERNAL_URL = re.compile(r"https?://[^\s'\"`)]+")
 ALLOWED_URLS = frozenset({"http://www.w3.org/2000/svg"})  # namespace SVG, non una richiesta
 POST_MESSAGE_ANY = re.compile(r"postMessage\([^)]*['\"]\*['\"]")
@@ -54,4 +64,11 @@ def test_panel_source_is_safe(path: Path) -> None:
     ]
     if POST_MESSAGE_ANY.search(text):
         problems.append('postMessage verso "*": usare window.location.origin')
+    checks = {
+        LOCATION_WRITE: "navigazione verso un indirizzo calcolato (usare navigate())",
+        STRING_TIMER: "setTimeout con codice in una stringa",
+        BLANK_WITHOUT_REL: 'target="_blank" senza rel="noopener noreferrer"',
+        PROTOCOL_RELATIVE: "indirizzo esterno senza protocollo (//host)",
+    }
+    problems += [why for pattern, why in checks.items() if pattern.search(text)]
     assert not problems, problems

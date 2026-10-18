@@ -33,7 +33,7 @@ COMMANDS: dict[str, list[list[str]]] = {
 }
 # Pannello (D-96): `npm` si cerca nel PATH (su Windows è `npm.cmd`, invisibile a subprocess).
 ADMIN_COMMANDS: dict[str, list[str]] = {
-    "admin-install": ["ci"],
+    "admin-install": ["ci", "--ignore-scripts"],  # nessuno script dei pacchetti serve al pannello
     "admin-dev": ["run", "dev"],
     "admin-build": ["run", "build"],
     "admin-test": ["run", "test:coverage"],

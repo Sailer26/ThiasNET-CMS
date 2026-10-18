@@ -2,6 +2,13 @@
 export const it = {
   brand: "ThiasNET CMS",
   loading: "Caricamento…",
+  retry: "Riprova",
+  titles: {
+    pages: "Pagine",
+    trash: "Cestino",
+    page: "Pagina",
+    notFound: "Schermata non trovata",
+  },
   errors: {
     network: "Connessione non disponibile: controlla internet e riprova",
     generic: "Si è verificato un errore: riprova più tardi",
@@ -100,6 +107,7 @@ export const it = {
     restore: "Recupera",
     restored: (title: string) => `"${title}" è tornata tra le pagine (come bozza).`,
     deletedAt: "Cestinata il",
+    more: (count: number) => `Mostra le altre (${count})`,
   },
   dialog: { cancel: "Annulla", close: "Chiudi", confirm: "Conferma" },
 } as const;

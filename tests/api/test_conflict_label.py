@@ -40,6 +40,10 @@ def test_media_conflict_has_the_name_too(login_as: LoginAs) -> None:
     assert response.get_json()["error"]["details"]["updated_by_name"] == editor_user.email
 
 
+def test_conflict_outside_a_request_is_still_a_service_error() -> None:
+    assert version_conflict(1, 5, None).details["updated_by_name"] == "un altro utente"
+
+
 @pytest.mark.parametrize("user_id", [None, 424242])
 def test_unknown_author(app: Flask, user_id: int | None) -> None:
     with app.app_context():

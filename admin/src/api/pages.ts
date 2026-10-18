@@ -14,7 +14,13 @@ export interface NewPage {
   slug?: string;
 }
 
+export interface TrashList {
+  items: Page[];
+  total: number;
+}
+
 export const TRASH_PAGE_SIZE = 50;
+const MAX_LIMIT = 100; // tetto del server (app/api/validation.py)
 
 export async function fetchTree(locale: string): Promise<Tree> {
   const { data, meta } = await request<PageNode[]>(
@@ -48,8 +54,20 @@ export async function trashPage(id: number, version: number): Promise<Page> {
   return (await request<Page>("DELETE", `/pages/${id}`, { version })).data;
 }
 
-export async function fetchTrash(): Promise<Page[]> {
-  return (await request<Page[]>("GET", `/pages/trash?page=1&limit=${TRASH_PAGE_SIZE}`)).data;
+/** Le prime `count` pagine da 50 del cestino, unite (le più recenti prima). */
+export async function fetchTrash(count = 1): Promise<TrashList> {
+  const items: Page[] = [];
+  let total = 0;
+  for (let page = 1; page <= count; page += 1) {
+    const { data, meta } = await request<Page[]>(
+      "GET",
+      `/pages/trash?page=${page}&limit=${Math.min(TRASH_PAGE_SIZE, MAX_LIMIT)}`,
+    );
+    items.push(...data);
+    total = typeof meta.total === "number" ? meta.total : items.length;
+    if (data.length < TRASH_PAGE_SIZE) break;
+  }
+  return { items, total };
 }
 
 export async function restorePage(id: number, version: number): Promise<Page> {

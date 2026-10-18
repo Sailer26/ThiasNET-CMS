@@ -9,7 +9,14 @@ from pathlib import Path
 
 from flask import current_app
 
-ASSET_SUFFIXES = frozenset({".js", ".css", ".woff2", ".png"})
+# Tipi fissi: su Windows `mimetypes` legge il registro, che a volte dice text/plain per .js
+# (con nosniff il browser rifiuterebbe il pannello).
+ASSET_TYPES = {
+    ".js": "text/javascript",
+    ".css": "text/css",
+    ".woff2": "font/woff2",
+    ".png": "image/png",
+}
 MISSING_BUILD = (
     "Pannello non ancora compilato: esegui `python scripts/tasks.py admin-build` "
     "e ricarica la pagina."
@@ -47,12 +54,22 @@ def index_file() -> Path | None:
     return path if path.is_file() else None
 
 
+NUL = chr(0)  # carattere nullo: il filesystem lo rifiuta
+
+
+def asset_type(path: Path) -> str:
+    return ASSET_TYPES[path.suffix.lower()]
+
+
 def asset_path(filename: str) -> Path | None:
     """Solo file esistenti in `assets/` della build, con un'estensione ammessa."""
-    if "\\" in filename or Path(filename).suffix.lower() not in ASSET_SUFFIXES:
+    if "\\" in filename or NUL in filename or Path(filename).suffix.lower() not in ASSET_TYPES:
         return None
-    root = (dist_dir() / "assets").resolve()
-    candidate = (root / filename).resolve()
-    if not candidate.is_relative_to(root) or not candidate.is_file():
+    try:
+        root = (dist_dir() / "assets").resolve()
+        candidate = (root / filename).resolve()
+        if not candidate.is_relative_to(root) or not candidate.is_file():
+            return None
+    except (OSError, ValueError):  # nomi che il sistema non accetta: semplicemente non esistono
         return None
     return candidate

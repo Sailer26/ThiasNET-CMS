@@ -28,6 +28,7 @@ MEDIA_DEFAULTS = {
     "testing": PROJECT_ROOT / "data" / "media-test",  # i test usano sempre una cartella temporanea
 }
 ADMIN_DIST_DEFAULT = PROJECT_ROOT / "admin" / "dist"
+DATA_DIR = (PROJECT_ROOT / "data").resolve()
 DEFAULT_MAX_PIXELS = 25_000_000  # D-71: memoria per caricamento sotto controllo
 DEFAULT_QUOTA_MB = 5 * 1024  # D-71: 5 GB per sito
 
@@ -115,13 +116,14 @@ def _media_root(name: str, environ: Mapping[str, str]) -> Path:
     return root
 
 
-def _admin_dist(environ: Mapping[str, str]) -> Path:
-    """D-87: la build del pannello sta lontano dal tema e dal codice dell'app."""
+def _admin_dist(environ: Mapping[str, str], media_root: Path) -> Path:
+    """D-87: la build del pannello sta lontano dal tema, dal codice dell'app e dai dati
+    (database, file caricati): un file caricato non deve mai diventare codice del pannello."""
     raw = (environ.get("ADMIN_DIST_DIR") or "").strip()
     root = Path(raw) if raw else ADMIN_DIST_DEFAULT
     root = (root if root.is_absolute() else PROJECT_ROOT / root).resolve()
     themes = Path(environ.get("THEMES_DIR", str(PROJECT_ROOT / "themes"))).resolve()
-    for protected in (themes, APP_DIR):
+    for protected in (themes, APP_DIR, media_root, DATA_DIR):
         if _inside(root, protected) or _inside(protected, root):
             raise ConfigError(
                 f"ADMIN_DIST_DIR non può stare dentro o sopra {protected}: usa admin/dist"
@@ -130,9 +132,10 @@ def _admin_dist(environ: Mapping[str, str]) -> Path:
 
 
 def site_config(name: str, environ: Mapping[str, str]) -> dict[str, Any]:
+    media_root = _media_root(name, environ)
     return {
-        "ADMIN_DIST_DIR": _admin_dist(environ),
-        "MEDIA_ROOT": _media_root(name, environ),
+        "ADMIN_DIST_DIR": _admin_dist(environ, media_root),
+        "MEDIA_ROOT": media_root,
         "MEDIA_MAX_PIXELS": _int(environ, "MEDIA_MAX_PIXELS", DEFAULT_MAX_PIXELS),
         "MEDIA_QUOTA_MB": _int(environ, "MEDIA_QUOTA_MB", DEFAULT_QUOTA_MB),
         "SITE_URL": _site_url(name, environ),

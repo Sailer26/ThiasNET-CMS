@@ -182,6 +182,17 @@ describe("accesso e sessione", () => {
     expect(await screen.findByRole("heading", { name: "Accedi al pannello" })).toBeInTheDocument();
   });
 
+  test("esci con la sessione già scaduta porta comunque all'accesso", async () => {
+    const api = fakeApi();
+    signedIn(api);
+    api.on("GET", "/pages/tree", { data: [], meta: { truncated: false } });
+    api.on("POST", "/auth/logout", UNAUTHORIZED);
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(await screen.findByRole("button", { name: "Esci" }));
+    expect(await screen.findByRole("heading", { name: "Accedi al pannello" })).toBeInTheDocument();
+  });
+
   test("menu: Pagine e Cestino, schermata sconosciuta", async () => {
     const api = fakeApi();
     signedIn(api);
@@ -198,6 +209,7 @@ describe("accesso e sessione", () => {
     });
     expect(await screen.findByText("Questa schermata non esiste.")).toBeInTheDocument();
     await user.click(screen.getByRole("link", { name: "Torna alle pagine" }));
-    expect(await screen.findByRole("heading", { name: "Pagine" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Pagine" })).toHaveFocus();
+    expect(document.title).toBe("Pagine · Comune di Prova · ThiasNET CMS");
   });
 });

@@ -50,7 +50,7 @@ jobs:
           cache: npm
           cache-dependency-path: admin/package-lock.json
       - name: Installa dipendenze
-        run: npm ci
+        run: npm ci --ignore-scripts
       - name: Lint (tsc + eslint)
         run: npm run lint
       - name: Test + coverage (soglia 80%)

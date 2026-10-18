@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it as test } from "vitest";
+import { beforeEach, describe, expect, it as test, vi } from "vitest";
 import { App } from "../../App";
 import { setCsrfToken } from "../../api/client";
 import type { PageNode } from "../../api/types";
@@ -43,8 +43,9 @@ describe("albero delle pagine", () => {
       "https://www.prova.ch/servizi",
     );
     expect(within(row("Servizi")).getByRole("link", { name: "Anteprima" })).toHaveAttribute("href", "/_preview/2");
-    expect(within(row("Servizi")).getByRole("button", { name: "Su" })).toBeDisabled(); // sopra c'è la homepage
-    expect(within(row("Contatti")).getByRole("button", { name: "Giù" })).toBeDisabled();
+    // sopra c'è la homepage; aria-disabled: il pulsante resta raggiungibile da tastiera
+    expect(within(row("Servizi")).getByRole("button", { name: "Su" })).toHaveAttribute("aria-disabled", "true");
+    expect(within(row("Contatti")).getByRole("button", { name: "Giù" })).toHaveAttribute("aria-disabled", "true");
   });
 
   test("su e giù mandano tutte le sorelle nel nuovo ordine", async () => {
@@ -164,11 +165,59 @@ describe("albero delle pagine", () => {
     expect(await screen.findByText('"Orari" è nel cestino.')).toBeInTheDocument();
   });
 
-  test("editor senza permesso di pubblicare: Cestina disattivato con la spiegazione", async () => {
-    setup(site(), { ...ME, role: "editor", can_publish: false, permissions: ["content.edit", "profile"] });
-    const button = within(await screen.findByRole("group", { name: 'Azioni per "Servizi"' })).getByRole("button", { name: "Cestina" });
-    expect(button).toBeDisabled();
-    expect(button).toHaveAccessibleDescription(/serve il permesso di pubblicare/);
+  test("editor senza permesso di pubblicare: Cestina spiega perché non si può", async () => {
+    const { api, user } = setup(site(), { ...ME, role: "editor", can_publish: false, permissions: ["content.edit", "profile"] });
+    await user.click(within(await screen.findByRole("group", { name: 'Azioni per "Servizi"' })).getByRole("button", { name: "Cestina" }));
+    expect(await screen.findByText(/serve il permesso di pubblicare/)).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(api.callsTo("DELETE", "/pages/2")).toHaveLength(0);
+  });
+
+  test("un secondo clic mentre il primo spostamento è in corso non parte", async () => {
+    const { api, user } = setup();
+    let finish: () => void = () => undefined;
+    api.on("POST", "/pages/reorder", { data: { ids: [] } });
+    const original = globalThis.fetch;
+    vi.stubGlobal("fetch", (input: string, init?: RequestInit) =>
+      String(input).includes("/pages/reorder")
+        ? new Promise<Response>((resolve) => {
+            finish = () => void original(input, init).then(resolve);
+          })
+        : original(input, init),
+    );
+    const contatti = within(await screen.findByRole("group", { name: 'Azioni per "Contatti"' }));
+    await user.click(contatti.getByRole("button", { name: "Su" }));
+    await user.click(within(row("Servizi")).getByRole("button", { name: "Giù" }));
+    expect(within(row("Servizi")).getByRole("button", { name: "Giù" })).toHaveAttribute("aria-disabled", "true");
+    finish();
+    await screen.findByText('"Contatti" è stata spostata.');
+    expect(api.callsTo("POST", "/pages/reorder")).toHaveLength(1);
+  });
+
+  test("pagina sparita nel frattempo: finestra chiusa, avviso, elenco ricaricato", async () => {
+    const { api, user } = setup();
+    api.on("PATCH", "/pages/3", { status: 404, error: { code: "not_found", message: "Pagina non trovata" } });
+    await user.click(within(await screen.findByRole("group", { name: 'Azioni per "Contatti"' })).getByRole("button", { name: "Sposta in…" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Sposta" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Pagina non trovata");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(api.callsTo("GET", "/pages/tree")).toHaveLength(2));
+  });
+
+  test("nelle conferme il focus parte da Annulla", async () => {
+    const { user } = setup();
+    await user.click(within(await screen.findByRole("group", { name: 'Azioni per "Contatti"' })).getByRole("button", { name: "Cestina" }));
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Annulla" })).toHaveFocus();
+  });
+
+  test("albero incompleto: niente modifiche, solo consultazione", async () => {
+    const api = fakeApi();
+    signedIn(api);
+    api.on("GET", "/pages/tree", { data: site().slice(1), meta: { truncated: true } });
+    render(<App />);
+    expect(await screen.findByText("Ci sono molte pagine: ne mostro solo una parte.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Crea la homepage" })).not.toBeInTheDocument();
+    expect(within(row("Servizi")).getByRole("button", { name: "Sposta in…" })).toHaveAttribute("aria-disabled", "true");
   });
 
   test("elenco troncato ed errore di caricamento", async () => {

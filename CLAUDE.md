@@ -50,6 +50,7 @@ docs/
 
 ## Comandi
 - Su Windows (senza make, D-17): `python scripts/tasks.py dev|test|lint|migrate|theme-check` con la `.venv` attiva. Il `Makefile` delega allo stesso script.
+- Pannello (D-96): `python scripts/tasks.py admin-install|admin-dev|admin-build|admin-test|admin-lint` (npm in `admin/`).
 - `python -m app.theme_check` valida i temi anche quando il tema attivo è rotto e l'app non parte.
 - L'app non parte senza `APP_ENV` (development | testing | production): `tasks.py` usa `development` di default.
 - Comandi progetto: `/fase N`, `/nuovo-blocco <nome>`, `/check-template-lock`

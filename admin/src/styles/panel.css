@@ -136,6 +136,10 @@ code { font-family: ui-monospace, Consolas, monospace; font-size: 0.85em; }
   box-shadow: 0 20px 50px rgb(0 0 0 / 0.3);
 }
 .dialog::backdrop { background: rgb(11 37 69 / 0.55); }
+.dialog--opaque::backdrop { background: var(--tn-navy); } /* sessione scaduta: dietro non si legge nulla */
+.notice-area:empty { display: none; }
+.button[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+h1[tabindex="-1"]:focus { outline: none; }
 
 .phone-only { display: none; }
 

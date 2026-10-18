@@ -28,6 +28,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     restoreMocks: true,
+    unstubGlobals: true,
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],

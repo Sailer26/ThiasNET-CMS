@@ -10,8 +10,9 @@ Aggiornato: 2026-10-18. Leggi questo file **dopo** `CLAUDE.md` e prima di qualsi
 - **Fase 1 — Utenti e autenticazione:** chiusa e unita in `main` (PR #1, commit `e2ae055`). 235 test verdi, copertura 96.6 %, CI verde su Linux e Windows.
 - **Fase 2 — Pagine e blocchi (backend):** chiusa e unita in `main` (PR #2).
 - **Fase 3 — Rendering pubblico:** chiusa e unita in `main` (PR #3).
-- **Fase 4 — Media library:** completata sul branch `phase-4-media` (870 test verdi, copertura 94 %, review ECC fatta, problemi alti e medi corretti). In attesa della PR verso `main`. Piano e scelte in `docs/PIANO-FASE-4.md`. Prossima: **Fase 5 — Pannello admin (React)**.
-- Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-85). Prevalgono sugli altri documenti.
+- **Fase 4 — Media library:** completata sul branch `phase-4-media` (870 test verdi, copertura 94 %). PR verso `main` da aprire/unire.
+- **Fase 5a — Pannello: telaio, accesso, pagine:** completata sul branch `phase-5-admin`, **partito da `phase-4-media`** (la PR della Fase 4 non era ancora unita): unire prima la Fase 4. Piano in `docs/PIANO-FASE-5.md`. Prossima: **5b — Editor della pagina**.
+- Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-100). Prevalgono sugli altri documenti.
 
 ## 2. Preparare l'ambiente (se la `.venv` non c'è)
 ```bash
@@ -60,12 +61,17 @@ L'app non parte senza `APP_ENV` (D-20); `tasks.py` usa `development` di default.
   eliminano i media non usati, "Sostituisci file" mantiene l'indirizzo) in `docs/PIANO-FASE-4.md`; decisioni D-70 … D-85.
 - Rimandi alle fasi successive in ROADMAP.
 
-## 6. Prossimo passo: Fase 5 — Pannello admin (React)
-1. Branch `phase-5-admin` da `main` (dopo il merge della PR della Fase 4).
-2. Piano con `ecc:planner` (stesso formato di `docs/PIANO-FASE-4.md`), con al massimo 4 domande semplici per Thias.
-3. È la prima fase con il frontend in `admin/` (React + Vite + TypeScript, TipTap, dnd-kit): motivare ogni dipendenza npm.
-   Da collegare: API di pagine, bozze, blocchi, media e utenti già pronte; anteprima live (`/_preview/<id>`, D-55);
-   409 `version_conflict` con chi ha salvato; `uid` dei blocchi generati dal pannello (D-39); rimandi della Fase 5 in ROADMAP.
-4. Test prima (Vitest per il pannello, pytest per le API nuove), poi codice, poi le review ECC in parallelo
-   (`ecc:code-reviewer`, `ecc:typescript-reviewer`/`ecc:react-reviewer`, `ecc:security-reviewer` con `/check-template-lock`),
-   correzioni, docs, push e link della PR per Thias.
+## 6. Fase 5a — fatta
+Risposte di Thias (tutte le proposte): marchio ThiasNET, albero con pulsanti, subito le pagine, nuova pagina con il
+solo titolo. Decisioni D-86 … D-100. Comandi del pannello: `python scripts/tasks.py admin-install|admin-dev|admin-build|admin-test|admin-lint`.
+- Sul PC di Thias la porta 5000 può essere occupata da un altro progetto: per provare `flask --app app run --port 5050`
+  (con `APP_ENV=development`) dopo `admin-build`, poi `http://localhost:5050/admin/`.
+- Lo strumento Bash di Claude rifiuta comandi con molti apostrofi (testi italiani): scrivere i file con uno script Python
+  nello scratchpad (sezioni `=== percorso ===`).
+
+## 7. Prossimo passo: Fase 5b — Editor della pagina
+1. Branch `phase-5b-editor` da `phase-5-admin` (o da `main` se 4 e 5a sono già unite).
+2. Piano dedicato con `ecc:planner` (sezione 5b di `docs/PIANO-FASE-5.md`), al massimo 4 domande per Thias.
+3. Dipendenze nuove già approvate: TipTap (estensioni singole, `injectCSS: false`) e dnd-kit.
+4. Test prima (Vitest, primo e2e Playwright), codice, review ECC in parallelo (`ecc:code-reviewer`,
+   `ecc:typescript-reviewer`, `ecc:python-reviewer`, `ecc:security-reviewer` con `/check-template-lock`), docs, push, link PR.

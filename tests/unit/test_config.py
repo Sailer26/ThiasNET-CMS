@@ -211,7 +211,7 @@ def test_admin_build_defaults_to_the_admin_folder() -> None:
     assert config["ADMIN_DIST_DIR"] == (PROJECT_ROOT / "admin" / "dist").resolve()
 
 
-@pytest.mark.parametrize("inside", ["themes/default", "app/static", "."])
+@pytest.mark.parametrize("inside", ["themes/default", "app/static", ".", "data", "data/media"])
 def test_admin_build_stays_away_from_theme_and_code(inside: str) -> None:
     with pytest.raises(ConfigError, match="ADMIN_DIST_DIR"):
         build_config("development", environ={"ADMIN_DIST_DIR": str(PROJECT_ROOT / inside)})

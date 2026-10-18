@@ -41,7 +41,7 @@ def asset(filename: str) -> BaseResponse:
     path = panel_assets.asset_path(filename)
     if path is None:
         return _not_found()
-    response = send_file(path, max_age=ONE_YEAR)
+    response = send_file(path, mimetype=panel_assets.asset_type(path), max_age=ONE_YEAR)
     response.headers["Cache-Control"] = f"public, max-age={ONE_YEAR}, immutable"
     response.headers["X-Content-Type-Options"] = "nosniff"
     return response

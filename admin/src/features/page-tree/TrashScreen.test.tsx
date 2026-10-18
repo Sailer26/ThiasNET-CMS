@@ -34,6 +34,22 @@ describe("cestino", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Ripristina prima la pagina superiore");
   });
 
+  test("più di 50 pagine: Mostra le altre", async () => {
+    const api = fakeApi();
+    signedIn(api);
+    const first = Array.from({ length: 50 }, (_, i) => node(`P${i}`, { id: 200 + i }));
+    api.on("GET", "/pages/trash", (call) =>
+      call.path.includes("page=1&")
+        ? { data: first, meta: { total: 51 } }
+        : { data: [node("Ultima", { id: 999 })], meta: { total: 51 } },
+    );
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(await screen.findByRole("button", { name: "Mostra le altre (1)" }));
+    expect(await screen.findByText("Ultima")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Mostra le altre/ })).not.toBeInTheDocument();
+  });
+
   test("errore nel caricamento", async () => {
     const api = fakeApi();
     signedIn(api);

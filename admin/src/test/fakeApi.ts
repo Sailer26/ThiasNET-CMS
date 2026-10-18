@@ -25,6 +25,9 @@ export interface FakeApi {
   callsTo: (method: string, path: string) => Call[];
 }
 
+/** Chiamate senza risposta preparata: setup.ts fa fallire il test (non diventano "rete assente"). */
+export const unexpectedCalls: string[] = [];
+
 export function fakeApi(): FakeApi {
   const routes = new Map<string, Handler[]>();
   const calls: Call[] = [];
@@ -56,7 +59,10 @@ export function fakeApi(): FakeApi {
       calls.push(call);
       const key = `${method} ${path.split("?")[0]}`;
       const queue = routes.get(key);
-      if (!queue || queue.length === 0) throw new Error(`fetch non previsto: ${key}`);
+      if (!queue || queue.length === 0) {
+        unexpectedCalls.push(key);
+        throw new Error(`fetch non previsto: ${key}`);
+      }
       const handler = queue.length > 1 ? queue.shift()! : queue[0]!;
       return respond(typeof handler === "function" ? handler(call) : handler);
     }),

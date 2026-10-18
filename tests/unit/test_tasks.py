@@ -62,7 +62,7 @@ def test_admin_commands_explain_missing_npm(
 @pytest.mark.parametrize(
     ("command", "script"),
     [
-        ("admin-install", ["ci"]),
+        ("admin-install", ["ci", "--ignore-scripts"]),
         ("admin-dev", ["run", "dev"]),
         ("admin-test", ["run", "test:coverage"]),
         ("admin-lint", ["run", "lint"]),

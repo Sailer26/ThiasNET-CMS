@@ -3,7 +3,7 @@
 ## Visione d'insieme
 ```
 Browser visitatore ──► Caddy ──► gunicorn/Flask ──► public/ (Jinja SSR dal tema) ──► cache
-Browser admin     ──► Caddy ──► /admin (React SPA statica) ──► /api/admin/* (JSON, sessione + CSRF)
+Browser admin     ──► Caddy ──► /admin (React SPA servita da Flask) ──► /api/admin/* (JSON, sessione + CSRF)
                                          │
                          services/ ──► SQLAlchemy ──► SQLite/PostgreSQL
                                    └─► storage media (filesystem / S3-compatibile)
@@ -102,6 +102,24 @@ GET /media/<key>/<file> ─► solo file della revisione corrente; immagini immu
 - "In uso" (D-79): blocchi e SEO di tutte le pagine non cestinate, bozze e programmazioni. Un media in uso non si
   elimina (409 con l'elenco delle pagine); l'alt non si toglie se una pagina online o programmata lo usa.
 - Pubblicare verifica che ogni `media_id` esista, sia del tipo giusto (immagine o PDF) e abbia l'alt.
+
+## Pannello (D-86 … D-99)
+```
+admin/ (Vite + React + TS) ──npm run build──► admin/dist (ADMIN_DIST_DIR, mai in themes/ o app/)
+GET /admin/<qualsiasi>      ──► index.html (file statico, no-cache, CSP del pannello, X-Frame-Options DENY)
+GET /admin/assets/<file>    ──► solo .js/.css/.woff2/.png esistenti nella build, cache di un anno
+SPA ──fetch──► /api/admin/* (cookie di sessione SameSite=Strict + header X-CSRFToken)
+```
+- `app/panel.py` (route) e `app/services/panel_assets.py` (percorsi, CSP); nessun Jinja, solo GET.
+- `admin/src/api/client.ts` è l'unico punto delle chiamate: busta `{success, data, error, meta}`, token CSRF
+  solo in memoria, un nuovo tentativo dopo un 403 `csrf`, evento di sessione scaduta sui 401 (D-90).
+- `admin/src/session/` apre una finestra di nuovo accesso sopra lo schermo; se entra un altro utente il
+  pannello si ricarica da capo. Nessun timer verso l'API.
+- `admin/src/features/page-tree/tree.ts` contiene le regole dell'albero (profondità, destinazioni, ordine)
+  come funzioni pure; il server ricontrolla tutto.
+- In sviluppo: `tasks.py dev` (Flask, 5000) + `tasks.py admin-dev` (Vite, 127.0.0.1:5173/admin/, proxy verso Flask).
+- `admin/scripts/check-dist.mjs` fa fallire la build con script o stili inline, `data:` o indirizzi esterni;
+  `tests/security/test_admin_source.py` controlla il sorgente anche senza Node (D-98).
 
 ## Rendering pubblico
 1. Risolvi `path` → pagina pubblicata (o redirect / 404 del tema).

@@ -73,15 +73,32 @@ Una fase alla volta. Una fase è chiusa solo quando tutti i criteri sono spuntat
 - Fase 8: Caddy che serve `/media` dal volume, backup di `MEDIA_ROOT`, pulizia dei file orfani, limite di upload per utente, antivirus per i PDF.
 
 ## Fase 5 — Pannello admin (React)
+Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
+
+**5a — Telaio, accesso, pagine**
+- [x] Progetto `admin/` (Vite + React + TS), servito da Flask su `/admin/` con CSP rigida, job CI su Linux e Windows (D-87 … D-89, D-96)
+- [x] Accesso con secondo fattore, sessione scaduta senza perdere lo schermo, CSRF rinnovato da solo (D-90, D-91)
+- [x] Albero delle pagine: crea (anche la homepage), su/giù, sposta, indirizzo, cestina, cestino e recupero, stati (D-95)
+- [x] 409 con il nome di chi ha salvato (D-92), `GET /api/admin/site`, marchio ThiasNET (D-99)
+
+**5b — Editor della pagina · 5c — Libreria e amministrazione · 5d — Aiuto e prova sul campo** (criteri qui sotto)
 - [ ] Shell Vite+TS, login, layout, gestione errori/sessione scaduta
 - [ ] Albero pagine, editor pagina con zone e blocchi drag&drop (dnd-kit), TipTap
 - [ ] Anteprima live affiancata (iframe), click sul blocco → apre il form (D-02)
 - [ ] Scelta varianti blocco da miniature (D-03)
 - [ ] Autosave + annulla/ripristina (D-07)
-- [ ] Media picker, gestione utenti (admin/owner), audit log (owner)
+- [ ] Media picker, gestione utenti (admin/owner), audit log (owner), messaggi del modulo contatti
 - [ ] Tour guidato al primo accesso, suggerimenti accanto ai campi, controllo prima di pubblicare, "Chiedi a Thias" (D-08, D-09)
 - [ ] UI tutta in italiano, PC + tablet, azioni rapide da telefono (D-10)
 - [ ] Test d'uso con un cliente vero (PREMORTEM #6)
+
+**Rimandati dalla 5a:**
+- 5b: titolo, layout e SEO della pagina nell'editor (oggi il clic sul titolo apre un segnaposto); bozza risalvata dopo un nuovo accesso.
+- 5c: `blob:` nella CSP del pannello per l'anteprima dei file da caricare.
+- 5d: menu "⋯" per le azioni delle righe su tablet, se il test d'uso lo chiede (oggi le azioni vanno a capo sotto il titolo).
+- Fase 6: azione rapida "banner avviso" da telefono (D-97). Fase 7: lingue nel pannello (D-94), azione "notizia".
+- Fase 8: Docker con `npm ci && npm run build` (che include il controllo CSP), Caddy per `/admin/assets/`, build obbligatoria all'avvio in produzione, e2e completi, `npm audit` e action fissate a SHA, axe sul pannello.
+- Fase 8 (dalla review di sicurezza della 5a): guardiani della regola d'oro e del pannello basati sull'albero del codice (oggi controllano i nomi: `getattr` con nomi calcolati o import rinominati non si vedono), `eslint-plugin-jsx-a11y` se l'audit axe lo chiede.
 
 ## Fase 6 — Widget, menu, impostazioni
 - [ ] Widget per area con visibilità per pagina

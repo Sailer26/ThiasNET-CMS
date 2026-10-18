@@ -7,18 +7,33 @@ export interface NoticeState {
   text: string;
 }
 
-interface Props extends NoticeState {
+interface Props {
+  notice: NoticeState | null;
   onClose?: () => void;
 }
 
-export function Notice({ kind, text, onClose }: Props) {
+/** Zona avvisi sempre presente: i lettori di schermo annunciano ogni testo nuovo.
+ * Gli errori usano role=alert, che si annuncia subito. */
+export function NoticeArea({ notice, onClose }: Props) {
   return (
-    <div className={`notice notice--${kind}`} role={kind === "error" ? "alert" : "status"}>
-      <p>{text}</p>
-      {onClose && (
-        <button type="button" className="notice__close" onClick={onClose} aria-label={it.dialog.close}>
-          ×
-        </button>
+    <div className="notice-area" aria-live="polite">
+      {notice && (
+        <div
+          className={`notice notice--${notice.kind}`}
+          role={notice.kind === "error" ? "alert" : undefined}
+        >
+          <p>{notice.text}</p>
+          {onClose && (
+            <button
+              type="button"
+              className="notice__close"
+              onClick={onClose}
+              aria-label={it.dialog.close}
+            >
+              ×
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

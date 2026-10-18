@@ -1,6 +1,8 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterEach, expect } from "vitest";
+import { setCsrfToken } from "../api/client";
+import { unexpectedCalls } from "./fakeApi";
 
 // jsdom non implementa <dialog>: basta aprirlo e chiuderlo con i suoi attributi.
 if (!HTMLDialogElement.prototype.showModal) {
@@ -15,4 +17,7 @@ if (!HTMLDialogElement.prototype.showModal) {
 
 afterEach(() => {
   cleanup();
+  setCsrfToken(null);
+  const unexpected = unexpectedCalls.splice(0);
+  expect(unexpected, "chiamate all'API senza risposta preparata").toEqual([]);
 });

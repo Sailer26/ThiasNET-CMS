@@ -36,6 +36,14 @@ WRITE_METHODS = {
     "copytree",
     "move",
     "save",
+    "chmod",
+    "truncate",
+    "extract",
+    "extractall",
+    "mkstemp",
+    "mkdtemp",
+    "link",
+    "symlink",
 }
 # (file relativo ad app/, metodo): ogni voce va motivata.
 WRITE_ALLOWLIST = {
