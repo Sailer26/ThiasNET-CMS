@@ -1,6 +1,6 @@
 """Comandi di progetto senza `make` (D-17).
 
-Uso: python scripts/tasks.py <dev|test|lint|migrate|theme-check|admin-*>
+Uso: python scripts/tasks.py <dev|test|lint|migrate|theme-check|e2e|admin-*>
 Usa l'interprete con cui viene lanciato: attivare prima la .venv.
 I comandi `admin-*` lavorano sul pannello React in `admin/` con npm (D-96).
 """
@@ -20,6 +20,8 @@ ADMIN_DIR = ROOT / "admin"
 PY = sys.executable
 FLASK = [PY, "-m", "flask", "--app", "app"]
 
+BROWSER = ["--browser-channel", "msedge"] if sys.platform == "win32" else ["--browser", "chromium"]
+
 COMMANDS: dict[str, list[list[str]]] = {
     "dev": [[*FLASK, "run", "--debug", "--port", "5000"]],
     "test": [[PY, "-m", "pytest", "-q", "--cov=app", "--cov-report=term-missing"]],
@@ -30,6 +32,10 @@ COMMANDS: dict[str, list[list[str]]] = {
     ],
     "migrate": [[*FLASK, "db", "upgrade"]],
     "theme-check": [[PY, "-m", "app.theme_check"]],
+    # Browser vero (D-114): Edge di sistema su Windows, Chromium altrove. Serve admin-build prima.
+    "e2e": [
+        [PY, "-m", "pytest", "-q", "-m", "e2e", "tests/e2e", "-p", "no:cacheprovider", *BROWSER]
+    ],
 }
 # Pannello (D-96): `npm` si cerca nel PATH (su Windows è `npm.cmd`, invisibile a subprocess).
 ADMIN_COMMANDS: dict[str, list[str]] = {

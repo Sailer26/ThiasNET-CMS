@@ -76,3 +76,12 @@ def test_admin_command_list(
     monkeypatch.setattr(tasks, "_run", _recorder(ran))
     assert tasks.main([command]) == 0
     assert ran[0][0][1:] == script
+
+
+def test_e2e_uses_a_real_browser(monkeypatch: pytest.MonkeyPatch) -> None:
+    tasks, ran = _tasks(), Ran()
+    monkeypatch.setattr(tasks, "_run", _recorder(ran))
+    assert tasks.main(["e2e"]) == 0
+    [(command, _)] = ran
+    assert "-m" in command and "e2e" in command
+    assert "--browser-channel" in command or "--browser" in command

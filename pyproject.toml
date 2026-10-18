@@ -46,6 +46,7 @@ dev = [
     "mypy==2.4.0",
     "types-jsonschema==4.26.0.20261006",
     "pre-commit==4.6.2",
+    "pytest-playwright==0.10.0",  # primo e2e del pannello (D-114)
 ]
 
 [build-system]
@@ -94,7 +95,9 @@ check_untyped_defs = true
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
-addopts = "-ra"
+# Gli e2e (browser vero, build del pannello) girano solo con `tasks.py e2e`.
+addopts = "-ra -m 'not e2e'"
+markers = ["e2e: percorso completo in un browser vero (python scripts/tasks.py e2e)"]
 
 [tool.coverage.run]
 source = ["app"]
