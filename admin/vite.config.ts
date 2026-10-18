@@ -29,6 +29,7 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     restoreMocks: true,
     unstubGlobals: true,
+    testTimeout: 20_000, // i percorsi completi (editor, Media) fanno molti passi in jsdom
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],

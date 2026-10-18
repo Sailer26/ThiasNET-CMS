@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { PageTreeScreen } from "./features/page-tree/PageTreeScreen";
 import { TrashScreen } from "./features/page-tree/TrashScreen";
+import { MediaScreen } from "./features/media-library/MediaScreen";
 import { Link } from "./router/Link";
 import { paths, useRoute, type Route } from "./router/router";
 import { SessionProvider } from "./session/SessionProvider";
@@ -18,6 +19,8 @@ function Screen({ route }: { route: Route }) {
       return <PageTreeScreen />;
     case "trash":
       return <TrashScreen />;
+    case "media":
+      return <MediaScreen />;
     case "page":
       return (
         <Suspense fallback={<p role="status">{it.loading}</p>}>

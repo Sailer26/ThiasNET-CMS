@@ -6,6 +6,7 @@ export const it = {
   titles: {
     pages: "Pagine",
     trash: "Cestino",
+    media: "Media",
     page: "Pagina",
     notFound: "Schermata non trovata",
   },
@@ -35,6 +36,7 @@ export const it = {
   shell: {
     nav: "Menu del pannello",
     pages: "Pagine",
+    media: "Media",
     trash: "Cestino",
     openSite: "Apri il sito",
     account: "Il tuo account",

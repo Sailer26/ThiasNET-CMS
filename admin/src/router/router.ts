@@ -5,11 +5,13 @@ export type Route =
   | { name: "pages" }
   | { name: "page"; id: number }
   | { name: "trash" }
+  | { name: "media" }
   | { name: "not-found" };
 
 export const paths = {
   pages: "/admin/pagine",
   trash: "/admin/cestino",
+  media: "/admin/media",
   page: (id: number) => `/admin/pagine/${id}`,
 } as const;
 
@@ -19,6 +21,7 @@ export function parseRoute(pathname: string): Route {
   const path = pathname.replace(/\/+$/, "");
   if (path === "/admin" || path === paths.pages) return { name: "pages" };
   if (path === paths.trash) return { name: "trash" };
+  if (path === paths.media) return { name: "media" };
   const page = PAGE_RE.exec(path);
   if (page) return { name: "page", id: Number(page[1]) };
   return { name: "not-found" };

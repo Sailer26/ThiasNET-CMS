@@ -23,6 +23,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     const titles: Record<string, string> = {
       pages: it.titles.pages,
       trash: it.titles.trash,
+      media: it.titles.media,
       page: it.titles.page,
       "not-found": it.titles.notFound,
     };
@@ -54,6 +55,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         <nav className="shell__nav" aria-label={it.shell.nav}>
           <Link to={paths.pages} aria-current={current("pages")}>
             {it.shell.pages}
+          </Link>
+          <Link to={paths.media} aria-current={current("media")}>
+            {it.shell.media}
           </Link>
           <Link to={paths.trash} aria-current={current("trash")}>
             {it.shell.trash}
