@@ -1,0 +1,9 @@
+{% if settings.show_breadcrumbs and breadcrumbs %}
+<nav class="breadcrumbs" aria-label="{{ cms_text('breadcrumbs_label') }}">
+<ol>
+{% for crumb in breadcrumbs %}
+<li>{% if crumb.current %}<span aria-current="page">{{ crumb.title }}</span>{% else %}<a href="{{ crumb.url }}">{{ crumb.title }}</a>{% endif %}</li>
+{% endfor %}
+</ol>
+</nav>
+{% endif %}

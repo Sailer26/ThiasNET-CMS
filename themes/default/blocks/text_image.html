@@ -1,0 +1,9 @@
+<section class="block text-image text-image--{{ block.variant }}" data-block-id="{{ block.id }}">
+<div class="text-image__media">{{ img(block.data.media_id, size="card") }}</div>
+<div class="text-image__text">
+{% if block.data.title %}<h2>{{ block.data.title }}</h2>{% endif %}
+<div class="prose">{{ block.data.body | safe_html }}</div>
+{% set url = block.data.cta_url | clean_url %}
+{% if url and block.data.cta_label %}<p><a class="button" href="{{ url }}">{{ block.data.cta_label }}</a></p>{% endif %}
+</div>
+</section>

@@ -1,0 +1,12 @@
+<section class="block contacts" data-block-id="{{ block.id }}">
+{% if block.data.title %}<h2>{{ block.data.title }}</h2>{% endif %}
+{% if block.data.intro %}<p>{{ block.data.intro }}</p>{% endif %}
+<ul class="contacts__list">
+{% if block.data.address %}<li>{{ block.data.address }}</li>{% endif %}
+{% set tel = ('tel:' ~ block.data.phone.replace(' ', '')) | clean_url if block.data.phone else '' %}
+{% if block.data.phone %}<li>{% if tel %}<a href="{{ tel }}">{{ block.data.phone }}</a>{% else %}{{ block.data.phone }}{% endif %}</li>{% endif %}
+{% set mail = ('mailto:' ~ block.data.email) | clean_url if block.data.email else '' %}
+{% if mail %}<li><a href="{{ mail }}">{{ block.data.email }}</a></li>{% endif %}
+</ul>
+{% if block.data.show_form %}{% include "partials/contact_form.html" %}{% endif %}
+</section>

@@ -1,0 +1,9 @@
+<section class="block files" data-block-id="{{ block.id }}">
+{% if block.data.title %}<h2>{{ block.data.title }}</h2>{% endif %}
+<ul>
+{% for item in block.data.get("items") or () %}
+{% set url = media_url(item.media_id) %}
+<li>{% if url %}<a href="{{ url }}" download>{{ item.label or cms_text('download') }}</a>{% else %}{{ item.label or cms_text('download') }}{% endif %}</li>
+{% endfor %}
+</ul>
+</section>

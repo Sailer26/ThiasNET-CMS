@@ -245,7 +245,30 @@ def _thumbnail_problem(assets_dir: Path, thumbnail: str) -> str | None:
         return f"file mancante assets/{thumbnail}"
     if path.stat().st_size == 0:
         return f"file vuoto assets/{thumbnail}"
+    if not _looks_like(path.suffix.lower(), _read_head(path)):
+        return f"assets/{thumbnail} non è un'immagine PNG, JPG o WebP coerente con l'estensione"
     return None
+
+
+# Firme iniziali dei formati ammessi per le miniature (D-63): l'estensione non basta.
+PNG_SIGNATURE = bytes.fromhex("89504e470d0a1a0a")
+JPEG_SIGNATURE = bytes.fromhex("ffd8ff")
+HEAD_BYTES = 12
+
+
+def _read_head(path: Path) -> bytes:
+    with path.open("rb") as handle:
+        return handle.read(HEAD_BYTES)
+
+
+def _looks_like(suffix: str, head: bytes) -> bool:
+    if suffix == ".png":
+        return head.startswith(PNG_SIGNATURE)
+    if suffix in {".jpg", ".jpeg"}:
+        return head.startswith(JPEG_SIGNATURE)
+    if suffix == ".webp":
+        return head[:4] == b"RIFF" and head[8:12] == b"WEBP"
+    return False
 
 
 def _setting_errors(settings: Mapping[str, Any]) -> list[str]:

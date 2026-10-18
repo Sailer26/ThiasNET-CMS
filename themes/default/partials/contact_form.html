@@ -1,0 +1,29 @@
+{% set form = contact_form(block) %}
+{% if form %}
+{% set fid = 'contatti-' ~ block.id %}
+<form class="contact-form" method="post" action="{{ form.action }}" id="{{ fid }}" novalidate>
+<div class="contact-form__status" role="status" aria-live="polite">
+{% if form.sent %}<p class="notice notice--ok">{{ cms_text('contact_sent') }}</p>{% endif %}
+{% if form.errors %}<p class="notice notice--error">{{ cms_text('contact_errors') }}</p>{% endif %}
+{% if form.disabled %}<p class="notice">{{ cms_text('contact_preview') }}</p>{% endif %}
+</div>
+<input type="hidden" name="token" value="{{ form.token }}">
+{% for field, kind, required, auto in [('name', 'text', true, 'name'), ('email', 'email', true, 'email'), ('phone', 'tel', false, 'tel')] %}
+<div class="field{% if form.errors[field] %} field--error{% endif %}">
+<label for="{{ fid }}-{{ field }}">{{ cms_text('contact_' ~ field) }}{% if required %} <span class="required">({{ cms_text('required') }})</span>{% endif %}</label>
+<input id="{{ fid }}-{{ field }}" name="{{ field }}" type="{{ kind }}" autocomplete="{{ auto }}" value="{{ form['values'][field] or '' }}"{% if required %} required{% endif %}{% if form.errors[field] %} aria-invalid="true" aria-describedby="{{ fid }}-{{ field }}-error"{% endif %}>
+{% if form.errors[field] %}<p class="field__error" id="{{ fid }}-{{ field }}-error">{{ form.errors[field] }}</p>{% endif %}
+</div>
+{% endfor %}
+<div class="field{% if form.errors.message %} field--error{% endif %}">
+<label for="{{ fid }}-message">{{ cms_text('contact_message') }} <span class="required">({{ cms_text('required') }})</span></label>
+<textarea id="{{ fid }}-message" name="message" rows="6" required{% if form.errors.message %} aria-invalid="true" aria-describedby="{{ fid }}-message-error"{% endif %}>{{ form['values'].message or '' }}</textarea>
+{% if form.errors.message %}<p class="field__error" id="{{ fid }}-message-error">{{ form.errors.message }}</p>{% endif %}
+</div>
+<div class="field field--trap" aria-hidden="true">
+<label for="{{ fid }}-website">{{ cms_text('contact_honeypot') }}</label>
+<input id="{{ fid }}-website" name="website" type="text" tabindex="-1" autocomplete="off">
+</div>
+<button type="submit" class="button"{% if form.disabled %} disabled{% endif %}>{{ cms_text('contact_send') }}</button>
+</form>
+{% endif %}

@@ -43,14 +43,27 @@ WRITE_ALLOWLIST = {
 }
 TEMPLATE_CONSTRUCTS = {
     "render_template_string",
+    "render_template",  # l'Environment di Flask non è in sandbox ed espone config (D-52)
     "from_string",
     "Template",
     "Environment",
     "SandboxedEnvironment",
+    "ImmutableSandboxedEnvironment",
+    "NativeEnvironment",
     "compile_expression",
+    "DictLoader",
+    "FunctionLoader",
+    "FileSystemLoader",
+    "PackageLoader",
+    "ChoiceLoader",
+    "PrefixLoader",
+    "ThemeLoader",
 }
-# Dalla Fase 3 il solo Environment legittimo (services/render.py) andrà aggiunto qui.
-TEMPLATE_ALLOWLIST: set[tuple[str, str]] = set()
+# Il solo motore dei template legittimo (D-52): sandbox + loader limitato al tema attivo.
+TEMPLATE_ALLOWLIST: set[tuple[str, str]] = {
+    ("services/render.py", "ImmutableSandboxedEnvironment"),
+    ("services/render.py", "ThemeLoader"),
+}
 
 
 def _calls(path: Path) -> list[tuple[str, ast.Call]]:

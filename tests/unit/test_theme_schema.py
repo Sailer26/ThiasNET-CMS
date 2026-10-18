@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 
 from app.services.theme import ThemeValidationError, load_theme
-from tests.conftest import ROOT, MakeTheme
+from tests.conftest import FAKE_IMAGES, ROOT, MakeTheme
 
 VARIANTS: dict[str, Any] = {
     "text_image": {
@@ -285,3 +285,34 @@ def test_key_with_trailing_newline_rejected(
 def test_active_theme_name_traversal_rejected(tmp_path: Path, bad_name: str) -> None:
     with pytest.raises(ThemeValidationError, match="nome"):
         load_theme(tmp_path, bad_name)
+
+
+# --- Miniature verificate sui byte (D-63) ---------------------------------------------
+
+
+@pytest.mark.parametrize("name", ["variants/a.png", "variants/a.jpg", "variants/a.webp"])
+def test_real_image_thumbnails_accepted(
+    make_theme: MakeTheme, theme_data: dict[str, Any], name: str
+) -> None:
+    option = {"label": "Scuro", "thumbnail": name}
+    theme_data["block_variants"] = {"text_image": {"default": "dark", "options": {"dark": option}}}
+    load_theme(make_theme(theme_data, thumbnails=[name]), "demo")
+
+
+@pytest.mark.parametrize(
+    ("content", "match"),
+    [
+        (b"non sono un'immagine", "PNG, JPG o WebP"),
+        (b"GIF89a" + bytes(10), "PNG, JPG o WebP"),
+        (FAKE_IMAGES[".png"], "PNG, JPG o WebP"),  # PNG vero con estensione .webp
+        (b"RIFF" + bytes(4) + b"WAVEfmt ", "PNG, JPG o WebP"),
+    ],
+)
+def test_fake_thumbnails_rejected(
+    make_theme: MakeTheme, theme_data: dict[str, Any], content: bytes, match: str
+) -> None:
+    theme_data["block_variants"] = VARIANTS
+    themes_dir = make_theme(theme_data, thumbnails=THUMBS)
+    (themes_dir / "demo" / "assets" / THUMBS[0]).write_bytes(content)
+    with pytest.raises(ThemeValidationError, match=match):
+        load_theme(themes_dir, "demo")

@@ -134,4 +134,6 @@ def build_config(name: str | None, environ: Mapping[str, str]) -> dict[str, Any]
     except KeyError:
         valid = ", ".join(sorted(_ENVIRONMENTS))
         raise ConfigError(f"Ambiente sconosciuto: {name!r} (validi: {valid})") from None
-    return {**_common(environ), **specific(environ)}
+    from app.config_site import site_config  # importa ConfigError da qui: niente ciclo
+
+    return {**_common(environ), **specific(environ), **site_config(name, environ)}

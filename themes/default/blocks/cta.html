@@ -1,0 +1,6 @@
+<section class="block cta cta--{{ block.variant }}" data-block-id="{{ block.id }}">
+{% if block.data.title %}<h2 class="cta__title">{{ block.data.title }}</h2>{% endif %}
+{% if block.data.text %}<p>{{ block.data.text }}</p>{% endif %}
+{% set url = block.data.url | clean_url %}
+{% if url and block.data.button_label %}<p><a class="button" href="{{ url }}">{{ block.data.button_label }}</a></p>{% endif %}
+</section>

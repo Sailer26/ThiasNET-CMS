@@ -1,0 +1,8 @@
+{% if e %}
+<div class="cms-embed cms-embed--{{ e.kind }}" data-cms-embed="{{ e.kind }}" data-cms-embed-src="{{ e.src }}" data-cms-embed-title="{{ e.title }}">
+<p class="cms-embed__title">{{ e.title }}</p>
+<p class="cms-embed__notice">{{ cms_text('external_notice') }}</p>
+<button type="button" class="button cms-embed__load">{{ cms_text('load_video' if e.kind == 'video' else 'load_map') }}</button>
+<a class="cms-embed__link" href="{{ e.link }}" rel="noopener noreferrer">{{ cms_text('open_externally') }} ({{ e.provider }})</a>
+</div>
+{% endif %}

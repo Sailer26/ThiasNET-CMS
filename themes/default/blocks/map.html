@@ -1,0 +1,5 @@
+<div class="block map" data-block-id="{{ block.id }}">
+{% set e = embed(block) %}
+{% include "partials/embed_placeholder.html" %}
+{% if block.data.address %}<p class="map__address">{{ block.data.address }}</p>{% endif %}
+</div>

@@ -61,6 +61,45 @@
     "content": { "width": 1024 },
     "hero": { "width": 1920, "ratio": "16:9" }
   },
+  "block_variants": {
+    "hero": {
+      "default": "image_full",
+      "options": {
+        "image_full": { "label": "Immagine a tutta larghezza", "thumbnail": "variants/hero-image_full.png" },
+        "split": { "label": "Testo e immagine affiancati", "thumbnail": "variants/hero-split.png" }
+      }
+    },
+    "text_image": {
+      "default": "image_left",
+      "options": {
+        "image_left": { "label": "Immagine a sinistra", "thumbnail": "variants/text_image-image_left.png" },
+        "image_right": { "label": "Immagine a destra", "thumbnail": "variants/text_image-image_right.png" },
+        "dark": { "label": "Sfondo scuro", "thumbnail": "variants/text_image-dark.png" }
+      }
+    },
+    "cta": {
+      "default": "light",
+      "options": {
+        "light": { "label": "Chiaro", "thumbnail": "variants/cta-light.png" },
+        "accent": { "label": "Colore principale", "thumbnail": "variants/cta-accent.png" },
+        "dark": { "label": "Scuro", "thumbnail": "variants/cta-dark.png" }
+      }
+    },
+    "quote": {
+      "default": "simple",
+      "options": {
+        "simple": { "label": "Semplice", "thumbnail": "variants/quote-simple.png" },
+        "highlight": { "label": "In evidenza", "thumbnail": "variants/quote-highlight.png" }
+      }
+    },
+    "gallery": {
+      "default": "grid_3",
+      "options": {
+        "grid_3": { "label": "Tre colonne", "thumbnail": "variants/gallery-grid_3.png" },
+        "grid_4": { "label": "Quattro colonne", "thumbnail": "variants/gallery-grid_4.png" }
+      }
+    }
+  },
   "settings": {
     "accent_color": { "type": "color", "label": "Colore principale", "palette": ["#0B5FFF", "#1F7A4D", "#B3261E", "#6B4EFF", "#202124"], "default": "#0B5FFF" },
     "show_breadcrumbs": { "type": "boolean", "label": "Mostra percorso di navigazione", "default": true },

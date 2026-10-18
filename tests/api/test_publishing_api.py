@@ -402,7 +402,11 @@ def test_blocks_catalog_for_the_panel(admin: FlaskClient) -> None:
         "max": 1,
     }
     assert body["locales"] == ["it", "de", "rm", "en"]
-    assert body["variants"] == {}
+    assert body["variants"]["text_image"]["default"] == "image_left"
+    assert body["variants"]["cta"]["options"]["dark"] == {
+        "label": "Scuro",
+        "thumbnail": "variants/cta-dark.png",
+    }
 
 
 # --- Regressioni dalla review ECC della Fase 2 -------------------------------------------
