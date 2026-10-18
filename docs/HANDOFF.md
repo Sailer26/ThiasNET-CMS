@@ -11,8 +11,9 @@ Aggiornato: 2026-10-18. Leggi questo file **dopo** `CLAUDE.md` e prima di qualsi
 - **Fase 2 — Pagine e blocchi (backend):** chiusa e unita in `main` (PR #2).
 - **Fase 3 — Rendering pubblico:** chiusa e unita in `main` (PR #3).
 - **Fase 4 — Media library:** completata sul branch `phase-4-media` (870 test verdi, copertura 94 %). PR verso `main` da aprire/unire.
-- **Fase 5a — Pannello: telaio, accesso, pagine:** completata sul branch `phase-5-admin`, **partito da `phase-4-media`** (la PR della Fase 4 non era ancora unita): unire prima la Fase 4. Piano in `docs/PIANO-FASE-5.md`. Prossima: **5b — Editor della pagina**.
-- Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-100). Prevalgono sugli altri documenti.
+- **Fase 5a — Pannello: telaio, accesso, pagine:** completata sul branch `phase-5-admin`, partito da `phase-4-media`.
+- **Fase 5b-1 — Editor della pagina:** completata sul branch `phase-5b-editor`, partito da `phase-5-admin` (1036 test Python, 170 del pannello, review ECC fatta). **Nessuna delle PR 4/5a/5b-1 risulta unita in `main`**: la PR da `phase-5b-editor` verso `main` le contiene tutte. Prossima: **5b-2 — Media nell'editor, trascinamento, aiuti, primo e2e**.
+- Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-115). Prevalgono sugli altri documenti.
 
 ## 2. Preparare l'ambiente (se la `.venv` non c'è)
 ```bash
@@ -69,9 +70,19 @@ solo titolo. Decisioni D-86 … D-100. Comandi del pannello: `python scripts/tas
 - Lo strumento Bash di Claude rifiuta comandi con molti apostrofi (testi italiani): scrivere i file con uno script Python
   nello scratchpad (sezioni `=== percorso ===`).
 
-## 7. Prossimo passo: Fase 5b — Editor della pagina
-1. Branch `phase-5b-editor` da `phase-5-admin` (o da `main` se 4 e 5a sono già unite).
-2. Piano dedicato con `ecc:planner` (sezione 5b di `docs/PIANO-FASE-5.md`), al massimo 4 domande per Thias.
-3. Dipendenze nuove già approvate: TipTap (estensioni singole, `injectCSS: false`) e dnd-kit.
-4. Test prima (Vitest, primo e2e Playwright), codice, review ECC in parallelo (`ecc:code-reviewer`,
-   `ecc:typescript-reviewer`, `ecc:python-reviewer`, `ecc:security-reviewer` con `/check-template-lock`), docs, push, link PR.
+## 7. Fase 5b-1 — fatta
+Risposte di Thias (tutte le proposte): scritta piccola per il salvataggio, Modifica/Anteprima sul tablet, riquadri
+con disegno per "Aggiungi blocco", conferma prima di pubblicare. Provata nel browser con la build vera: accesso,
+nuovo blocco, testo, salvataggio, anteprima, pubblicazione (il testo compare sul sito), storia del browser intatta.
+- Per provare in locale: utente di prova in `data/dev-credentials.txt` (cartella ignorata da git), server con
+  `APP_ENV=development .venv/Scripts/python -m flask --app app run --port 5050` dopo `tasks.py admin-build`.
+- TipTap nei test jsdom: si provano schema e HTML (`richtext/extensions.test.ts`), non la scrittura a tastiera.
+- Gli script statici del CMS (`preview.js`, `consent.js`) si provano in `admin/src/test/static/` con jsdom.
+
+## 8. Prossimo passo: Fase 5b-2 — Media nell'editor, trascinamento, aiuti, primo e2e
+1. Branch `phase-5b2-editor` da `phase-5b-editor` (o da `main` se le PR precedenti sono unite).
+2. Il piano c'è già (sezione "5b" di `docs/PIANO-FASE-5.md`, punti 22–29): niente domande nuove salvo dubbi veri.
+3. `GET /api/admin/media?ids=`, finestra di scelta e caricamento con alt nei campi media (D-111), dnd-kit dentro
+   le zone (D-109), aiuti "incolla il link" per video e mappa, primo e2e con `pytest-playwright` ed Edge (D-114).
+4. Test prima, codice, review ECC in parallelo (`ecc:code-reviewer`, `ecc:typescript-reviewer`,
+   `ecc:python-reviewer`, `ecc:security-reviewer` con `/check-template-lock`), docs, push, link della PR.

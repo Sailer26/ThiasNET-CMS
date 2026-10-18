@@ -14,7 +14,7 @@ themes/<nome>/
 ```
 
 ## theme.json — cosa dichiara
-- `layouts`: elenco layout selezionabili dall'utente e, per ciascuno, le **zone** con i blocchi ammessi e un eventuale `max`.
+- `layouts`: elenco layout selezionabili dall'utente e, per ciascuno, le **zone** con `label` (il nome che il cliente vede nell'editor, es. "Contenuto principale"; senza, vede il nome tecnico), i blocchi ammessi e un eventuale `max`. Una pagina nuova nasce col layout `page` (la homepage con `home`), se il tema li ha (D-95).
 - `widget_areas`: aree globali (header, footer, sidebar) e tipi di widget ammessi.
 - `menus`: posizioni dei menu e profondità massima.
 - `collections`: tipi di contenuto con campi tipizzati.

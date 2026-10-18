@@ -81,7 +81,16 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - [x] Albero delle pagine: crea (anche la homepage), su/giù, sposta, indirizzo, cestina, cestino e recupero, stati (D-95)
 - [x] 409 con il nome di chi ha salvato (D-92), `GET /api/admin/site`, marchio ThiasNET (D-99)
 
-**5b — Editor della pagina · 5c — Libreria e amministrazione · 5d — Aiuto e prova sul campo** (criteri qui sotto)
+**5b-1 — Editor della pagina** (D-102 … D-115)
+- [x] Moduli generati dagli schemi con etichette italiane; testo formattato con TipTap limitato all'allowlist (D-106, D-108)
+- [x] Zone e blocchi: aggiungi da riquadri con disegno, su/giù, sposta in, duplica, elimina con Annulla (D-109, D-115)
+- [x] Varianti da miniature, titolo, tipo di pagina, motori di ricerca (D-03, D-110)
+- [x] Salvataggio automatico con scritta in alto, annulla/ripristina, conflitti con scelta (D-104, D-105)
+- [x] Anteprima live affiancata (Modifica/Anteprima sul tablet), clic sul blocco apre il modulo (D-02, D-107)
+- [x] Pubblica con conferma, errori con "Vai al campo", Ritira, Scarta (D-113)
+- [x] Rimandi: `uid` dal pannello (D-39), 409 con chi ha salvato, test di `preview.js` e `consent.js`
+
+**5b-2 — Media nell'editor, trascinamento, aiuti, primo e2e** · **5c — Libreria e amministrazione** · **5d — Aiuto e prova sul campo** (criteri qui sotto)
 - [ ] Shell Vite+TS, login, layout, gestione errori/sessione scaduta
 - [ ] Albero pagine, editor pagina con zone e blocchi drag&drop (dnd-kit), TipTap
 - [ ] Anteprima live affiancata (iframe), click sul blocco → apre il form (D-02)
@@ -91,6 +100,10 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - [ ] Tour guidato al primo accesso, suggerimenti accanto ai campi, controllo prima di pubblicare, "Chiedi a Thias" (D-08, D-09)
 - [ ] UI tutta in italiano, PC + tablet, azioni rapide da telefono (D-10)
 - [ ] Test d'uso con un cliente vero (PREMORTEM #6)
+
+**Rimandati dalla 5b-1:**
+- 5b-2: scelta e caricamento dei media nei campi (oggi in sola lettura), `GET /media?ids=`, dnd-kit, aiuti per video e mappa, e2e Playwright; chiavi stabili per gli elementi degli elenchi (oggi per posizione).
+- 5d: barra del testo formattato con un solo punto di tabulazione (roving tabindex); banner dei cookie nascosto nell'anteprima del pannello se il test d'uso lo chiede.
 
 **Rimandati dalla 5a:**
 - 5b: titolo, layout e SEO della pagina nell'editor (oggi il clic sul titolo apre un segnaposto); bozza risalvata dopo un nuovo accesso.

@@ -63,10 +63,14 @@ support_requests(id, user_id, page_id, message, created_at, sent_at)           -
 ```
 
 ## Blocchi
-Ogni tipo di blocco = 3 pezzi con lo stesso nome:
-1. `app/blocks/<tipo>.schema.json` — JSON Schema dei dati (validato server-side con `jsonschema`).
+Ogni tipo di blocco = 2 pezzi con lo stesso nome, più un aiuto facoltativo (D-112):
+1. `app/blocks/<tipo>.schema.json` — JSON Schema dei dati (validato server-side con `jsonschema`), con le
+   etichette italiane dei campi (`title`, `description`, `x-enum-titles`): senza, l'app non parte (D-106).
 2. `themes/<tema>/blocks/<tipo>.html` — rendering (scritto da Thias, mai dall'utente).
-3. `admin/src/blocks/<tipo>/Editor.tsx` — form di editing.
+3. Il modulo del pannello si genera dallo schema (`admin/src/features/editor/schema/`); un file a parte
+   solo per gli aiuti (video, mappa, contatti) in 5b-2. Il validatore del pannello conosce solo le parole
+   chiave elencate in `tests/unit/test_blocks_registry.py` e dà lo stesso verdetto del server sui casi di
+   `tests/fixtures/safe_url_cases.json`.
 Riferimenti a media salvati come `media_id`, mai come URL liberi.
 
 Annotazioni negli schemi: `x-richtext` (HTML ripulito con nh3), `x-media` (id di un media),
@@ -88,6 +92,22 @@ flask publish-scheduled ► rivalida l'istantanea; se il tema è cambiato e non 
 - `GET` mostra la bozza salvata; il pannello invia lo stato corrente con un form `POST /_preview/<page_id>` (campo `document` in JSON + `csrf_token`) con `target` sull'iframe: la risposta è una pagina vera, stessa origine, validata come l'autosave (modalità bozza).
 - `app/static/cms/preview.js` (file statico, compatibile CSP) evidenzia i blocchi via `data-block-id`, invia `cms:block-click` al pannello con `postMessage` e accetta `cms:highlight` solo dalla stessa origine e dalla finestra madre.
 - L'anteprima non scrive nulla: né bozze, né revisioni, né cache; il modulo contatti è visibile ma disattivato.
+- Il pannello crea un iframe nuovo a ogni aggiornamento (500 ms dopo l'ultima modifica) e lo scambia con il
+  vecchio quando arriva `cms:ready`: niente voci nella storia del browser (D-107). `cms:highlight` accetta
+  `scroll: false`; `preview.js` salva lo scorrimento mentre si scorre. Un CSRF scaduto in anteprima risponde
+  con una pagina HTML mostrabile nell'iframe.
+
+## Editor della pagina (5b, D-102 … D-115)
+```
+EditorScreen ─► GET /pages/<id> + GET /draft (o il pubblicato) + GET /blocks + albero (link interni)
+   storia (100 passi) ─► Autosave: PUT /draft dopo 1,5 s, una richiesta alla volta, versione della bozza
+   draftSafe: un campo scritto a metà manda l'ultimo valore valido ─► anteprima e salvataggio senza 422
+   Pubblica: flush ─► conferma con l'indirizzo ─► POST /publish {draft_version} ─► errori con "Vai al campo"
+```
+- `admin/src/features/editor/model/`: funzioni pure (documento, cambio del tipo di pagina, storia,
+  `draftSafe`, percorsi degli errori) e `Autosave` senza React; l'`uid` dei blocchi lo crea il pannello.
+- Testo formattato: TipTap 3 con le sole estensioni di D-49 (`richtext/extensions.ts`), nessun CSS iniettato.
+- L'editor è un pezzo separato della build: si scarica solo quando si apre una pagina.
 
 ## Media (D-70 … D-85)
 ```
