@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import unicodedata
 from functools import cache
+from pathlib import Path
 
 from argon2 import PasswordHasher, Type
 from argon2.exceptions import InvalidHashError, VerificationError
@@ -12,6 +13,7 @@ from flask import current_app
 MIN_PASSWORD_LENGTH = 12
 MAX_PASSWORD_LENGTH = 128  # limite superiore: evita di far calcolare hash su testi enormi
 _DUMMY_PASSWORD = "thiasnet-password-fittizia-per-tempi-costanti"  # noqa: S105
+_COMMON_PASSWORDS_PATH = Path(__file__).resolve().parents[1] / "data" / "common_passwords.txt"
 
 
 class PasswordPolicyError(ValueError):
@@ -24,6 +26,17 @@ def _normalize(password: str) -> str:
     return unicodedata.normalize("NFKC", password)
 
 
+@cache
+def common_passwords() -> frozenset[str]:
+    """Lista breve di password note ai dizionari d'attacco (anche it/de), già in minuscolo."""
+    lines = _COMMON_PASSWORDS_PATH.read_text(encoding="utf-8").splitlines()
+    return frozenset(
+        _normalize(entry).casefold()
+        for entry in (line.strip() for line in lines)
+        if entry and not entry.startswith("#")
+    )
+
+
 def validate_policy(password: str) -> None:
     password = _normalize(password)
     if len(password) < MIN_PASSWORD_LENGTH:
@@ -34,6 +47,8 @@ def validate_policy(password: str) -> None:
         )
     if not password.strip():
         raise PasswordPolicyError("La password non può essere fatta solo di spazi")
+    if password.casefold() in common_passwords():
+        raise PasswordPolicyError("Questa password è troppo comune: scegline una meno prevedibile")
 
 
 @cache

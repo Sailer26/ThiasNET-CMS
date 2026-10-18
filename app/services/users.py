@@ -14,7 +14,12 @@ from app.extensions import db
 from app.models.user import EMAIL_MAX_LENGTH, Role, User
 from app.services import audit
 from app.services.errors import ServiceError, forbidden, not_found
-from app.services.passwords import PasswordPolicyError, hash_password, validate_policy
+from app.services.passwords import (
+    PasswordPolicyError,
+    hash_password,
+    validate_policy,
+    verify_password,
+)
 from app.services.permissions import (
     Permission,
     can_assign_role,
@@ -85,6 +90,10 @@ def _unique_email_guard() -> Iterator[None]:
 def set_password(user: User, password: str) -> None:
     """Nuova password + nuova versione di sessione: le altre sessioni vengono chiuse (D-26)."""
     check_password(password)
+    if verify_password(user.password_hash, password):
+        raise ServiceError(
+            "same_password", "La nuova password deve essere diversa da quella attuale", 422
+        )
     user.password_hash = hash_password(password)
     user.session_version += 1
 

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Apertura",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "subtitle": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "media_id": {
+      "type": "integer",
+      "minimum": 1,
+      "x-media": true
+    },
+    "cta_label": {
+      "type": "string",
+      "maxLength": 40
+    },
+    "cta_url": {
+      "type": "string",
+      "maxLength": 2048,
+      "format": "safe-url"
+    }
+  },
+  "required": [
+    "title",
+    "media_id"
+  ],
+  "dependentRequired": {
+    "cta_label": [
+      "cta_url"
+    ],
+    "cta_url": [
+      "cta_label"
+    ]
+  }
+}

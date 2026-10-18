@@ -7,6 +7,7 @@ from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
 from flask import Flask
 from flask_migrate import upgrade
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from app import create_app
@@ -24,7 +25,9 @@ def test_migrations_match_models(tmp_path: Path) -> None:
     with app.app_context():
         upgrade(directory=str(ROOT / "migrations"))
         with db.engine.connect() as connection:
-            context = MigrationContext.configure(connection, opts={"compare_type": True})
+            context = MigrationContext.configure(
+                connection, opts={"compare_type": True, "compare_server_default": True}
+            )
             assert compare_metadata(context, Base.metadata) == []
 
 
@@ -58,3 +61,18 @@ def test_user_defaults(app: Flask) -> None:
         assert user.tour_completed_at is None
         assert user.created_at.tzinfo is not None
         assert user.get_id() == f"{user.id}:1"
+
+
+def test_user_server_defaults_apply_to_raw_inserts(app: Flask) -> None:
+    """Un INSERT fuori dall'ORM (script, migrazione dati) riceve gli stessi default."""
+    with app.app_context():
+        db.session.execute(
+            text(
+                "INSERT INTO users (email, password_hash, role, created_at, updated_at) "
+                "VALUES ('raw@example.ch', 'x', 'editor', '2026-10-18', '2026-10-18')"
+            )
+        )
+        row = db.session.execute(
+            text("SELECT active, can_publish, session_version FROM users")
+        ).one()
+        assert tuple(row) == (1, 0, 1)

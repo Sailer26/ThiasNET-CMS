@@ -161,6 +161,14 @@ def test_admin_resets_editor_password(app: Flask, login_as: LoginAs) -> None:
     assert login(api_client(app, ip="203.0.113.50"), editor.email, PASSWORD).status_code == 401
 
 
+def test_admin_reset_to_same_password_is_422(login_as: LoginAs) -> None:
+    _, editor = login_as("editor")
+    admin, _ = login_as("admin")
+    response = admin.patch(f"{USERS}/{editor.id}", json={"password": PASSWORD})
+    assert response.status_code == 422
+    assert response.get_json()["error"]["code"] == "same_password"
+
+
 def test_admin_toggles_can_publish(login_as: LoginAs) -> None:
     editor_client, editor = login_as("editor")
     admin, _ = login_as("admin")

@@ -7,6 +7,7 @@ from enum import StrEnum
 from types import MappingProxyType
 
 from app.models.user import Role, User
+from app.services.errors import forbidden
 
 
 class Permission(StrEnum):
@@ -54,6 +55,12 @@ def permissions_for(user: User) -> frozenset[Permission]:
 
 def has_permission(user: User, permission: Permission) -> bool:
     return permission in permissions_for(user)
+
+
+def require(user: User, permission: Permission) -> None:
+    """Controllo nei servizi (D-48), oltre a quello del decoratore sulla route."""
+    if not has_permission(user, permission):
+        raise forbidden()
 
 
 def can_assign_role(actor: User, role: str) -> bool:

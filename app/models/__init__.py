@@ -1,4 +1,4 @@
-"""Modelli SQLAlchemy. In Fase 0 c'è solo la base dichiarativa."""
+"""Modelli SQLAlchemy: base dichiarativa e registrazione di tutte le tabelle."""
 
 from __future__ import annotations
 
@@ -20,4 +20,4 @@ class Base(DeclarativeBase):
 
 
 # Registra tutte le tabelle in Base.metadata (serve ad Alembic e ai test).
-from app.models import audit, login_attempt, user  # noqa: E402, F401
+from app.models import audit, login_attempt, page, user  # noqa: E402, F401

@@ -197,6 +197,27 @@ def test_password_change_weak_is_422(app: Flask, api: Any) -> None:
     assert "12" in response.get_json()["error"]["message"]
 
 
+def test_password_change_to_same_password_is_422(app: Flask, api: Any) -> None:
+    make_user(app, "a@example.ch")
+    login(api, "a@example.ch")
+    response = api.post(
+        f"{API}/auth/password", json={"current_password": PASSWORD, "new_password": PASSWORD}
+    )
+    assert response.status_code == 422
+    assert error_code(response) == "same_password"
+
+
+def test_password_change_to_common_password_is_422(app: Flask, api: Any) -> None:
+    make_user(app, "a@example.ch")
+    login(api, "a@example.ch")
+    response = api.post(
+        f"{API}/auth/password",
+        json={"current_password": PASSWORD, "new_password": "Password1234"},
+    )
+    assert response.status_code == 422
+    assert error_code(response) == "weak_password"
+
+
 def test_logout_all_invalidates_every_session(app: Flask) -> None:
     make_user(app, "a@example.ch")
     laptop, tablet = api_client(app), api_client(app)

@@ -33,10 +33,18 @@ def ok(data: Any = None, *, status: int = 200, meta: Mapping[str, Any] | None = 
     return response
 
 
-def fail(code: str, message: str, status: int, *, retry_after: int | None = None) -> Response:
-    response = jsonify(
-        {"success": False, "data": None, "error": {"code": code, "message": message}}
-    )
+def fail(
+    code: str,
+    message: str,
+    status: int,
+    *,
+    retry_after: int | None = None,
+    details: Any = None,
+) -> Response:
+    error: dict[str, Any] = {"code": code, "message": message}
+    if details is not None:
+        error["details"] = details
+    response = jsonify({"success": False, "data": None, "error": error})
     response.status_code = status
     if retry_after is not None:
         response.headers["Retry-After"] = str(retry_after)
@@ -70,7 +78,9 @@ def register_response_headers(app: Flask) -> None:
 def register_error_handlers(app: Flask) -> None:
     @app.errorhandler(ServiceError)
     def _service_error(exc: ServiceError) -> Response:
-        return fail(exc.code, exc.message, exc.status, retry_after=exc.retry_after)
+        return fail(
+            exc.code, exc.message, exc.status, retry_after=exc.retry_after, details=exc.details
+        )
 
     @app.errorhandler(CSRFError)
     def _csrf_error(_exc: CSRFError) -> Response:

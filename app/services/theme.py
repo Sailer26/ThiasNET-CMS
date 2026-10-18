@@ -12,8 +12,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any
+from typing import Any, cast
 
+from flask import current_app
 from jsonschema import Draft202012Validator
 
 from app.core_types import BLOCK_TYPES, WIDGET_TYPES
@@ -29,6 +30,7 @@ SUSPICIOUS_SETTING_KEY_RE = re.compile(
     re.IGNORECASE,
 )
 MANIFEST_NAME = "theme.json"
+ACTIVE_THEME_KEY = "thiasnet.active_theme"
 _SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schemas" / "theme.schema.json"
 _SCHEMA = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
 Draft202012Validator.check_schema(_SCHEMA)  # uno schema rotto deve fallire subito e in chiaro
@@ -120,6 +122,11 @@ class Theme:
 
     def setting(self, key: str) -> SettingSpec:
         return self.settings[key]
+
+
+def active_theme() -> Theme:
+    """Tema attivo dell'app corrente (caricato e validato all'avvio da create_app)."""
+    return cast(Theme, current_app.extensions[ACTIVE_THEME_KEY])
 
 
 def load_theme(themes_dir: Path, name: str) -> Theme:

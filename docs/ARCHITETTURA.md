@@ -14,8 +14,12 @@ themes/<nome>/  ← SOLO LETTURA a runtime, montato read-only nel container
 | Modulo | Responsabilità |
 |---|---|
 | `models/` | Tabelle SQLAlchemy |
-| `services/pages.py` | CRUD pagine, albero, pubblicazione, revisioni |
-| `services/blocks.py` | registry blocchi, validazione JSON Schema, sanitizzazione |
+| `services/pages.py` · `page_paths.py` · `slugs.py` | CRUD pagine, albero, slug, percorsi e 301, riordino, cestino (D-43, D-45) |
+| `services/drafts.py` | bozze autosave con blocco ottimistico, operazioni sui singoli blocchi (D-07, D-44) |
+| `services/publishing.py` | pubblica, programma, ritira, `publish_due` per `flask publish-scheduled` (D-16, D-47) |
+| `services/revisions.py` | storico, ripristino in bozza, potatura a 50 (D-40, D-42) |
+| `services/content.py` | forma del documento pagina e regole del tema (zone, blocchi ammessi, max, varianti) |
+| `services/blocks.py` · `sanitize.py` | registry dei 13 schemi, validazione bozza/pubblica, pulizia testo e rich text con nh3 (D-46, D-49) |
 | `services/media.py` | upload, verifica MIME reale, re-encode, varianti, focal point |
 | `services/widgets.py` · `menus.py` · `collections.py` | come da nome |
 | `services/theme.py` | carica e valida `theme.json` all'avvio; espone zone, blocchi ammessi, settings. **Nessun metodo di scrittura.** |
@@ -30,9 +34,11 @@ users(id, email, password_hash, role[owner|admin|editor], active, can_publish, t
       totp_last_counter, session_version, last_login_at, tour_completed_at, created_at, updated_at)
 login_attempts(id, email_key, ip_key, created_at)   -- rate limit su DB, solo chiavi HMAC (D-24)
 pages(id, parent_id, locale, translation_group, slug, path, title, layout, status[draft|published|scheduled],
-      publish_at, seo_json, sort, created_by, updated_at)
-page_revisions(id, page_id, snapshot_json, author_id, created_at)
-blocks(id, page_id, zone, type, variant, data_json, sort)   -- variant: enum da theme.json > block_variants (D-03)
+      publish_at, published_at, seo_json, sort, version, created_by, updated_by, created_at, updated_at,
+      deleted_at, deleted_by)   -- path unico per lingua tra le pagine non cestinate (indice parziale)
+page_revisions(id, page_id, kind[published|scheduled|unpublished|draft], snapshot_json, author_id, created_at)
+blocks(id, page_id, uid, zone, type, variant, data_json, sort)   -- solo la versione pubblicata (D-38)
+page_redirects(id, page_id, locale, from_path, created_at)       -- vecchi indirizzi → 301 dalla Fase 3 (D-45)
 collections(id, key)            -- dichiarate dal tema, sincronizzate all'avvio
 entries(id, collection_id, locale, slug, title, fields_json, status, publish_at)
 media(id, folder_id, filename, mime, width, height, sha256, alt, focal_x, focal_y, variants_json)
@@ -42,7 +48,7 @@ menus(id, location, locale) · menu_items(id, menu_id, parent_id, label, target_
 settings(key, value_json)       -- sito + settings esposti dal tema
 redirects(id, from_path, to_path, code)
 audit_log(id, user_id, action, entity, entity_id, diff_json, ip_hash, created_at)   -- D-30
-page_drafts(page_id, data_json, author_id, updated_at)          -- autosave (D-07), mai pubblicato da solo
+page_drafts(page_id, data_json, version, author_id, created_at, updated_at)   -- autosave (D-07, D-44)
 contact_messages(id, form_page_id, name, email, message, ip_hash, created_at)   -- D-05
 support_requests(id, user_id, page_id, message, created_at, sent_at)           -- "Chiedi a Thias" (D-09)
 -- users ha in più: can_publish (D-15), tour_completed_at (D-08)
@@ -54,6 +60,20 @@ Ogni tipo di blocco = 3 pezzi con lo stesso nome:
 2. `themes/<tema>/blocks/<tipo>.html` — rendering (scritto da Thias, mai dall'utente).
 3. `admin/src/blocks/<tipo>/Editor.tsx` — form di editing.
 Riferimenti a media salvati come `media_id`, mai come URL liberi.
+
+Annotazioni negli schemi: `x-richtext` (HTML ripulito con nh3), `x-media` (id di un media),
+formato `safe-url` (http(s), mailto, tel o percorso del sito). Ogni oggetto è chiuso
+(`additionalProperties: false`) e ogni stringa ha un limite: un meta-test lo verifica.
+Due livelli di validazione (D-46): in bozza i campi obbligatori possono mancare, per pubblicare no.
+
+## Pagine: bozza, pubblicazione, revisioni (D-38)
+```
+autosave ──PUT /draft──► page_drafts.data_json (version+1)        mai pages/blocks
+pubblica ──────────────► rivalida col tema attuale → blocks sostituiti → revisione → bozza cancellata
+programma ─────────────► revisione "scheduled" (istantanea congelata) + pages.publish_at
+flask publish-scheduled ► rivalida l'istantanea; se il tema è cambiato e non è più valida: niente
+                          pubblicazione, audit page.schedule_failed, istantanea tenuta come "draft"
+```
 
 ## Anteprima live (D-02)
 - L'editor admin mostra un iframe su `/_preview/<page_id>` (solo utenti loggati, stessa origine, `X-Frame-Options: SAMEORIGIN` solo su questa route).

@@ -26,6 +26,8 @@ dependencies = [
     "pyotp==2.10.0",
     # Fernet + HKDF: segreto TOTP cifrato a riposo e HMAC degli IP (D-28, D-30).
     "cryptography==50.0.2",
+    # Sanitizzazione del rich text dei blocchi con allowlist (stack CLAUDE.md, D-49).
+    "nh3==0.3.7",
 ]
 
 [project.optional-dependencies]
@@ -46,7 +48,7 @@ build-backend = "setuptools.build_meta"
 include = ["app*"]
 
 [tool.setuptools.package-data]
-app = ["schemas/*.json"]
+app = ["schemas/*.json", "blocks/*.json", "data/*.txt"]
 
 [tool.ruff]
 target-version = "py312"

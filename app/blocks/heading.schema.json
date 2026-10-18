@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Titolo",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "text": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "level": {
+      "type": "integer",
+      "enum": [
+        2,
+        3,
+        4
+      ],
+      "default": 2
+    },
+    "anchor": {
+      "type": "string",
+      "maxLength": 60,
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    }
+  },
+  "required": [
+    "text"
+  ]
+}

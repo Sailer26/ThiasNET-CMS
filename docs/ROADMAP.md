@@ -28,13 +28,19 @@ Una fase alla volta. Una fase è chiusa solo quando tutti i criteri sono spuntat
 - Fase 8: header CSP/HSTS in Caddy; verifica di `TRUSTED_PROXY_COUNT` nel deploy (D-34); retention o aggregazione di `audit_log` per i login falliti; limite globale per account contro attacchi distribuiti (oggi solo per email+IP, per IP e per il TOTP, D-24); limite di concorrenza su `/auth/login` in Caddy (costo Argon2).
 
 ## Fase 2 — Pagine e blocchi (backend)
-- [ ] Modelli pagine, blocchi, revisioni
-- [ ] Registry blocchi + JSON Schema per i 13 blocchi base (incluso `hero`, D-11)
-- [ ] Validazione zone/blocchi ammessi e varianti (`block_variants`) da `theme.json` (D-03)
-- [ ] `users.can_publish` per editor (D-15); job `flask publish-scheduled` (D-16)
-- [ ] Bozze autosave (`page_drafts`) separate dalla versione pubblicata (D-07)
-- [ ] Sanitizzazione rich text (nh3) + test XSS
-- [ ] API CRUD pagine/blocchi, riordino, bozza/pubblica/programma, ripristino revisione
+- [x] Modelli pagine, blocchi, revisioni (+ bozze e reindirizzamenti, migrazione 0004)
+- [x] Registry blocchi + JSON Schema per i 13 blocchi base (incluso `hero`, D-11)
+- [x] Validazione zone/blocchi ammessi e varianti (`block_variants`) da `theme.json` (D-03)
+- [x] `users.can_publish` per editor (D-15); job `flask publish-scheduled` (D-16)
+- [x] Bozze autosave (`page_drafts`) separate dalla versione pubblicata (D-07)
+- [x] Sanitizzazione rich text (nh3) + test XSS
+- [x] API CRUD pagine/blocchi, riordino, bozza/pubblica/programma, ripristino revisione
+- [x] Rimandi della Fase 1: `server_default` per users (migrazione 0003), password uguale all'attuale e password comuni rifiutate
+
+**Rimandati dalla Fase 2** (da chiudere nella fase indicata):
+- Fase 3: servire i 301 da `page_redirects` e ignorare quelli verso pagine non online; usare `publishing.ensure_due` al momento della richiesta (D-16); il sito mostra solo `status = published`.
+- Fase 4: verificare che i `media_id` dei blocchi esistano (`registry.media_ids`) e bloccare l'eliminazione dei media in uso; alt obbligatorio prima di pubblicare (D-09).
+- Fase 5: il pannello genera gli `uid` dei blocchi (D-39) e gestisce il 409 `version_conflict` mostrando chi ha salvato.
 
 ## Fase 3 — Rendering pubblico
 - [ ] Sandboxed Jinja, loader limitato al tema attivo, helper `img()` e `safe_html`
