@@ -186,6 +186,13 @@ def test_embeds_are_click_to_load_placeholders(theme: Theme) -> None:
     assert 'href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"' in html
 
 
+def test_private_vimeo_videos_keep_their_hash(theme: Theme) -> None:
+    """D-129: i video Vimeo privati hanno anche un codice (hash) nell'indirizzo."""
+    data = {"provider": "vimeo", "video_id": "76979871", "video_hash": "a1b2c3d4e5", "title": "V"}
+    html = render_doc(theme, _page(_block(1, "video", data)))
+    assert "https://player.vimeo.com/video/76979871?h=a1b2c3d4e5&amp;dnt=1" in html
+
+
 def test_menu_marks_the_current_page(theme: Theme) -> None:
     menu = (Link("Home", "/"), Link("Chi siamo", "/chi-siamo", current=True))
     nav_links = inspect(render_doc(theme, _page(), menu=menu)).find("a")

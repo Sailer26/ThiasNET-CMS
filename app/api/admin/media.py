@@ -5,12 +5,13 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from flask import Response, request
+from flask import Response, current_app, request
 
 from app.api import ok
 from app.api.admin import bp
 from app.api.admin.decorators import current, require_permission
 from app.api.validation import json_body, page_meta, pagination
+from app.config import BYTES_PER_MB
 from app.models.media import MediaKind
 from app.services import media, media_folders, media_library, media_refs
 from app.services.errors import ServiceError
@@ -75,6 +76,7 @@ def _form_int(name: str) -> int | None:
     return int(raw)
 
 
+NO_FOLDER = "none"  # ?folder_id=none: i file che non stanno in nessuna cartella (D-117)
 MAX_IDS = 100
 ID_PART = r"[1-9][0-9]{0,8}"  # sotto 2^31: niente errori con colonne integer di PostgreSQL
 IDS_RE = re.compile(rf"{ID_PART}(?:,{ID_PART}){{0,{MAX_IDS - 1}}}")
@@ -98,17 +100,33 @@ def list_media() -> Response:
     if kind is not None and kind not in set(MediaKind):
         raise _invalid("Tipo non valido")
     folder = request.args.get("folder_id") or None
-    if folder is not None and not folder.isdigit():
+    without_folder = folder == NO_FOLDER
+    if folder is not None and not without_folder and not folder.isdigit():
         raise _invalid("Cartella non valida")
     items, total = media_library.list_media(
         q=(request.args.get("q") or "").strip()[:100] or None,
-        folder_id=int(folder) if folder else None,
+        folder_id=int(folder) if folder and not without_folder else None,
+        without_folder=without_folder,
         kind=kind,
         missing_alt=request.args.get("missing_alt") in {"1", "true"},
         page_no=page_no,
         limit=limit,
     )
     return ok([media_library.serialize(m) for m in items], meta=page_meta(page_no, limit, total))
+
+
+@bp.get("/media/usage")
+@require_permission(EDIT)
+def media_usage() -> Response:
+    """Spazio usato e limiti, per la barra della pagina Media (D-120)."""
+    return ok(
+        {
+            "used_bytes": media_library.used_bytes(),
+            "quota_bytes": int(current_app.config["MEDIA_QUOTA_MB"]) * BYTES_PER_MB,
+            "max_upload_bytes": int(current_app.config["MAX_CONTENT_LENGTH"]),
+            "count": media_library.count(),
+        }
+    )
 
 
 @bp.post("/media")

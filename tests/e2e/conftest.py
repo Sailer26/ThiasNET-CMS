@@ -29,6 +29,7 @@ def live_server(tmp_path: Path) -> Iterator[str]:
         overrides={
             "SQLALCHEMY_DATABASE_URI": f"sqlite:///{(tmp_path / 'e2e.db').as_posix()}",
             "ADMIN_DIST_DIR": ADMIN_DIST,
+            "MEDIA_ROOT": tmp_path / "media",  # i file caricati non finiscono nel progetto
         },
     )
     with app.app_context():

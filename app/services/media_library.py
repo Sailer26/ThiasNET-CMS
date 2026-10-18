@@ -101,6 +101,7 @@ def list_media(
     q: str | None,
     folder_id: int | None,
     kind: str | None,
+    without_folder: bool = False,
     missing_alt: bool,
     page_no: int,
     limit: int,
@@ -110,6 +111,8 @@ def list_media(
         query = query.where(Media.search_key.contains(normalize(q), autoescape=True))
     if folder_id is not None:
         query = query.where(Media.folder_id == folder_id)
+    elif without_folder:
+        query = query.where(Media.folder_id.is_(None))
     if kind:
         query = query.where(Media.kind == kind)
     if missing_alt:
@@ -127,6 +130,10 @@ def by_ids(ids: Sequence[int]) -> list[Media]:
     """I media con questi id, nell'ordine chiesto; quelli che non esistono si omettono."""
     found = {m.id: m for m in db.session.execute(select(Media).where(Media.id.in_(ids))).scalars()}
     return [found[i] for i in ids if i in found]
+
+
+def count() -> int:
+    return int(db.session.execute(select(func.count(Media.id))).scalar_one())
 
 
 def used_bytes() -> int:

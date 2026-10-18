@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 
 from app.extensions import db
 from app.models.page import Page, PageDraft
+from app.services.authors import display_name
 from app.services.page_paths import live
 
 TREE_LIMIT = 2000
@@ -105,8 +106,24 @@ def serialize(page: Page, *, has_draft: bool) -> dict[str, Any]:
     }
 
 
+def _schedule(page: Page) -> dict[str, Any] | None:
+    """La programmazione in attesa: le modifiche successive alla bozza non ci entrano (D-122)."""
+    from app.services import drafts, revisions  # evita il ciclo con revisions → page_views
+
+    pending = revisions.pending_schedule(page.id)
+    if pending is None or page.publish_at is None:
+        return None
+    draft = drafts.load(page.id)
+    return {
+        "publish_at": _iso(page.publish_at),
+        "revision_id": pending.id,
+        "author_name": display_name(pending.author_id),
+        "draft_newer": draft is not None and draft.updated_at > pending.created_at,
+    }
+
+
 def serialize_one(page: Page) -> dict[str, Any]:
-    return serialize(page, has_draft=bool(draft_ids([page.id])))
+    return {**serialize(page, has_draft=bool(draft_ids([page.id]))), "schedule": _schedule(page)}
 
 
 def serialize_many(pages: Sequence[Page]) -> list[dict[str, Any]]:

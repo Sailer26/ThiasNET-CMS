@@ -50,6 +50,7 @@ def test_panel_page_is_locked_down(panel: FlaskClient) -> None:
     assert "script-src 'self';" in csp and "style-src 'self';" in csp
     assert "frame-ancestors 'none'" in csp and "frame-src 'self'" in csp
     assert "unsafe-inline" not in csp and "data:" not in csp and "unsafe-eval" not in csp
+    assert "img-src 'self' blob:;" in csp  # solo le immagini, per l'anteprima dei file (D-118)
     assert headers["X-Frame-Options"] == "DENY"
     assert headers["Referrer-Policy"] == "no-referrer"
     assert headers["Cross-Origin-Opener-Policy"] == "same-origin"

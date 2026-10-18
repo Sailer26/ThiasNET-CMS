@@ -14,6 +14,7 @@ from app.extensions import db
 from app.models.page import Page, PageRevision, RevisionKind
 from app.models.user import User
 from app.services import audit, drafts
+from app.services.authors import display_name
 from app.services.blocks import Mode
 from app.services.content import validate_document
 from app.services.errors import not_found
@@ -94,10 +95,14 @@ def restore(actor: User, page: Page, revision_id: int, draft_version: int) -> in
 
 
 def serialize(revision: PageRevision, *, with_snapshot: bool = False) -> dict[str, Any]:
+    snapshot = revision.snapshot_json if isinstance(revision.snapshot_json, dict) else {}
     data: dict[str, Any] = {
         "id": revision.id,
         "kind": revision.kind,
         "author_id": revision.author_id,
+        # Un editor non legge gli utenti (D-33): il nome lo dà il server (D-92, D-121).
+        "author_name": display_name(revision.author_id),
+        "title": str(snapshot.get("title") or ""),
         "created_at": revision.created_at.isoformat(),
     }
     if with_snapshot:

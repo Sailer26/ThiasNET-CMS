@@ -23,6 +23,7 @@ from app.services.sanitize import clean_rich, is_safe_url
 
 YOUTUBE_ID = re.compile(r"[A-Za-z0-9_-]{11}")
 VIMEO_ID = re.compile(r"[0-9]{1,12}")
+VIMEO_HASH = re.compile(r"[0-9a-f]{6,20}")  # video privati (D-129)
 CONSENT_SCRIPT = "/static/cms/consent.js"
 PREVIEW_SCRIPT = "/static/cms/preview.js"
 MIN_ZOOM, MAX_ZOOM, DEFAULT_ZOOM = 1, 19, 15
@@ -48,8 +49,10 @@ def _video(data: Mapping[str, Any]) -> dict[str, str] | None:
             "provider": "YouTube",
         }
     if provider == "vimeo" and VIMEO_ID.fullmatch(video_id):
+        secret = data.get("video_hash")
+        private = f"h={secret}&" if isinstance(secret, str) and VIMEO_HASH.fullmatch(secret) else ""
         return {
-            "src": f"https://player.vimeo.com/video/{video_id}?dnt=1",
+            "src": f"https://player.vimeo.com/video/{video_id}?{private}dnt=1",
             "link": f"https://vimeo.com/{video_id}",
             "provider": "Vimeo",
         }

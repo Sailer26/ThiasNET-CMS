@@ -26,7 +26,7 @@ PANEL_CSP = "; ".join(
         "default-src 'self'",
         "script-src 'self'",
         "style-src 'self'",
-        "img-src 'self'",
+        "img-src 'self' blob:",  # anteprima dei file scelti prima del caricamento (D-118)
         "font-src 'self'",
         "connect-src 'self'",
         "frame-src 'self'",  # anteprima live (D-55)

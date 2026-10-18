@@ -44,6 +44,8 @@
     {"block": "heading", "field": "level", "value": 5, "ok": false},
     {"block": "map", "field": "zoom", "value": 20, "ok": false},
     {"block": "map", "field": "lat", "value": 46.0, "ok": true},
+    {"block": "video", "field": "video_hash", "value": "a1b2c3d4e5", "ok": true},
+    {"block": "video", "field": "video_hash", "value": "x\"><script>", "ok": false},
     {"block": "cta", "field": "url", "value": "/contatti", "ok": true},
     {"block": "cta", "field": "url", "value": "www.sito.ch", "ok": false},
     {"block": "quote", "field": "author", "value": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀", "ok": true}

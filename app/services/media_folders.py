@@ -138,9 +138,24 @@ def delete_folder(actor: User, folder: MediaFolder) -> None:
 
 def tree() -> list[dict[str, Any]]:
     folders = list(db.session.execute(select(MediaFolder).order_by(MediaFolder.name_key)).scalars())
+    # Numero dei file di ogni cartella (D-117): una query sola.
+    rows = db.session.execute(
+        select(Media.folder_id, func.count(Media.id))
+        .where(Media.folder_id.is_not(None))
+        .group_by(Media.folder_id)
+    ).all()
+    counts: dict[int, int] = {
+        folder_id: int(total) for folder_id, total in rows if folder_id is not None
+    }
     children: dict[int, list[dict[str, Any]]] = {f.id: [] for f in folders}
     nodes: dict[int, dict[str, Any]] = {
-        f.id: {"id": f.id, "name": f.name, "parent_id": f.parent_id, "children": children[f.id]}
+        f.id: {
+            "id": f.id,
+            "name": f.name,
+            "parent_id": f.parent_id,
+            "count": int(counts.get(f.id, 0)),
+            "children": children[f.id],
+        }
         for f in folders
     }
     roots: list[dict[str, Any]] = []

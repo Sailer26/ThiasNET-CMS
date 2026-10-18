@@ -23,6 +23,13 @@
       "maxLength": 12,
       "pattern": "^[A-Za-z0-9_-]{1,12}$"
     },
+    "video_hash": {
+      "type": "string",
+      "title": "Codice privato (solo Vimeo)",
+      "description": "Solo per i video Vimeo non in elenco: la parte dopo il numero nell'indirizzo.",
+      "maxLength": 20,
+      "pattern": "^[0-9a-f]{6,20}$"
+    },
     "title": {
       "type": "string",
       "title": "Titolo del video",
