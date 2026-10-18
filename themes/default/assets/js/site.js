@@ -3,7 +3,7 @@
   "use strict";
   document.documentElement.classList.add("js");
   var toggle = document.querySelector(".nav-toggle");
-  var nav = document.getElementById("site-nav");
+  var nav = document.querySelector("nav.site-nav");
   if (!toggle || !nav) {
     return;
   }

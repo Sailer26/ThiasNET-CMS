@@ -5,6 +5,8 @@ Revises: 0004_pages
 Create Date: 2026-10-18
 """
 
+from datetime import UTC, datetime
+
 import sqlalchemy as sa
 from alembic import op
 
@@ -15,7 +17,7 @@ depends_on = None
 
 
 def upgrade():
-    op.create_table(
+    table = op.create_table(
         "site_state",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("cache_generation", sa.Integer(), server_default="0", nullable=False),
@@ -23,9 +25,8 @@ def upgrade():
         sa.CheckConstraint("id = 1", name=op.f("ck_site_state_single_row")),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_site_state")),
     )
-    op.execute(
-        "INSERT INTO site_state (id, cache_generation, updated_at) VALUES (1, 0, CURRENT_TIMESTAMP)"
-    )
+    now = datetime.now(UTC).replace(tzinfo=None)  # le colonne salvano UTC senza fuso
+    op.bulk_insert(table, [{"id": 1, "cache_generation": 0, "updated_at": now}])
 
 
 def downgrade():

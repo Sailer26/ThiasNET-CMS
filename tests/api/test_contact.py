@@ -265,3 +265,54 @@ def test_messages_are_deleted_after_twelve_months(contact_app: Flask) -> None:
         assert (
             db.session.execute(select(func.count()).select_from(ContactMessage)).scalar_one() == 1
         )
+
+
+# --- Regressioni dalla review ECC della Fase 3 -------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "email", ["a,b@example.ch", "Capo<a@example.ch>", '"a"@example.ch', "a@exa mple.ch", "a@ü.ch"]
+)
+def test_only_simple_addresses_are_accepted(
+    contact_app: Flask, page: dict[str, Any], visitor: FlaskClient, clock: list[float], email: str
+) -> None:
+    assert _send(visitor, clock, email=email).status_code == 422
+    assert _outbox(contact_app) == []
+
+
+def test_control_characters_in_email_are_rejected(
+    page: dict[str, Any], visitor: FlaskClient, clock: list[float]
+) -> None:
+    assert _send(visitor, clock, email="a@example.ch" + chr(0)).status_code == 422
+
+
+def test_quick_fix_after_an_error_is_not_lost(
+    contact_app: Flask, page: dict[str, Any], visitor: FlaskClient, clock: list[float]
+) -> None:
+    failed = _send(visitor, clock, email="sbagliata")
+    assert failed.status_code == 422
+    token = next(
+        a["value"]
+        for a in inspect(failed.get_data(as_text=True)).find("input")
+        if a.get("name") == "token"
+    )
+    fixed = visitor.post("/_contact", data=_fields(str(token)))  # corretto in meno di 3 secondi
+    assert fixed.status_code == 303
+    assert len(_saved(contact_app)) == 1
+
+
+def test_retry_leaves_messages_still_being_sent(contact_app: Flask) -> None:
+    with contact_app.app_context():
+        db.session.add(
+            ContactMessage(
+                block_uid=FORM_UID,
+                locale="it",
+                name="X",
+                email="x@example.ch",
+                message="appena arrivato",
+                ip_hash="0" * 64,
+                send_attempts=1,
+            )
+        )
+        db.session.commit()
+        assert contact_form.retry_pending() == (0, 0)

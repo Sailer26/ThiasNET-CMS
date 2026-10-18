@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -21,6 +22,7 @@ from app.services.page_paths import HOME_PATH, live
 from app.services.render_context import Link
 from app.services.theme import Theme
 
+log = logging.getLogger("thiasnet.public")
 PATH_CHARS = re.compile(r"/[a-z0-9/-]*")
 MAX_PUBLIC_PATH = PATH_MAX_LENGTH + 6  # "/rm" + path
 
@@ -47,11 +49,15 @@ def _redirect(locale: str, location: str) -> Resolution:
     return Resolution(Outcome.REDIRECT, locale, location=location)
 
 
+def public_path(locale: str, path: str, theme: Theme) -> str:
+    """Indirizzo pubblico relativo (senza dominio) di un percorso interno."""
+    if locale == theme.locales[0]:
+        return path
+    return f"/{locale}/" if path == HOME_PATH else f"/{locale}{path}"
+
+
 def public_url(page: Page, theme: Theme) -> str:
-    """Indirizzo pubblico relativo (senza dominio) di una pagina."""
-    if page.locale == theme.locales[0]:
-        return page.path
-    return f"/{page.locale}/" if page.path == HOME_PATH else f"/{page.locale}{page.path}"
+    return public_path(page.locale, page.path, theme)
 
 
 def _split(path: str, theme: Theme) -> Resolution | tuple[str, str]:
@@ -59,7 +65,7 @@ def _split(path: str, theme: Theme) -> Resolution | tuple[str, str]:
     default = theme.locales[0]
     first = path.split("/")[1]
     if first == default:
-        rest = path[len(default) + 1 :]
+        rest = path[len(default) + 1 :].rstrip("/")  # un solo salto anche con "/" finale
         return _redirect(default, rest or HOME_PATH)
     if first in theme.locales:
         if path == f"/{first}":
@@ -82,6 +88,16 @@ def _is_online(page: Page | None) -> bool:
     return page is not None and page.deleted_at is None and page.status == PageStatus.PUBLISHED
 
 
+def _publish_if_due(page: Page, now: datetime) -> None:
+    """Cron in ritardo: si pubblica adesso (D-16). Questa GET scrive di proposito; se la
+    pubblicazione fallisce si mostra la pagina com'è e ci riprova il cron."""
+    try:
+        publishing.ensure_due(page, now)
+    except Exception:
+        db.session.rollback()
+        log.exception("pubblicazione programmata della pagina %s non riuscita", page.id)
+
+
 def resolve(path: str, theme: Theme, now: datetime) -> Resolution:
     default = theme.locales[0]
     if len(path) > MAX_PUBLIC_PATH or not PATH_CHARS.fullmatch(path) or "//" in path:
@@ -92,7 +108,7 @@ def resolve(path: str, theme: Theme, now: datetime) -> Resolution:
     locale, inner = split
     page = _live_page(locale, inner)
     if page is not None and page.publish_at is not None and page.publish_at <= now:
-        publishing.ensure_due(page, now)  # cron in ritardo: si pubblica adesso (D-16)
+        _publish_if_due(page, now)
         page = _live_page(locale, inner)
     if page is not None and _is_online(page):
         return Resolution(Outcome.PAGE, locale, page=page)

@@ -16,7 +16,7 @@ from markupsafe import escape
 from app.models.page import Page
 from app.public import bp
 from app.public.errors import not_found_response
-from app.public.responses import html_page
+from app.public.responses import content_security_policy, html_page
 from app.services import contact_form, pages, preview, public_render
 from app.services.errors import ServiceError
 from app.services.permissions import Permission, has_permission
@@ -24,7 +24,6 @@ from app.services.render_context import RenderMode
 
 PREVIEW_HEADERS = {
     "X-Frame-Options": "SAMEORIGIN",
-    "Content-Security-Policy": "frame-ancestors 'self'",
     "Cache-Control": "no-store",
     "X-Robots-Tag": "noindex",
 }
@@ -49,15 +48,14 @@ def _editable_page(page_id: int) -> Page | None:
 def _with_headers(response: Response) -> Response:
     for name, value in PREVIEW_HEADERS.items():
         response.headers[name] = value
+    response.headers["Content-Security-Policy"] = content_security_policy("'self'")
     return response
 
 
 def _render(page: Page, document: Mapping[str, Any]) -> Response:
     view = public_render.page_view(page, document)
     forms = contact_form.preview_forms(view)
-    context = public_render.page_context(
-        page, mode=RenderMode.PREVIEW, document=document, forms=forms
-    )
+    context = public_render.page_context(page, mode=RenderMode.PREVIEW, forms=forms, view=view)
     return _with_headers(html_page(public_render.renderer().render_page(context)))
 
 

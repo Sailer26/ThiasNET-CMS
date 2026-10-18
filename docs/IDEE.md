@@ -6,3 +6,5 @@ Ogni idea nuova finisce qui, non nel codice (PREMORTEM #1). Si rivaluta dopo la 
 - **Multi-tenant**: rivalutare se si superano 15–20 clienti (PREMORTEM, decisione finale).
 - **Svuotare il cestino delle pagine** / eliminazione definitiva da parte dell'admin (D-43: in Fase 2 il cestino è solo recuperabile).
 - **"Salva versione" manuale**: revisione con un nome scelto dal cliente, oltre a quelle automatiche (D-40).
+- **Link di anteprima condivisibile** per chi non ha un account (es. il sindaco), valido qualche giorno (D-68: per ora no).
+- **Dati strutturati** (schema.org) per organizzazione, eventi e notizie.

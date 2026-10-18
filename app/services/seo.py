@@ -9,7 +9,7 @@ from sqlalchemy import select
 from app.extensions import db
 from app.models.page import Page, PageStatus
 from app.services.page_paths import live
-from app.services.public_pages import public_url
+from app.services.public_pages import public_path
 from app.services.theme import Theme
 
 SITEMAP_LIMIT = 50_000  # massimo del protocollo per un singolo file
@@ -19,23 +19,19 @@ SITEMAP_HEAD = (
 )
 
 
-def _indexable(page: Page) -> bool:
-    return not (page.seo_json or {}).get("noindex")
-
-
 def sitemap_xml(theme: Theme, base_url: str) -> str:
     query = (
-        select(Page)
+        select(Page.locale, Page.path, Page.seo_json, Page.published_at, Page.updated_at)
         .where(live(), Page.status == PageStatus.PUBLISHED, Page.locale.in_(theme.locales))
         .order_by(Page.locale, Page.path)
         .limit(SITEMAP_LIMIT)
     )
     entries = []
-    for page in db.session.execute(query).scalars():
-        if not _indexable(page):
+    for locale, path, seo, published_at, updated_at in db.session.execute(query):
+        if (seo or {}).get("noindex"):
             continue
-        location = escape(base_url + public_url(page, theme))
-        modified = page.published_at or page.updated_at
+        location = escape(base_url + public_path(locale, path, theme))
+        modified = published_at or updated_at
         entries.append(
             f"  <url><loc>{location}</loc><lastmod>{modified.date().isoformat()}</lastmod></url>\n"
         )

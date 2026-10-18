@@ -20,7 +20,16 @@
     "anchor": {
       "type": "string",
       "maxLength": 60,
-      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "not": {
+        "enum": [
+          "main",
+          "site-nav",
+          "cms-consent",
+          "cms-consent-title",
+          "cms-consent-choices"
+        ]
+      }
     }
   },
   "required": [

@@ -126,7 +126,8 @@ def _block(theme: Theme, layout: str, zone: str, raw: Any, page_id: int | None) 
         return None
     block_type, uid = raw.get("type"), raw.get("uid")
     allowed = theme.allowed_blocks(layout, zone)
-    if block_type not in BLOCK_TYPES or block_type not in allowed or not isinstance(uid, str):
+    known = isinstance(block_type, str) and block_type in BLOCK_TYPES
+    if not known or block_type not in allowed or not isinstance(uid, str):
         log.warning(
             "pagina %s: blocco %r non ammesso in %s/%s, omesso", page_id, block_type, layout, zone
         )
@@ -143,19 +144,24 @@ def _block(theme: Theme, layout: str, zone: str, raw: Any, page_id: int | None) 
 
 def normalize_document(
     theme: Theme,
-    document: Mapping[str, Any],
+    document: Any,
     *,
     page_id: int | None,
     locale: str,
     path: str,
     is_home: bool,
 ) -> PageView:
+    if not isinstance(document, Mapping):
+        log.warning("pagina %s: documento non leggibile, mostrata vuota", page_id)
+        document = {}
     layout = _layout(theme, document.get("layout"), page_id)
     stored = document.get("zones")
     stored = stored if isinstance(stored, Mapping) else {}
     zones: dict[str, tuple[BlockView, ...]] = {}
     for zone in theme.zones(layout):
-        raw_blocks = stored.get(zone) or ()
+        raw_blocks = stored.get(zone)
+        if not isinstance(raw_blocks, list | tuple):
+            raw_blocks = ()
         views = (_block(theme, layout, zone, raw, page_id) for raw in raw_blocks)
         zones[zone] = tuple(view for view in views if view is not None)
     for zone in set(stored) - set(zones):

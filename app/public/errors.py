@@ -7,6 +7,7 @@ import logging
 from flask import Response, current_app, request
 from werkzeug.exceptions import HTTPException
 
+from app.extensions import db
 from app.public.responses import html_page
 from app.services import public_render
 from app.services.theme import active_theme
@@ -42,6 +43,7 @@ def not_found_response(locale: str | None = None) -> Response:
     except Exception:  # il 404 non deve mai diventare un 500
         if current_app.testing:
             raise
+        db.session.rollback()  # la sessione potrebbe essere rimasta in errore
         log.exception("404 del tema non disponibile")
         html = NOT_FOUND_FALLBACK
     return html_page(html, 404)
@@ -53,4 +55,8 @@ def html_error(exc: HTTPException) -> Response:
         return not_found_response()
     if status >= 500:
         return html_page(SERVER_ERROR_PAGE, status)
-    return Response(exc.description or exc.name, status=status, mimetype="text/plain")
+    response = Response(exc.description or exc.name, status=status, mimetype="text/plain")
+    for name, value in exc.get_headers():  # es. Allow sui 405
+        if name.lower() != "content-type":
+            response.headers[name] = value
+    return response

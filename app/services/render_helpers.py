@@ -14,7 +14,7 @@ from collections.abc import Mapping
 from typing import Any
 from urllib.parse import urlencode
 
-from markupsafe import Markup, escape
+from markupsafe import Markup
 
 from app.services.public_texts import text
 from app.services.render_context import BlockView, PageContext, RenderMode
@@ -66,8 +66,10 @@ def _map(data: Mapping[str, Any]) -> dict[str, str] | None:
     lat, lng = _number(data.get("lat"), -90, 90), _number(data.get("lng"), -180, 180)
     if lat is None or lng is None:
         return None
-    zoom = data.get("zoom")
-    zoom = zoom if isinstance(zoom, int) and MIN_ZOOM <= zoom <= MAX_ZOOM else DEFAULT_ZOOM
+    raw_zoom = data.get("zoom")
+    zoom = DEFAULT_ZOOM
+    if isinstance(raw_zoom, int) and not isinstance(raw_zoom, bool):
+        zoom = raw_zoom if MIN_ZOOM <= raw_zoom <= MAX_ZOOM else DEFAULT_ZOOM
     span = 180 / 2**zoom
     bbox = f"{lng - span:.5f},{lat - span / 2:.5f},{lng + span:.5f},{lat + span / 2:.5f}"
     query = urlencode({"bbox": bbox, "layer": "mapnik", "marker": f"{lat:.5f},{lng:.5f}"})
@@ -90,12 +92,12 @@ def embed(block: BlockView) -> Mapping[str, str] | None:
     return {**found, "kind": kind, "title": str(title)}
 
 
-def head_markup(context: PageContext, *, title_suffix: bool = True) -> Markup:
+def head_markup(context: PageContext) -> Markup:
     page, site = context.page, context.site
     seo_title = page.seo.get("title")
     if isinstance(seo_title, str) and seo_title:
         title = seo_title
-    elif title_suffix and site.name and page.title and page.title != site.name:
+    elif site.name and page.title and page.title != site.name:
         title = f"{page.title} | {site.name}"
     else:
         title = page.title or site.name
@@ -151,7 +153,8 @@ def _consent_banner(locale: str, with_stats: bool) -> Markup:
 
 
 def body_end_markup(context: PageContext) -> Markup:
-    analytics = context.analytics
+    # Nell'anteprima del pannello niente statistiche: le visite di chi lavora non contano.
+    analytics = None if context.mode is RenderMode.PREVIEW else context.analytics
     parts = [_consent_banner(context.page.locale, analytics is not None)]
     if analytics is not None:
         parts.append(
@@ -170,7 +173,3 @@ def image_placeholder(locale: str) -> Markup:
     return Markup(
         '<span class="cms-media-placeholder" role="img" aria-label="{0}">{0}</span>'
     ).format(text("image_placeholder", locale))
-
-
-def escape_text(value: object) -> Markup:
-    return escape(value)

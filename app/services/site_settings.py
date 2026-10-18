@@ -8,7 +8,6 @@ funzioni leggeranno dal database: chi le usa non cambia.
 from __future__ import annotations
 
 import hashlib
-import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -28,10 +27,6 @@ class SiteSettings:
     contact_recipient: str | None
     matomo_url: str | None
     matomo_site_id: str | None
-
-    @property
-    def analytics_enabled(self) -> bool:
-        return bool(self.matomo_url and self.matomo_site_id)
 
 
 def current() -> SiteSettings:
@@ -74,9 +69,3 @@ def css_variables(theme: Theme, values: Mapping[str, Any]) -> str:
 
 def css_version(css: str) -> str:
     return hashlib.sha256(css.encode("utf-8")).hexdigest()[:12]
-
-
-def settings_fingerprint(values: Mapping[str, Any]) -> str:
-    return hashlib.sha256(
-        json.dumps(dict(values), sort_keys=True, default=str).encode()
-    ).hexdigest()[:12]

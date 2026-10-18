@@ -63,7 +63,7 @@ def test_preview_headers_allow_only_same_origin_frames(
 ) -> None:
     headers = editor.get(f"/_preview/{page['id']}").headers
     assert headers["X-Frame-Options"] == "SAMEORIGIN"
-    assert headers["Content-Security-Policy"] == "frame-ancestors 'self'"
+    assert "frame-ancestors 'self'" in headers["Content-Security-Policy"]
     assert headers["Cache-Control"] == "no-store"
     assert headers["X-Robots-Tag"] == "noindex"
 

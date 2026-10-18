@@ -23,10 +23,13 @@ themes/<nome>/  ← SOLO LETTURA a runtime, montato read-only nel container
 | `services/media.py` | upload, verifica MIME reale, re-encode, varianti, focal point |
 | `services/widgets.py` · `menus.py` · `collections.py` | come da nome |
 | `services/theme.py` | carica e valida `theme.json` all'avvio; espone zone, blocchi ammessi, settings. **Nessun metodo di scrittura.** |
-| `services/render.py` | rendering pagina: layout del tema + blocchi + widget; ambiente Jinja con loader limitato a `themes/<attivo>/` |
+| `services/render.py` · `render_context.py` · `render_helpers.py` | unico ambiente Jinja in sandbox, loader limitato a `themes/<attivo>/` (anche contro i symlink), dati congelati e helper del contratto (D-52, D-53, D-56) |
+| `services/public_pages.py` · `public_render.py` | indirizzi e lingue, redirect 301, menu automatico, percorso; contesto di una pagina per il renderer (D-50, D-51, D-58) |
+| `services/page_cache.py` | cache HTML in memoria per processo, generazione condivisa in `site_state` (D-54) |
+| `services/seo.py` · `preview.py` · `contact_form.py` · `mailer.py` · `theme_lint.py` | sitemap/robots · anteprima · modulo contatti · email · controllo dei template del tema |
 | `services/audit.py` | audit log |
 | `api/admin/` | blueprint JSON per il pannello (route sottili) |
-| `public/` | blueprint del sito: risoluzione slug, redirect, sitemap, robots |
+| `public/` | blueprint del sito: pagine, asset del tema, `/_vars.css`, sitemap, robots, `/_preview/<id>`, `/_contact`, pagine d'errore |
 
 ## Modello dati (essenziale)
 ```
@@ -75,16 +78,18 @@ flask publish-scheduled ► rivalida l'istantanea; se il tema è cambiato e non 
                           pubblicazione, audit page.schedule_failed, istantanea tenuta come "draft"
 ```
 
-## Anteprima live (D-02)
-- L'editor admin mostra un iframe su `/_preview/<page_id>` (solo utenti loggati, stessa origine, `X-Frame-Options: SAMEORIGIN` solo su questa route).
-- Il pannello invia lo stato corrente della bozza con `POST /api/admin/pages/<id>/preview` (validato con gli stessi schemi dei blocchi); il server renderizza con il tema attivo esattamente come il sito pubblico, aggiungendo solo un piccolo script del CMS (file statico, compatibile CSP) che evidenzia i blocchi via `data-block-id` e comunica il click al pannello con `postMessage` (origine verificata).
-- Il rendering di anteprima non scrive cache e non pubblica nulla.
+## Anteprima live (D-02, D-55)
+- L'editor del pannello mostra un iframe su `/_preview/<page_id>` (solo chi ha `content.edit`, agli altri 404; `X-Frame-Options: SAMEORIGIN` e `frame-ancestors 'self'` solo su questa route, `no-store`, `noindex`).
+- `GET` mostra la bozza salvata; il pannello invia lo stato corrente con un form `POST /_preview/<page_id>` (campo `document` in JSON + `csrf_token`) con `target` sull'iframe: la risposta è una pagina vera, stessa origine, validata come l'autosave (modalità bozza).
+- `app/static/cms/preview.js` (file statico, compatibile CSP) evidenzia i blocchi via `data-block-id`, invia `cms:block-click` al pannello con `postMessage` e accetta `cms:highlight` solo dalla stessa origine e dalla finestra madre.
+- L'anteprima non scrive nulla: né bozze, né revisioni, né cache; il modulo contatti è visibile ma disattivato.
 
 ## Rendering pubblico
 1. Risolvi `path` → pagina pubblicata (o redirect / 404 del tema).
 2. Carica layout dichiarato in `theme.json`, blocchi per zona, widget per area, menu.
 3. Render con `SandboxedEnvironment`, autoescape ON, `FileSystemLoader` solo su `themes/<attivo>/`.
-4. Cache HTML per path+locale; invalidazione su pubblicazione / modifica widget / menu / settings.
+4. Cache HTML per tema+lingua+path, in memoria in ogni processo; `site_state.cache_generation` nel database cresce a ogni modifica visibile (pubblica, programmata, ritira, cestino, cambio indirizzo, riordino; dalla Fase 6 widget, menu, impostazioni) e ogni processo, vedendo il numero nuovo, svuota la sua cache. Niente cache per anteprima, pagine con modulo contatti, 404 e invii di form (D-54).
+5. Le pagine con programmazione scaduta si pubblicano al momento della richiesta se il cron è in ritardo (`ensure_due`, D-16).
 
 ## Sicurezza (difesa in profondità per il lock del template)
 - Container: `themes/` montato `:ro`; l'utente del processo non ha permessi di scrittura.

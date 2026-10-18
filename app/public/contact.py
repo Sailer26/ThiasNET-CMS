@@ -53,7 +53,7 @@ def _message_page(key: str, status: int, locale: str, back: str = "/") -> Respon
 def _rerender(page: Page, result: Submission) -> Response:
     view = public_render.page_view(page)
     forms = contact_form.public_forms(view, failed=result)
-    context = public_render.page_context(page, forms=forms)
+    context = public_render.page_context(page, forms=forms, view=view)
     response = html_page(public_render.renderer().render_page(context), 422)
     response.headers["Cache-Control"] = "no-store"
     return response
@@ -62,6 +62,7 @@ def _rerender(page: Page, result: Submission) -> Response:
 @bp.post("/_contact")
 def contact() -> BaseResponse:
     default = active_theme().locales[0]
+    request.max_content_length = contact_form.MAX_BODY_BYTES  # vale anche senza Content-Length
     if (request.content_length or 0) > contact_form.MAX_BODY_BYTES:
         return _message_page("contact_errors", 413, default)
     if not _same_origin():

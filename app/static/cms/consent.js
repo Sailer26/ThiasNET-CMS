@@ -9,7 +9,8 @@
   var MAX_AGE = 365 * 24 * 3600;
   var ALLOWED_HOSTS = ["www.youtube-nocookie.com", "player.vimeo.com", "www.openstreetmap.org"];
   var script = document.currentScript;
-  var banner = document.getElementById("cms-consent");
+  // Selettori per classe e tag: un id uguale messo in un contenuto non li inganna.
+  var banner = document.querySelector("div.cms-consent");
   var matomoUrl = script ? script.getAttribute("data-matomo-url") : null;
   var matomoSite = script ? script.getAttribute("data-matomo-site") : null;
   var statsLoaded = false;
@@ -139,7 +140,7 @@
   }
 
   function toggleChoices(button) {
-    var panel = document.getElementById("cms-consent-choices");
+    var panel = banner.querySelector(".cms-consent__choices");
     var save = banner.querySelector('[data-cms-consent="save"]');
     var open = button.getAttribute("aria-expanded") === "true";
     button.setAttribute("aria-expanded", open ? "false" : "true");

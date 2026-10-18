@@ -69,3 +69,21 @@ def test_check_all_themes_prints_template_problems(
     lines, failures = check_all_themes(themes_dir)
     assert failures == 1
     assert any(line.startswith("ERRORE") and "404.html" in line for line in lines)
+
+
+def test_includes_of_missing_files_are_errors(
+    make_theme: MakeTheme, theme_data: dict[str, Any]
+) -> None:
+    errors, _ = _lint(
+        make_theme, theme_data, **{"blocks__divider.html": "{% include 'partials/manca.html' %}"}
+    )
+    assert any("partials/manca.html" in e for e in errors)
+
+
+def test_helper_names_in_comments_do_not_count(
+    make_theme: MakeTheme, theme_data: dict[str, Any]
+) -> None:
+    base = (ROOT / "themes" / "default" / "layouts" / "_base.html").read_text(encoding="utf-8")
+    without = base.replace("{{ cms_head() }}", "{# cms_head() #}")
+    errors, _ = _lint(make_theme, theme_data, **{"layouts___base.html": without})
+    assert any("cms_head" in e for e in errors)

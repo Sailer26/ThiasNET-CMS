@@ -27,6 +27,9 @@ def page(path: str) -> BaseResponse:
     if path.split("/", 1)[0] in RESERVED_SEGMENTS:
         abort(404)
     theme = active_theme()
+    # Prima la generazione, poi la pagina: il contenuto letto dopo è almeno altrettanto nuovo,
+    # quindi in cache non finisce mai una pagina vecchia con un numero nuovo (D-54).
+    generation = page_cache.current_generation()
     resolution = public_pages.resolve(request.path, theme, datetime.now(UTC))
     if resolution.outcome is Outcome.REDIRECT and resolution.location:
         return redirect(resolution.location, code=301)
@@ -34,14 +37,13 @@ def page(path: str) -> BaseResponse:
         return not_found_response(resolution.locale)
     page = resolution.page
     key = (theme.name, theme.version, page.locale, page.path)
-    generation = page_cache.current_generation()
     cache = page_cache.page_cache()
     html = cache.get(key, generation)
     if html is not None:
         return conditional(html_page(html), request)
     view = public_render.page_view(page)
     forms = contact_form.public_forms(view, sent=request.args.get("contatto") == "inviato")
-    context = public_render.page_context(page, forms=forms)
+    context = public_render.page_context(page, forms=forms, view=view)
     html = public_render.renderer().render_page(context)
     if not public_render.cacheable(context):  # modulo contatti: token nuovo a ogni visita
         response = html_page(html)
@@ -54,10 +56,14 @@ def page(path: str) -> BaseResponse:
 @bp.get("/assets/<path:filename>")
 def theme_asset(filename: str) -> Response:
     """Solo file statici del tema con estensioni ammesse; mai template o theme.json."""
-    if not asset_path_is_valid(filename):
-        abort(404)
-    max_age = LONG_CACHE if request.args.get("v") else SHORT_CACHE
-    return send_from_directory(active_theme().directory / "assets", filename, max_age=max_age)
+    assets = (active_theme().directory / "assets").resolve()
+    if not asset_path_is_valid(filename) or not (assets / filename).resolve().is_relative_to(
+        assets
+    ):
+        abort(404)  # anche i collegamenti simbolici che escono da assets/
+    version = public_render.renderer().asset_version(filename)
+    fresh = version is not None and request.args.get("v") == version
+    return send_from_directory(assets, filename, max_age=LONG_CACHE if fresh else SHORT_CACHE)
 
 
 @bp.get("/_vars.css")
@@ -65,8 +71,9 @@ def css_variables() -> Response:
     theme = active_theme()
     css = site_settings.css_variables(theme, site_settings.theme_settings(theme))
     response = Response(css, mimetype="text/css")
+    fresh = request.args.get("v") == site_settings.css_version(css)  # mai "per sempre" a caso
     response.headers["Cache-Control"] = (
-        f"public, max-age={LONG_CACHE}, immutable" if request.args.get("v") else "no-cache"
+        f"public, max-age={LONG_CACHE}, immutable" if fresh else "no-cache"
     )
     return response
 

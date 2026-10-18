@@ -11,11 +11,11 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from jinja2 import BaseLoader, FileSystemLoader, Template, TemplateNotFound
+from jinja2 import BaseLoader, FileSystemLoader, Template, TemplateError, TemplateNotFound
 from jinja2.environment import Environment
 from jinja2.sandbox import ImmutableSandboxedEnvironment
 from markupsafe import Markup
@@ -26,6 +26,7 @@ from app.services.public_texts import text
 from app.services.render_context import (
     BlockView,
     ContactFormView,
+    Link,
     PageContext,
     RenderMode,
 )
@@ -52,11 +53,18 @@ class ThemeLoader(FileSystemLoader):
         return source, filename, uptodate
 
 
-def build_environment(theme_dir: Path) -> ImmutableSandboxedEnvironment:
-    """Ambiente puro (senza app): lo usano il sito e `theme-check`."""
+def build_environment(
+    theme_dir: Path, *, auto_reload: bool = True
+) -> ImmutableSandboxedEnvironment:
+    """Ambiente puro (senza app): lo usano il sito e `theme-check`. In produzione i template
+    non cambiano (solo con un deploy): niente controllo dei file a ogni richiesta."""
     loader: BaseLoader = ThemeLoader([str(theme_dir)], encoding="utf-8", followlinks=False)
     env = ImmutableSandboxedEnvironment(
-        loader=loader, autoescape=True, trim_blocks=True, lstrip_blocks=True
+        loader=loader,
+        autoescape=True,
+        trim_blocks=True,
+        lstrip_blocks=True,
+        auto_reload=auto_reload,
     )
     env.filters["safe_html"] = render_helpers.safe_html
     env.filters["clean_url"] = render_helpers.clean_url
@@ -80,7 +88,7 @@ class Renderer:
     def __init__(self, theme: Theme, *, strict: bool) -> None:
         self.theme = theme
         self.strict = strict  # sviluppo e test: errori del tema subito evidenti (D-56)
-        self.env = build_environment(theme.directory)
+        self.env = build_environment(theme.directory, auto_reload=strict)
         self._asset_versions: dict[str, str] = {}
 
     # --- Template ---------------------------------------------------------------
@@ -90,7 +98,7 @@ class Renderer:
             raise TemplateNotFound(layout)
         return self.env.get_template(f"layouts/{layout}.html")
 
-    def _block_template(self, block_type: str) -> Template:
+    def block_template(self, block_type: str) -> Template:
         if block_type not in BLOCK_TYPES:
             raise TemplateNotFound(block_type)
         return self.env.get_template(f"blocks/{block_type}.html")
@@ -104,17 +112,24 @@ class Renderer:
 
     # --- Asset -----------------------------------------------------------------
 
-    def asset_url(self, path: str) -> str:
-        """`/assets/<path>?v=<hash>`: cache lunga, il nome cambia quando cambia il file."""
+    def asset_version(self, path: str) -> str | None:
+        """Impronta del contenuto di un file in `assets/` (memorizzata per processo)."""
         if not asset_path_is_valid(path):
-            return self._problem(f"asset non valido: {path!r}", "")
+            return None
         version = self._asset_versions.get(path)
         if version is None:
             file = self.theme.directory / "assets" / path
             if not file.is_file():
-                return self._problem(f"asset mancante: {path!r}", "")
+                return None
             version = hashlib.sha256(file.read_bytes()).hexdigest()[:12]
             self._asset_versions[path] = version
+        return version
+
+    def asset_url(self, path: str) -> str:
+        """`/assets/<path>?v=<hash>`: cache lunga, il nome cambia quando cambia il file."""
+        version = self.asset_version(path)
+        if version is None:
+            return self._problem(f"asset non valido o mancante: {path!r}", "")
         return f"/assets/{path}?v={version}"
 
     def _problem(self, message: str, fallback: str) -> str:
@@ -163,14 +178,19 @@ class _Helpers:
         return Markup("\n").join(self.render_block(block) for block in blocks)
 
     def render_block(self, block: BlockView) -> Markup:
+        """Un blocco che non si riesce a disegnare sparisce (con avviso nel log): la pagina
+        resta online (D-53). In sviluppo e nei test l'errore si vede subito."""
         try:
-            template = self.renderer._block_template(block.type)
-        except TemplateNotFound:
-            log.warning("tema %s: manca blocks/%s.html", self.renderer.theme.name, block.type)
+            template = self.renderer.block_template(block.type)
+            html = template.render({**self.namespace(), "block": block})
+        except (TemplateError, TypeError, ValueError, AttributeError):
+            if self.renderer.strict:
+                raise
+            log.exception("tema %s: blocco %s non disegnato", self.renderer.theme.name, block.id)
             return Markup("")
-        return Markup(template.render({**self.namespace(), "block": block}))  # noqa: S704
+        return Markup(html)  # noqa: S704 (output del template, già escapato)
 
-    def img(self, media_id: object, size: str = DEFAULT_IMAGE_SIZE, **_attrs: object) -> Markup:
+    def img(self, media_id: object, size: str = DEFAULT_IMAGE_SIZE) -> Markup:
         """Fino alla Fase 4 nessuna immagine sul sito; in anteprima un segnaposto (D-57)."""
         if size not in self.renderer.theme.image_sizes:
             self.renderer._problem(f"img(): formato {size!r} non dichiarato in image_sizes", "")
@@ -178,12 +198,8 @@ class _Helpers:
             return render_helpers.image_placeholder(self.locale)
         return Markup("")
 
-    def menu(self, location: str) -> tuple[Any, ...]:
+    def menu(self, location: str) -> tuple[Link, ...]:
         return self.context.menu if location == "main" else ()
 
     def contact_form(self, block: BlockView) -> ContactFormView | None:
         return self.context.forms.get(block.id)
-
-
-def blank(value: Mapping[str, Any] | None) -> Mapping[str, Any]:
-    return value or {}

@@ -39,7 +39,7 @@ def renderer() -> Renderer:
     return current
 
 
-def site_info(locale: str) -> SiteInfo:
+def site_info() -> SiteInfo:
     settings = site_settings.current()
     return SiteInfo(
         name=settings.name,
@@ -51,7 +51,7 @@ def site_info(locale: str) -> SiteInfo:
 
 def _analytics() -> Analytics | None:
     settings = site_settings.current()
-    if settings.matomo_url and settings.matomo_site_id:
+    if settings.matomo_url and settings.matomo_site_id:  # D-66
         return Analytics(url=settings.matomo_url, site_id=settings.matomo_site_id)
     return None
 
@@ -81,12 +81,14 @@ def page_context(
     mode: RenderMode = RenderMode.PUBLIC,
     document: Mapping[str, Any] | None = None,
     forms: Mapping[str, ContactFormView] | None = None,
+    view: PageView | None = None,
 ) -> PageContext:
+    """`view` già pronta evita di normalizzare due volte lo stesso documento."""
     theme = active_theme()
     values, css_version = theme_values(theme)
     return PageContext(
-        page=page_view(page, document),
-        site=site_info(page.locale),
+        page=view if view is not None else page_view(page, document),
+        site=site_info(),
         mode=mode,
         menu=public_pages.auto_menu(page.locale, page, theme),
         breadcrumbs=public_pages.breadcrumbs(page, theme),
@@ -117,7 +119,7 @@ def not_found_context(locale: str, path: str) -> PageContext:
     )
     return PageContext(
         page=view,
-        site=site_info(locale),
+        site=site_info(),
         menu=public_pages.auto_menu(locale, None, theme),
         settings=values,
         css_version=css_version,

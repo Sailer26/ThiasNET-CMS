@@ -284,3 +284,9 @@ def test_tabs_become_spaces_and_emoji_joiners_survive(registry: BlockRegistry) -
     emoji = chr(0x1F469) + chr(0x200D) + chr(0x1F4BB)  # donna al computer: ZWJ da tenere
     raw = f"uno{chr(9)}due {emoji} {chr(0x202E)}abc"  # tab e RLO (testo rovesciato)
     assert registry.clean("quote", {"text": raw})["text"] == f"uno due {emoji} abc"
+
+
+@pytest.mark.parametrize("anchor", ["main", "site-nav", "cms-consent"])
+def test_heading_anchor_cannot_reuse_reserved_ids(registry: BlockRegistry, anchor: str) -> None:
+    errors = registry.errors("heading", {"text": "x", "anchor": anchor}, Mode.DRAFT)
+    assert errors and errors[0].path == "data/anchor"

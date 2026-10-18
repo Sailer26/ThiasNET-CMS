@@ -197,3 +197,47 @@ def test_texts_follow_the_page_language(theme: Theme) -> None:
     from app.services.public_texts import LOCALES, TEXTS
 
     assert all(set(LOCALES) <= set(translations) for translations in TEXTS.values())
+
+
+# --- Regressioni dalla review ECC della Fase 3 -------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "document",
+    [
+        ["non", "un", "documento"],
+        {"layout": "page", "zones": {"main": 5}},
+        {"layout": "page", "zones": {"main": "testo"}},
+        {"layout": "page", "zones": {"main": [{"uid": "x", "type": ["text"], "data": {}}]}},
+        {"layout": "page", "zones": {"main": [{"uid": 5, "type": "text", "data": "x"}]}},
+    ],
+)
+def test_odd_documents_never_raise(theme: Theme, document: Any) -> None:
+    assert "<html" in render_doc(theme, document)
+
+
+def test_a_broken_block_disappears_but_the_page_stays(
+    make_theme: MakeTheme, theme_data: dict[str, Any]
+) -> None:
+    themes_dir = make_theme(theme_data, templates=True)
+    (themes_dir / "demo" / "blocks" / "quote.html").write_text(
+        "{% include 'partials/manca.html' %}", encoding="utf-8"
+    )
+    demo = load_theme(themes_dir, "demo")
+    page = _page(_block(1, "quote", {"text": "x"}), _block(2, "text", {"body": "<p>Resto</p>"}))
+    html = render_doc(demo, page, renderer=Renderer(demo, strict=False))
+    assert "Resto" in html and uid(1) not in html
+    with pytest.raises(Exception, match="manca"):
+        render_doc(demo, page)  # in sviluppo e nei test l'errore si vede subito
+
+
+def test_preview_never_loads_statistics(theme: Theme) -> None:
+    from app.services.render_context import Analytics, PageContext, normalize_document
+    from tests.render_fixtures import SITE
+
+    view = normalize_document(theme, _page(), page_id=1, locale="it", path="/x", is_home=False)
+    analytics = Analytics(url="https://stat.example.ch", site_id="3")
+    for mode, expected in ((RenderMode.PUBLIC, True), (RenderMode.PREVIEW, False)):
+        context = PageContext(page=view, site=SITE, mode=mode, analytics=analytics)
+        html = Renderer(theme, strict=True).render_page(context)
+        assert ("data-matomo-url" in html) is expected

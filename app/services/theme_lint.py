@@ -1,19 +1,20 @@
 """Controllo dei template di un tema (D-63), usato da `theme-check`.
 
-Errori: template obbligatori mancanti, template che non si compilano, helper del CMS non
-usati (senza `cms_head()` e `cms_body_end()` mancherebbero SEO, consenso e anteprima).
+Errori: template obbligatori mancanti, template che non si compilano o che includono/estendono
+file inesistenti, helper del CMS non usati (senza `cms_head()` e `cms_body_end()` mancherebbero
+SEO, consenso e anteprima).
 Avvisi: varianti dichiarate per blocchi che nessuna zona ammette.
 I template mancanti non bloccano l'avvio dell'app: li ferma la CI (e il build, Fase 8).
 """
 
 from __future__ import annotations
 
-from jinja2 import TemplateSyntaxError
+from jinja2 import TemplateError, meta, nodes
 
 from app.services.render import NOT_FOUND_TEMPLATE, build_environment
 from app.services.theme import Theme
 
-REQUIRED_HELPERS = ("cms_head()", "cms_body_end()")
+REQUIRED_HELPERS = ("cms_head", "cms_body_end")
 CONTACT_FORM_TEMPLATE = "partials/contact_form.html"
 
 
@@ -35,6 +36,13 @@ def _required_templates(theme: Theme, allowed: set[str]) -> list[str]:
     return required
 
 
+def _called_names(tree: nodes.Template) -> set[str]:
+    """Funzioni chiamate davvero (non basta trovarne il nome in un commento)."""
+    return {
+        call.node.name for call in tree.find_all(nodes.Call) if isinstance(call.node, nodes.Name)
+    }
+
+
 def lint_theme(theme: Theme) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     allowed = _allowed_blocks(theme)
@@ -49,17 +57,27 @@ def lint_theme(theme: Theme) -> tuple[list[str], list[str]]:
         if name not in files
     ]
     env = build_environment(theme.directory)
-    sources: list[str] = []
+    called: set[str] = set()
     for name in files:
         try:
+            source = env.loader.get_source(env, name)[0]  # type: ignore[union-attr]
+            tree = env.parse(source, name=name)
             env.get_template(name)
-        except TemplateSyntaxError as exc:
-            errors.append(f"{theme.name}: {name} riga {exc.lineno}: {exc.message}")
-        sources.append((theme.directory / name).read_text(encoding="utf-8"))
+        except (TemplateError, UnicodeDecodeError, OSError) as exc:
+            line = getattr(exc, "lineno", None)
+            where = f" riga {line}" if line else ""
+            errors.append(f"{theme.name}: {name}{where}: {exc}")
+            continue
+        called |= _called_names(tree)
+        for referenced in meta.find_referenced_templates(tree):
+            if referenced is None:
+                errors.append(f"{theme.name}: {name}: include/extends con nome calcolato")
+            elif referenced not in files:
+                errors.append(f"{theme.name}: {name} usa {referenced}, che non esiste")
     errors += [
-        f"{theme.name}: nessun template usa {helper}"
+        f"{theme.name}: nessun template usa {helper}()"
         for helper in REQUIRED_HELPERS
-        if not any(helper in source for source in sources)
+        if helper not in called
     ]
     warnings = [
         f"{theme.name}: varianti per il blocco {block!r}, che nessuna zona ammette"

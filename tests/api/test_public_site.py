@@ -215,10 +215,17 @@ def test_server_error_page_is_static(
 
 
 def test_theme_assets_are_served_with_long_cache(visitor: FlaskClient) -> None:
-    response = visitor.get("/assets/css/site.css?v=123")
+    from app.services.public_render import renderer
+
+    with visitor.application.app_context():
+        version = renderer().asset_version("css/site.css")
+    response = visitor.get(f"/assets/css/site.css?v={version}")
     assert response.status_code == 200
     assert response.mimetype == "text/css"
     assert "max-age=31536000" in response.headers["Cache-Control"]
+    # una versione inventata non diventa "per sempre" nelle cache condivise
+    guessed = visitor.get("/assets/css/site.css?v=123").headers["Cache-Control"]
+    assert "max-age=3600" in guessed
 
 
 @pytest.mark.parametrize(
@@ -333,3 +340,93 @@ def test_accessibility_smoke(admin: FlaskClient, visitor: FlaskClient) -> None:
     assert dialog["aria-labelledby"] == "cms-consent-title"
     choices = {a.get("data-cms-consent") for a in found.find("button")}
     assert {"all", "necessary", "choose"} <= choices
+
+
+# --- Regressioni dalla review ECC della Fase 3 -------------------------------------------
+
+
+def test_etag_and_not_modified(admin: FlaskClient, visitor: FlaskClient) -> None:
+    _online(admin, "Chi siamo")
+    first = visitor.get("/chi-siamo")
+    etag = first.headers["ETag"]
+    again = visitor.get("/chi-siamo", headers={"If-None-Match": etag})
+    assert again.status_code == 304
+
+
+def test_language_prefix_and_trailing_slash_in_one_hop(visitor: FlaskClient) -> None:
+    response = visitor.get("/it/chi-siamo/")
+    assert (response.status_code, response.headers["Location"]) == (301, "/chi-siamo")
+
+
+def test_method_not_allowed_keeps_the_allow_header(
+    admin: FlaskClient, visitor: FlaskClient
+) -> None:
+    _online(admin, "Chi siamo")
+    response = visitor.post("/chi-siamo")
+    assert response.status_code == 405
+    assert "GET" in response.headers["Allow"]
+
+
+def test_content_security_policy_on_public_pages(
+    app: Flask, admin: FlaskClient, visitor: FlaskClient
+) -> None:
+    _online(admin, "Chi siamo")
+    policy = visitor.get("/chi-siamo").headers["Content-Security-Policy"]
+    assert "default-src 'self'" in policy and "frame-ancestors 'none'" in policy
+    assert "https://www.youtube-nocookie.com" in policy and "unsafe-inline" not in policy
+    app.config["MATOMO_URL"] = "https://stat.thiasnet.ch"
+    assert (
+        "script-src 'self' https://stat.thiasnet.ch"
+        in visitor.get("/robots.txt").headers["Content-Security-Policy"]
+    )
+
+
+def test_failed_publication_on_request_still_serves_the_page(
+    app: Flask, admin: FlaskClient, visitor: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    page = _online(admin, "Orari", "<p>Vecchi orari</p>")
+    zones = {"main": [text_block(1, "<p>Nuovi orari</p>")], "sidebar": []}
+    put_draft(admin, page["id"], doc(title="Orari", zones=zones), version=0)
+    when = (datetime.now(UTC) + timedelta(days=1)).isoformat()
+    admin.post(f"{PAGES}/{page['id']}/schedule", json={"draft_version": 1, "publish_at": when})
+    with app.app_context():
+        past = datetime.now(UTC) - timedelta(minutes=1)
+        db.session.execute(update(Page).where(Page.id == page["id"]).values(publish_at=past))
+        db.session.commit()
+
+    def broken(*_args: Any) -> bool:
+        raise RuntimeError("database occupato")
+
+    monkeypatch.setattr("app.services.publishing.ensure_due", broken)
+    response = visitor.get("/orari")
+    assert response.status_code == 200
+    assert "Vecchi orari" in response.get_data(as_text=True)
+
+
+def test_page_changed_during_a_request_is_not_cached_as_new(
+    app: Flask, admin: FlaskClient, visitor: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.services import page_cache, public_pages
+    from app.services.render import Renderer
+
+    _online(admin, "Chi siamo")
+    real_resolve = public_pages.resolve
+    renders: list[str] = []
+    real_render = Renderer.render_page
+
+    def resolve_then_publish(*args: Any) -> Any:
+        found = real_resolve(*args)
+        page_cache.mark_changed()  # qualcuno pubblica proprio adesso
+        db.session.commit()
+        return found
+
+    def counting(self: Renderer, context: Any) -> str:
+        renders.append(context.page.path)
+        return real_render(self, context)
+
+    monkeypatch.setattr(Renderer, "render_page", counting)
+    monkeypatch.setattr(public_pages, "resolve", resolve_then_publish)
+    visitor.get("/chi-siamo")
+    monkeypatch.setattr(public_pages, "resolve", real_resolve)
+    visitor.get("/chi-siamo")
+    assert renders == ["/chi-siamo", "/chi-siamo"]  # la seconda visita non usa la copia vecchia
