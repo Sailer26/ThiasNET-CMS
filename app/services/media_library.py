@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import unicodedata
+from types import MappingProxyType
 from typing import Any
 
 from sqlalchemy import func, select
 
 from app.extensions import db
 from app.models.media import Media, MediaKind
+from app.services.render_context import MediaView, VariantView
 
 SEARCH_KEY_LENGTH = 500
 DOCUMENT_FILE = "file.pdf"  # indirizzo stabile dei PDF (D-75, D-85)
@@ -123,3 +125,27 @@ def list_media(
 def used_bytes() -> int:
     total = db.session.execute(select(func.coalesce(func.sum(Media.size_bytes), 0))).scalar_one()
     return int(total)
+
+
+def to_view(media: Media) -> MediaView:
+    sizes = {
+        size: tuple(
+            VariantView(e["w"], e["h"], file_url(media, e["file"]))
+            for e in sorted(entries, key=lambda e: e["w"])
+        )
+        for size, entries in size_files(media).items()
+    }
+    return MediaView(
+        id=media.id,
+        kind=media.kind,
+        alt=media.alt,
+        width=media.width,
+        height=media.height,
+        url=public_url(media),
+        name=media.original_name,
+        ext=media.ext,
+        size_bytes=media.size_bytes,
+        focal_x=media.focal_x,
+        focal_y=media.focal_y,
+        sizes=MappingProxyType(sizes),
+    )

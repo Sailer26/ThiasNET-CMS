@@ -1,5 +1,5 @@
 <section class="block text-image text-image--{{ block.variant }}" data-block-id="{{ block.id }}">
-<div class="text-image__media">{{ img(block.data.media_id, size="card") }}</div>
+<div class="text-image__media">{{ img(block.data.media_id, size="card", sizes="(min-width: 48rem) 50vw, 100vw") }}</div>
 <div class="text-image__text">
 {% if block.data.title %}<h2>{{ block.data.title }}</h2>{% endif %}
 <div class="prose">{{ block.data.body | safe_html }}</div>

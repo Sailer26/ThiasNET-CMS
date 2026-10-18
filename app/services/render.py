@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -21,12 +21,13 @@ from jinja2.sandbox import ImmutableSandboxedEnvironment
 from markupsafe import Markup
 
 from app.core_types import BLOCK_TYPES
-from app.services import render_helpers
+from app.services import render_helpers, render_media
 from app.services.public_texts import text
 from app.services.render_context import (
     BlockView,
     ContactFormView,
     Link,
+    MediaView,
     PageContext,
     RenderMode,
 )
@@ -162,7 +163,8 @@ class _Helpers:
             "zone_has_blocks": self.zone_has_blocks,
             "render_block": self.render_block,
             "img": self.img,
-            "media_url": lambda _media_id: None,  # Fase 4 (D-57)
+            "media_url": self.media_url,
+            "media_file": self.media_file,
             "asset": self.renderer.asset_url,
             "embed": render_helpers.embed,
             "menu": self.menu,
@@ -190,13 +192,41 @@ class _Helpers:
             return Markup("")
         return Markup(html)  # noqa: S704 (output del template, già escapato)
 
-    def img(self, media_id: object, size: str = DEFAULT_IMAGE_SIZE) -> Markup:
-        """Fino alla Fase 4 nessuna immagine sul sito; in anteprima un segnaposto (D-57)."""
+    def _media(self, media_id: object) -> MediaView | None:
+        if isinstance(media_id, bool) or not isinstance(media_id, int):
+            return None
+        return self.context.media.get(media_id)
+
+    def img(
+        self,
+        media_id: object,
+        size: str = DEFAULT_IMAGE_SIZE,
+        sizes: object = None,
+        eager: bool = False,
+        css_class: object = None,
+    ) -> Markup:
+        """Immagine responsive (D-81). Media mancante: niente sul sito, segnaposto in anteprima."""
         if size not in self.renderer.theme.image_sizes:
             self.renderer._problem(f"img(): formato {size!r} non dichiarato in image_sizes", "")
+        media = self._media(media_id)
+        if media is not None and media.kind == "image":
+            return render_media.img_markup(
+                media, size, sizes=sizes, eager=eager, css_class=css_class
+            )
+        if media_id:
+            log.warning("pagina %s: immagine %r non disponibile", self.context.page.id, media_id)
         if self.context.mode is RenderMode.PREVIEW and media_id:
             return render_helpers.image_placeholder(self.locale)
         return Markup("")
+
+    def media_url(self, media_id: object) -> str | None:
+        media = self._media(media_id)
+        return media.url if media is not None else None
+
+    def media_file(self, media_id: object) -> Mapping[str, Any] | None:
+        """Per i file da scaricare: indirizzo, nome, formato e peso (D-81)."""
+        media = self._media(media_id)
+        return render_media.file_info(media) if media is not None else None
 
     def menu(self, location: str) -> tuple[Link, ...]:
         return self.context.menu if location == "main" else ()

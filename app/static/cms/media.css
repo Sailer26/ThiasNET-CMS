@@ -1,0 +1,25 @@
+/* Punto focale delle immagini (D-80): solo classi, mai stili nella pagina (CSP, D-69).
+   Il tema decide object-fit; qui solo da dove partire quando l'immagine viene ritagliata. */
+.cms-img { object-position: var(--cms-fx, 50%) var(--cms-fy, 50%); }
+.cms-fx-0 { --cms-fx: 0%; }
+.cms-fx-1 { --cms-fx: 10%; }
+.cms-fx-2 { --cms-fx: 20%; }
+.cms-fx-3 { --cms-fx: 30%; }
+.cms-fx-4 { --cms-fx: 40%; }
+.cms-fx-5 { --cms-fx: 50%; }
+.cms-fx-6 { --cms-fx: 60%; }
+.cms-fx-7 { --cms-fx: 70%; }
+.cms-fx-8 { --cms-fx: 80%; }
+.cms-fx-9 { --cms-fx: 90%; }
+.cms-fx-10 { --cms-fx: 100%; }
+.cms-fy-0 { --cms-fy: 0%; }
+.cms-fy-1 { --cms-fy: 10%; }
+.cms-fy-2 { --cms-fy: 20%; }
+.cms-fy-3 { --cms-fy: 30%; }
+.cms-fy-4 { --cms-fy: 40%; }
+.cms-fy-5 { --cms-fy: 50%; }
+.cms-fy-6 { --cms-fy: 60%; }
+.cms-fy-7 { --cms-fy: 70%; }
+.cms-fy-8 { --cms-fy: 80%; }
+.cms-fy-9 { --cms-fy: 90%; }
+.cms-fy-10 { --cms-fy: 100%; }

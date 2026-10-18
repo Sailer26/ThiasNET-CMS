@@ -16,6 +16,7 @@ from urllib.parse import urlencode
 
 from markupsafe import Markup
 
+from app.services import render_media
 from app.services.public_texts import text
 from app.services.render_context import BlockView, PageContext, RenderMode
 from app.services.sanitize import clean_rich, is_safe_url
@@ -111,6 +112,8 @@ def head_markup(context: PageContext) -> Markup:
     parts.append(
         Markup('<link rel="stylesheet" href="/_vars.css?v={}">').format(context.css_version)
     )
+    text_description = description if isinstance(description, str) else None
+    parts.append(render_media.social_markup(context, title, text_description))
     return Markup("\n").join(parts)
 
 

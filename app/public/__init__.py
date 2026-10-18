@@ -11,7 +11,7 @@ bp = Blueprint("public", __name__)
 
 
 def register_public(app: Flask) -> None:
-    from app.public import contact, preview, responses, routes  # noqa: F401  (route registrate all'import)
+    from app.public import contact, media, preview, responses, routes  # noqa: F401  (route registrate all'import)
 
     app.register_blueprint(bp)
     responses.register(app)

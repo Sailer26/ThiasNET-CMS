@@ -1,5 +1,5 @@
 <ul class="block gallery gallery--{{ block.variant }}" data-block-id="{{ block.id }}">
 {% for item in block.data.get("items") or () %}
-<li><figure>{{ img(item.media_id, size="card") }}{% if item.caption %}<figcaption>{{ item.caption }}</figcaption>{% endif %}</figure></li>
+<li><figure>{{ img(item.media_id, size="card", sizes="(min-width: 48rem) 33vw, 50vw") }}{% if item.caption %}<figcaption>{{ item.caption }}</figcaption>{% endif %}</figure></li>
 {% endfor %}
 </ul>

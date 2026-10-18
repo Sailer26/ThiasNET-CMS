@@ -10,13 +10,15 @@ from typing import Any
 from flask import current_app
 
 from app.models.page import Page
-from app.services import drafts, public_pages, site_settings
+from app.services import drafts, media_library, media_refs, public_pages, site_settings
+from app.services.blocks import get_registry
 from app.services.page_paths import HOME_PATH
 from app.services.public_texts import text
 from app.services.render import Renderer
 from app.services.render_context import (
     Analytics,
     ContactFormView,
+    MediaView,
     PageContext,
     PageView,
     RenderMode,
@@ -75,6 +77,27 @@ def page_view(page: Page, document: Mapping[str, Any] | None = None) -> PageView
     )
 
 
+def _view_refs(view: PageView) -> list[int]:
+    registry = get_registry()
+    ids = [
+        ref.media_id
+        for blocks in view.zones.values()
+        for block in blocks
+        for ref in registry.media_refs(block.type, block.data)
+    ]
+    og = view.seo.get("og_image_media_id")
+    return [og, *ids] if isinstance(og, int) and not isinstance(og, bool) else ids
+
+
+def page_media(view: PageView) -> tuple[Mapping[int, MediaView], MediaView | None]:
+    """Media usati dalla pagina (una query) e immagine per i social: quella della SEO,
+    altrimenti la prima immagine della pagina (D-81)."""
+    refs = _view_refs(view)
+    found = {mid: media_library.to_view(m) for mid, m in media_refs.load(refs).items()}
+    og = next((found[mid] for mid in refs if mid in found and found[mid].kind == "image"), None)
+    return MappingProxyType(found), og
+
+
 def page_context(
     page: Page,
     *,
@@ -86,8 +109,12 @@ def page_context(
     """`view` già pronta evita di normalizzare due volte lo stesso documento."""
     theme = active_theme()
     values, css_version = theme_values(theme)
+    page_view_ = view if view is not None else page_view(page, document)
+    media, og_image = page_media(page_view_)
     return PageContext(
-        page=view if view is not None else page_view(page, document),
+        page=page_view_,
+        media=media,
+        og_image=og_image,
         site=site_info(),
         mode=mode,
         menu=public_pages.auto_menu(page.locale, page, theme),

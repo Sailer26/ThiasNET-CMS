@@ -86,6 +86,31 @@ class ContactFormView:
 
 
 @dataclass(frozen=True)
+class VariantView:
+    width: int
+    height: int
+    url: str
+
+
+@dataclass(frozen=True)
+class MediaView:
+    """Un media della libreria come lo vede il tema (D-81)."""
+
+    id: int
+    kind: str  # "image" | "document"
+    alt: str
+    width: int | None
+    height: int | None
+    url: str
+    name: str
+    ext: str
+    size_bytes: int
+    focal_x: int
+    focal_y: int
+    sizes: Mapping[str, tuple[VariantView, ...]] = EMPTY
+
+
+@dataclass(frozen=True)
 class PageContext:
     page: PageView
     site: SiteInfo
@@ -96,6 +121,8 @@ class PageContext:
     css_version: str = ""
     analytics: Analytics | None = None
     forms: Mapping[str, ContactFormView] = field(default_factory=lambda: EMPTY)
+    media: Mapping[int, MediaView] = field(default_factory=lambda: MappingProxyType({}))
+    og_image: MediaView | None = None
 
 
 def _freeze(value: Any) -> Any:

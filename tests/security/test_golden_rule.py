@@ -184,6 +184,7 @@ EXPECTED_PUBLIC_ROUTES = {
     "/static/<path:filename>": set(),
     "/_preview/<int:page_id>": {"POST"},  # anteprima live: nessuna scrittura (D-55)
     "/_contact": {"POST"},  # modulo contatti (D-61)
+    "/media/<key>/<filename>": set(),  # file della libreria, solo lettura (D-75)
 }
 
 
