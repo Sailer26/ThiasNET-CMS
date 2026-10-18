@@ -105,3 +105,54 @@ Regola d'oro: nessun campo o upload di html/css/js/svg, route `/admin*` in sola 
 - Fase 6: azione rapida "banner avviso"; Fase 7: lingue nel pannello, azione "notizia".
 - Fase 8: Docker con `npm ci && npm run build` + `check:dist`, Caddy per `/admin/assets/`, e2e completi, `npm audit` e action fissate a SHA, axe sul pannello.
 - IDEE: nome visualizzato degli utenti, pannello in tedesco, tema scuro, trascinamento nell'albero, QR per il TOTP, altre scorciatoie, notifiche dei messaggi.
+
+---
+
+# 5b — Editor della pagina
+
+Prodotto con `ecc:planner` il 2026-10-18 sul branch `phase-5b-editor` (partito da `phase-5-admin`).
+Decisioni D-102 … D-115.
+
+## Risposte di Thias (tutte le proposte)
+1. **Salvataggio:** scritta piccola in alto ("Salvato alle 10:42", "Sto salvando…", avviso rosso se non riesce). → D-104
+2. **Anteprima sul tablet:** pulsante "Modifica / Anteprima"; sul computer sempre affiancata. → D-107
+3. **Aggiungi blocco:** riquadri con nome, piccolo disegno e una frase; disegni nostri, uguali per tutti i siti. → D-115
+4. **Pubblica:** chiede conferma con l'indirizzo della pagina (in 5d qui arrivano i controlli D-09). → D-113
+
+## Punti trovati prima di iniziare
+1. `GET /pages/<id>/draft` senza bozza restituisce già il pubblicato (`version: 0`, `from_published`); stato e `pages.version` arrivano da `GET /pages/<id>`.
+2. Titolo, layout e SEO stanno nel documento della bozza `{title, layout, seo, zones}`.
+3. Due versioni: `publish` usa `draft_version`, `unpublish` usa `pages.version`; dopo la pubblicazione la bozza sparisce (`draft_version` torna 0).
+4. L'editor salva solo il documento intero (`PUT /draft`): così l'`uid` lo crea il pannello (D-39).
+5. In bozza il server rifiuta `pattern`, `safe-url`, `maxLength`, `enum`: un link scritto a metà farebbe fallire tutto il salvataggio → il pannello manda l'ultimo valore valido (D-104).
+6. TipTap vuoto produce `<p></p>`: editor vuoto = campo assente.
+7. `jsonify` ordina le chiavi: il catalogo perde l'ordine di campi, zone e varianti → `app.json.sort_keys = False`.
+8. I campi degli schemi non hanno etichette italiane, gli `enum` nemmeno, le zone del tema `default` neppure → `title`/`description`/`x-enum-titles` negli schemi, `label` alle zone (D-106).
+9. Miniature delle varianti da `/assets/<path>`: il catalogo dà `thumbnail_url` con versione.
+10. `POST /_preview/<id>`: form con `csrf_token` e `document`; un errore CSRF lì oggi diventa JSON e l'iframe lo blocca → pagina HTML.
+11. `preview.js` scorre a ogni `cms:highlight` e salva lo scroll solo su `beforeunload` → `scroll:false` e salvataggio mentre si scorre.
+12. Inviare sempre allo stesso iframe riempie la storia del browser → iframe nuovo a ogni aggiornamento (D-107).
+13. Media: `x-media: "file"` = tipo `document`; manca la lettura di più media per id; l'alt mancante blocca la pubblicazione (5b-2).
+
+## Divisione (D-102)
+- **5b-1** (questa PR): etichette e ordine del catalogo, anteprima live, modello del documento, annulla/ripristina, salvataggio automatico, form dagli schemi, zone e blocchi con pulsanti, varianti, titolo/tipo di pagina/SEO, TipTap, pubblica/ritira/scarta. Il campo media è in sola lettura.
+- **5b-2** (PR successiva): scelta e caricamento dei media nell'editor, `GET /media?ids=`, trascinamento con dnd-kit, aiuti per video e mappa, primo e2e con `pytest-playwright` (Edge su Windows).
+
+## Architettura (5b-1)
+- `features/editor/model/`: funzioni pure su dati immutabili (`document`, `relayout`, `uid`, `history`, `draftSafe`, `errorPaths`), `autosave.ts` senza React con orologio iniettabile.
+- Annulla/ripristina: una sola storia nel pannello, 100 passi, battute nello stesso campo unite entro 1 s, Ctrl+Z/Ctrl+Y e pulsanti (D-105).
+- Salvataggio: 1,5 s dopo l'ultima modifica, una richiesta alla volta, subito uscendo e prima di pubblicare; 409 → scelta "Carica la sua versione" / "Tieni la mia"; dopo un nuovo accesso si risalva senza ricaricare (D-104).
+- `features/editor/schema/`: validatore del client limitato alle parole chiave usate dagli schemi (guardiano), stessi percorsi e messaggi del server, casi condivisi con pytest (D-106).
+- Anteprima: form nascosto verso un iframe nuovo a ogni aggiornamento (500 ms), scambio dopo `cms:ready`, messaggi solo dalla stessa origine e dall'iframe attivo; sul tablet pulsante Modifica/Anteprima (D-107).
+- TipTap 3 con le sole estensioni di D-49, `injectCSS: false`, link con `rel="noopener noreferrer"` e indirizzi ammessi (D-108).
+- Cambio del tipo di pagina: i blocchi seguono la zona con lo stesso nome o la prima che li ammette; quelli senza posto si elencano in una conferma (D-110).
+- Pubblica: salva, conferma con l'indirizzo, `publish`; gli errori 422 diventano un elenco con "Vai al campo" (D-113).
+
+## Dipendenze
+- 5b-1: `@tiptap/core`, `@tiptap/react`, `@tiptap/pm` e le estensioni singole (document, paragraph, text, heading, bold, italic, link, list, blockquote, hard-break). Niente starter-kit né menu.
+- 5b-2: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`; Python di sviluppo `pytest-playwright`.
+
+## Rimandi
+- 5c: pagina Media completa, caricamento multiplo, `blob:` nella CSP, revisioni e programmazione nell'editor.
+- 5d: controlli prima di pubblicare nella finestra di conferma (D-09), tour, "Chiedi a Thias", "Pubblica" da telefono.
+- IDEE: anteprima a larghezza telefono, copia di blocchi tra pagine, chi sta modificando la pagina adesso.
