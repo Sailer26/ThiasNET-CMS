@@ -17,7 +17,8 @@ export type ErrorTarget =
 export function locateError(path: string, sent: PageDocument): ErrorTarget {
   const parts = path.split("/");
   if (parts[0] === "seo") return { kind: "seo", field: parts.slice(1).join("/") };
-  if (parts[0] !== "zones" || parts.length < 2) return { kind: "page", field: parts[0] === "layout" ? "layout" : "title" };
+  if (parts[0] === "zones" && parts.length < 2) return { kind: "zone", zone: "" }; // es. troppi blocchi
+  if (parts[0] !== "zones") return { kind: "page", field: parts[0] === "layout" ? "layout" : "title" };
   const zone = parts[1]!;
   if (parts.length < 3) return { kind: "zone", zone };
   const index = Number(parts[2]);

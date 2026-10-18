@@ -52,6 +52,7 @@ describe("errori del server sui campi", () => {
     expect(locateError("zones/main", sent)).toEqual({ kind: "zone", zone: "main" });
     expect(locateError("seo/description", sent)).toEqual({ kind: "seo", field: "description" });
     expect(locateError("layout", sent)).toEqual({ kind: "page", field: "layout" });
+    expect(locateError("zones", sent)).toEqual({ kind: "zone", zone: "" }); // troppi blocchi
     expect(locateError("title", sent)).toEqual({ kind: "page", field: "title" });
     expect(locateError("zones/main/7/data/x", sent)).toMatchObject({ uid: null });
   });

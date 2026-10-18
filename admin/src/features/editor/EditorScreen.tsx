@@ -14,6 +14,7 @@ import { Autosave, type SaveState } from "./model/autosave";
 import {
   addBlock,
   duplicateBlock,
+  hasRoom,
   locate,
   moveBlock,
   newBlock,
@@ -51,6 +52,15 @@ function byBlock(entries: Iterable<[string, string]>): Map<string, Map<string, s
     out.set(owner, inner);
   }
   return out;
+}
+
+/** Dopo "Aggiungi blocco": il cursore va nel primo campo del blocco nuovo. */
+function focusFirstField(uid: string) {
+  requestAnimationFrame(() =>
+    document
+      .querySelector<HTMLElement>(`[data-uid="${uid}"] .block-row__body :is(input, textarea, select, [contenteditable="true"])`)
+      ?.focus(),
+  );
 }
 
 function focusField(id: string) {
@@ -111,7 +121,9 @@ function Workspace({ data }: { data: Loaded }) {
   useEffect(() => {
     setNavigationGuard(async () => (await autosave.flush()) || window.confirm(ed.save.leave));
     function beforeUnload(event: BeforeUnloadEvent) {
-      if (autosave.dirty) event.preventDefault();
+      if (!autosave.dirty) return;
+      event.preventDefault();
+      event.returnValue = ""; // Safari e browser meno recenti
     }
     function hidden() {
       if (document.visibilityState === "hidden") void autosave.flush();
@@ -125,7 +137,8 @@ function Workspace({ data }: { data: Loaded }) {
     };
   }, [autosave]);
 
-  const unsaved = useMemo(() => byBlock(draftSafe(doc, catalog, saved).problems), [doc, catalog, saved]);
+  const safe = useMemo(() => draftSafe(doc, catalog, saved), [doc, catalog, saved]);
+  const unsaved = useMemo(() => byBlock(safe.problems), [safe]);
   const errors = useMemo(() => byBlock(serverErrors), [serverErrors]);
   const pageErrors = errors.get("page") ?? new Map<string, string>();
 
@@ -142,34 +155,40 @@ function Workspace({ data }: { data: Loaded }) {
     select: editor.select,
     add: (zone, type) => {
       const uid = newUid(uids(doc));
-      editor.edit(addBlock(doc, zone, newBlock(catalog, type, uid)), null, uid);
+      editor.update((d) => (hasRoom(d, catalog, zone) ? addBlock(d, zone, newBlock(catalog, type, uid)) : d), null, uid);
+      focusFirstField(uid);
     },
-    shift: (uid, delta) => editor.edit(shiftBlock(doc, uid, delta)),
-    moveTo: (uid, zone) => editor.edit(moveBlock(doc, uid, zone, doc.zones[zone]?.length ?? 0)),
+    shift: (uid, delta) => editor.update((d) => shiftBlock(d, uid, delta)),
+    moveTo: (uid, zone) =>
+      editor.update((d) => (hasRoom(d, catalog, zone) ? moveBlock(d, uid, zone, d.zones[zone]?.length ?? 0) : d)),
     duplicate: (uid) => {
       const copy = newUid(uids(doc));
-      editor.edit(duplicateBlock(doc, uid, copy), null, copy);
+      // La zona può avere un massimo (D-110): oltre, il server rifiuterebbe ogni salvataggio.
+      editor.update((d) => {
+        const found = locate(d, uid);
+        return found && hasRoom(d, catalog, found.zone) ? duplicateBlock(d, uid, copy) : d;
+      }, null, copy);
     },
     remove: (uid) => {
       const label = catalog.types[locate(doc, uid)?.block.type ?? ""]?.label ?? "";
-      editor.edit(removeBlock(doc, uid), null, selected === uid ? null : selected);
+      editor.update((d) => removeBlock(d, uid), null, selected === uid ? null : selected);
       setNotice({
         kind: "info",
         text: ed.zones.removed(label),
         action: { label: ed.zones.undoRemove, run: editor.undo },
       });
     },
-    setVariant: (uid, variant) => editor.edit(setVariant(doc, uid, variant)),
+    setVariant: (uid, variant) => editor.update((d) => setVariant(d, uid, variant)),
     editField: (uid: string, path: Path, value: unknown) => {
       dropError(problemKey(uid, path));
-      editor.edit(updateField(doc, uid, path, value), problemKey(uid, path));
+      editor.update((d) => updateField(d, uid, path, value), problemKey(uid, path));
     },
   };
 
   // Annulla/ripristina da tastiera, anche dentro i campi (D-105).
   function keys(event: React.KeyboardEvent) {
     const mod = event.ctrlKey || event.metaKey;
-    if (!mod) return;
+    if (!mod || (event.target as Element).closest("dialog")) return;
     const key = event.key.toLowerCase();
     if (key === "z" && !event.shiftKey) {
       event.preventDefault();
@@ -207,7 +226,7 @@ function Workspace({ data }: { data: Loaded }) {
   }
 
   async function publish() {
-    const sent = draftSafe(doc, catalog, saved).doc;
+    const sent = safe.doc;
     try {
       const published = await publishPage(page.id, autosave.draftVersion);
       setPage(published);
@@ -312,7 +331,12 @@ function Workspace({ data }: { data: Loaded }) {
           </button>
         )}
         {can(Permission.publish) ? (
-          <button type="button" className="button button--primary" onClick={() => void askPublish()}>
+          <button
+            type="button"
+            className="button button--primary"
+            disabled={online && !changes}
+            onClick={() => void askPublish()}
+          >
             {ed.bar.publish}
           </button>
         ) : (
@@ -338,18 +362,18 @@ function Workspace({ data }: { data: Loaded }) {
             errors={pageErrors}
             onTitle={(title) => {
               dropError("page:title");
-              editor.edit(setTitle(doc, title), "page:title");
+              editor.update((d) => setTitle(d, title), "page:title");
             }}
             onLayout={(next) => editor.edit(next)}
             onSeo={(key, value) => {
               dropError(`page:seo/${key}`);
-              editor.edit(setSeo(doc, key, value), `page:seo/${key}`);
+              editor.update((d) => setSeo(d, key, value), `page:seo/${key}`);
             }}
           />
           <ZoneList doc={doc} catalog={catalog} selected={selected} errors={errorsWithZones(errors)} unsaved={unsaved} pages={data.pages} actions={actions} />
         </div>
         <div className="editor__preview">
-          <PreviewPane pageId={page.id} doc={draftSafe(doc, catalog, saved).doc} selected={selected} onSelect={editor.select} />
+          <PreviewPane pageId={page.id} doc={safe.doc} selected={selected} onSelect={editor.select} />
         </div>
       </div>
       {save.kind === "conflict" && (

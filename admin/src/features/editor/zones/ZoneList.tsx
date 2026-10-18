@@ -82,7 +82,7 @@ function MoveDialog({ label, zones, catalog, layout, onMove, onClose }: { label:
   );
 }
 
-function BlockRow({ block, index, count, props }: { block: BlockDoc; index: number; count: number; props: Props }) {
+function BlockRow({ block, zone, index, count, props }: { block: BlockDoc; zone: string; index: number; count: number; props: Props }) {
   const { catalog, selected, actions, doc } = props;
   const label = catalog.types[block.type]?.label ?? block.type;
   const open = selected === block.uid;
@@ -115,7 +115,12 @@ function BlockRow({ block, index, count, props }: { block: BlockDoc; index: numb
           <button type="button" className="button button--small" onClick={() => setMoving(true)}>
             {ed.zones.moveTo}
           </button>
-          <button type="button" className="button button--small" onClick={() => actions.duplicate(block.uid)}>
+          <button
+            type="button"
+            className="button button--small"
+            disabled={!hasRoom(doc, catalog, zone)}
+            onClick={() => actions.duplicate(block.uid)}
+          >
             {ed.zones.duplicate}
           </button>
           <button type="button" className="button button--small button--danger" onClick={() => actions.remove(block.uid)}>
@@ -145,7 +150,7 @@ function BlockRow({ block, index, count, props }: { block: BlockDoc; index: numb
       {moving && (
         <MoveDialog
           label={label}
-          zones={zonesFor(doc, catalog, block.type, Object.entries(doc.zones).find(([, b]) => b.includes(block))?.[0])}
+          zones={zonesFor(doc, catalog, block.type, zone)}
           catalog={catalog}
           layout={doc.layout}
           onClose={() => setMoving(false)}
@@ -180,7 +185,7 @@ export function ZoneList(props: Props) {
             {blocks.length === 0 && <p className="hint">{ed.zones.empty}</p>}
             <ul className="zone__blocks">
               {blocks.map((block, index) => (
-                <BlockRow key={block.uid} block={block} index={index} count={blocks.length} props={props} />
+                <BlockRow key={block.uid} block={block} zone={name} index={index} count={blocks.length} props={props} />
               ))}
             </ul>
             <button type="button" className="button" disabled={!room} onClick={() => setAdding(name)}>

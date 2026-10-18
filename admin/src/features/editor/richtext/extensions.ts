@@ -17,9 +17,16 @@ export const HEADING_LEVELS = [2, 3, 4] as const;
 
 /** Nessun attributo oltre a href e rel: target e class incollati non sopravvivono (D-108). */
 const DROPPED = { default: null, parseHTML: () => null, renderHTML: () => ({}) };
+const REL = "noopener noreferrer";
 const SafeLink = Link.extend({
   addAttributes() {
-    return { ...this.parent?.(), target: DROPPED, class: DROPPED };
+    return {
+      ...this.parent?.(),
+      target: DROPPED,
+      class: DROPPED,
+      // rel sempre lo stesso: un rel incollato (es. "opener") non sopravvive
+      rel: { default: REL, parseHTML: () => REL, renderHTML: () => ({ rel: REL }) },
+    };
   },
 });
 
@@ -41,8 +48,11 @@ export function richTextExtensions(): Extensions {
       openOnClick: false,
       autolink: false,
       linkOnPaste: true,
-      HTMLAttributes: { rel: "noopener noreferrer", target: null, class: null },
+      HTMLAttributes: { target: null, class: null },
       isAllowedUri: (url) => isSafeUrl(normalizeUrl(url)),
     }),
   ];
 }
+
+/** Un solo elenco per tutta l'app: non si ricrea a ogni battuta. */
+export const RICH_TEXT_EXTENSIONS: Extensions = richTextExtensions();

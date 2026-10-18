@@ -137,4 +137,27 @@ describe("salvataggio automatico", () => {
     auto.dispose();
     expect(timers).toHaveLength(0);
   });
+
+  test("tornare al testo salvato dopo un errore toglie l'avviso", async () => {
+    const { clock } = manualClock();
+    const save = vi.fn().mockRejectedValueOnce(new ApiError(0, "network", "Connessione non disponibile"));
+    const auto = new Autosave(save, 1, page("a"), clock);
+    auto.change(page("b"));
+    await auto.flush();
+    expect(auto.current.kind).toBe("error");
+    auto.change(page("a")); // Annulla
+    expect(auto.current.kind).toBe("saved");
+    expect(await auto.flush()).toBe(true);
+  });
+
+  test("dispose ferma l'attesa ma non toglie gli ascoltatori (React li toglie da sé)", async () => {
+    const { clock } = manualClock();
+    const auto = new Autosave(vi.fn().mockResolvedValue(ok(2)), 1, page("a"), clock);
+    const states: string[] = [];
+    auto.subscribe((state) => states.push(state.kind));
+    auto.dispose();
+    auto.change(page("b"));
+    await auto.flush();
+    expect(states).toContain("saved");
+  });
 });

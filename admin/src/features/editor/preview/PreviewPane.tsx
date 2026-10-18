@@ -6,7 +6,8 @@ import type { PageDocument } from "../model/document";
 import { transport } from "./transport";
 
 export const PREVIEW_DELAY_MS = 500;
-const STALE_CHECK_MS = 300;
+/** Se il nuovo iframe non dice "pronto" entro questo tempo, resta l'anteprima precedente. */
+export const PREVIEW_TIMEOUT_MS = 8000;
 
 interface Frame {
   name: string;
@@ -38,40 +39,56 @@ export function PreviewPane({ pageId, doc, selected, onSelect }: Props) {
     onSelectRef.current = onSelect;
   }, [selected, onSelect]);
 
-  // Documento cambiato: dopo una pausa breve, un iframe nuovo (vale solo l'ultimo).
+  // Documento cambiato: dopo una pausa (subito solo la prima volta) un iframe nuovo.
   useEffect(() => {
+    const first = active === null && pending === null;
     const timer = setTimeout(
       () => {
-        if (active?.json === json) return;
+        if (active?.json === json || pending?.json === json) return;
         counter += 1;
         setPending({ name: `cms-preview-${counter}`, json });
       },
-      active ? PREVIEW_DELAY_MS : 0,
+      first ? 0 : PREVIEW_DELAY_MS,
     );
     return () => clearTimeout(timer);
-  }, [json, active]);
+  }, [json, active, pending]);
 
-  // L'iframe nuovo esiste nel DOM: gli si manda il documento.
+  // L'iframe nuovo esiste nel DOM: gli si manda il documento e parte l'attesa del "pronto".
   useEffect(() => {
     if (!pending) return;
     transport.submit(pending.name, `/_preview/${pageId}`, {
       csrf_token: getCsrfToken() ?? "",
       document: pending.json,
     });
+    const timer = setTimeout(() => {
+      setPending(null);
+      setStale(true);
+    }, PREVIEW_TIMEOUT_MS);
+    return () => clearTimeout(timer);
   }, [pending, pageId]);
 
   useEffect(() => {
     function receive(event: MessageEvent) {
       if (event.origin !== window.location.origin) return;
       const data = (event.data ?? {}) as { type?: unknown; uid?: unknown };
-      const from = (name: string | undefined) => name !== undefined && event.source === frames.current.get(name)?.contentWindow;
+      const from = (name: string | undefined) =>
+        name !== undefined && event.source === frames.current.get(name)?.contentWindow;
       if (data.type === "cms:ready" && pending && from(pending.name)) {
         setActive(pending);
         setPending(null);
         setStale(false);
         const uid = selectedRef.current;
-        if (uid) frames.current.get(pending.name)?.contentWindow?.postMessage({ type: "cms:highlight", uid, scroll: false }, window.location.origin);
-      } else if (data.type === "cms:block-click" && from(active?.name) && typeof data.uid === "string" && UID_RE.test(data.uid)) {
+        if (uid) {
+          frames.current
+            .get(pending.name)
+            ?.contentWindow?.postMessage({ type: "cms:highlight", uid, scroll: false }, window.location.origin);
+        }
+      } else if (
+        data.type === "cms:block-click" &&
+        from(active?.name) &&
+        typeof data.uid === "string" &&
+        UID_RE.test(data.uid)
+      ) {
         onSelectRef.current(data.uid);
       }
     }
@@ -82,18 +99,27 @@ export function PreviewPane({ pageId, doc, selected, onSelect }: Props) {
   // Blocco scelto nel modulo: evidenziato (e portato in vista) nell'anteprima.
   useEffect(() => {
     if (!active || !selected) return;
-    frames.current.get(active.name)?.contentWindow?.postMessage({ type: "cms:highlight", uid: selected, scroll: true }, window.location.origin);
+    frames.current
+      .get(active.name)
+      ?.contentWindow?.postMessage({ type: "cms:highlight", uid: selected, scroll: true }, window.location.origin);
   }, [selected, active]);
 
-  function loaded(name: string) {
-    // Caricato ma non "pronto" (errore o pagina non valida): resta l'anteprima precedente.
-    setTimeout(() => {
-      setPending((current) => {
-        if (current?.name !== name) return current;
-        setStale(true);
-        return null;
-      });
-    }, STALE_CHECK_MS);
+  /** Una pagina caricata (non about:blank) senza "pronto": errore del server, si avvisa subito. */
+  function loaded(frame: Frame) {
+    if (frame.name !== pending?.name) return;
+    const element = frames.current.get(frame.name);
+    let blank: boolean;
+    try {
+      blank = !element?.contentWindow || element.contentWindow.location.href === "about:blank";
+    } catch {
+      blank = false;
+    }
+    if (blank) return;
+    const doc = element?.contentDocument;
+    if (doc && !doc.documentElement.classList.contains("cms-preview")) {
+      setPending(null);
+      setStale(true);
+    }
   }
 
   const shown = [active, pending].filter((frame): frame is Frame => frame !== null);
@@ -111,7 +137,7 @@ export function PreviewPane({ pageId, doc, selected, onSelect }: Props) {
               if (element) frames.current.set(frame.name, element);
               else frames.current.delete(frame.name);
             }}
-            onLoad={() => loaded(frame.name)}
+            onLoad={() => loaded(frame)}
           />
         ))}
       </div>

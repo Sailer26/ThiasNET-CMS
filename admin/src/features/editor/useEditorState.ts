@@ -9,7 +9,8 @@ interface State {
 }
 
 type Action =
-  | { type: "edit"; doc: PageDocument; key: string | null; select?: string | null }
+  | { type: "edit"; doc: PageDocument; key: string | null; at: number; select?: string | null }
+  | { type: "update"; fn: (doc: PageDocument) => PageDocument; key: string | null; at: number; select?: string | null }
   | { type: "undo" }
   | { type: "redo" }
   | { type: "replace"; doc: PageDocument }
@@ -18,10 +19,13 @@ type Action =
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "edit":
+    case "update": {
+      const next = action.type === "edit" ? action.doc : action.fn(state.history.present);
       return {
-        history: commit(state.history, action.doc, action.key, Date.now()),
+        history: commit(state.history, next, action.key, action.at),
         selected: action.select === undefined ? state.selected : action.select,
       };
+    }
     case "undo":
       return { ...state, history: undo(state.history) };
     case "redo":
@@ -36,7 +40,14 @@ function reducer(state: State, action: Action): State {
 export function useEditorState(initial: PageDocument) {
   const [state, dispatch] = useReducer(reducer, initial, (doc) => ({ history: startHistory(doc), selected: null }));
   const edit = useCallback(
-    (doc: PageDocument, key: string | null = null, select?: string | null) => dispatch({ type: "edit", doc, key, ...(select !== undefined ? { select } : {}) }),
+    (doc: PageDocument, key: string | null = null, select?: string | null) =>
+      dispatch({ type: "edit", doc, key, at: Date.now(), ...(select !== undefined ? { select } : {}) }),
+    [],
+  );
+  /** Modifica calcolata sul documento più recente (due modifiche ravvicinate non si perdono). */
+  const update = useCallback(
+    (fn: (doc: PageDocument) => PageDocument, key: string | null = null, select?: string | null) =>
+      dispatch({ type: "update", fn, key, at: Date.now(), ...(select !== undefined ? { select } : {}) }),
     [],
   );
   return {
@@ -45,6 +56,7 @@ export function useEditorState(initial: PageDocument) {
     canUndo: state.history.past.length > 0,
     canRedo: state.history.future.length > 0,
     edit,
+    update,
     undo: useCallback(() => dispatch({ type: "undo" }), []),
     redo: useCallback(() => dispatch({ type: "redo" }), []),
     replace: useCallback((doc: PageDocument) => dispatch({ type: "replace", doc }), []),

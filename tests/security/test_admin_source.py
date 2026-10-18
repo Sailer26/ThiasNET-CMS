@@ -32,7 +32,8 @@ FORBIDDEN = {
     "window.open": "nuove finestre solo con link e rel=noopener",
 }
 # Navigazione verso indirizzi costruiti con dati: niente redirect aperti.
-LOCATION_WRITE = re.compile(r"location\.(href\s*=|assign\(|replace\()")
+# Assegnazione (non confronto: "href ===" è solo una lettura).
+LOCATION_WRITE = re.compile(r"location\.(href\s*=(?!=)|assign\(|replace\()")
 STRING_TIMER = re.compile(r"setTimeout\(\s*['\"`]")
 BLANK_WITHOUT_REL = re.compile(r"target=\"_blank\"(?![^>]*rel=\"noopener noreferrer\")")
 PROTOCOL_RELATIVE = re.compile(r"['\"`]//[a-z0-9]", re.IGNORECASE)
@@ -50,6 +51,11 @@ def _sources() -> list[Path]:
         and ".test." not in path.name
         and "test" not in path.relative_to(SRC).parts[:1]
     )
+
+
+def test_location_guard_ignores_comparisons() -> None:
+    assert LOCATION_WRITE.search('window.location.href = "/x"')
+    assert not LOCATION_WRITE.search('frame.location.href === "about:blank"')
 
 
 def test_panel_sources_exist() -> None:

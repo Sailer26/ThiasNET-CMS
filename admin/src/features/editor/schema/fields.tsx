@@ -103,11 +103,13 @@ export function TextField({ id, spec, value, onChange, required, error, unsaved,
           autoCapitalize={isUrl ? "none" : undefined}
           spellCheck={isUrl ? false : undefined}
           list={isUrl && pages?.length ? listId : undefined}
-          onBlur={isUrl && text ? () => onChange(completeUrl(text)) : undefined}
+          onBlur={
+            isUrl && text && completeUrl(text) !== text ? () => onChange(completeUrl(text)) : undefined
+          }
         />
       )}
       {isUrl && pages?.length ? (
-        <datalist id={listId} aria-label={ed.fields.linkPages}>
+        <datalist id={listId}>
           {pages.map((path) => (
             <option key={path} value={path} />
           ))}
@@ -137,9 +139,9 @@ export function NumberField({ id, spec, value, onChange, required, error, unsave
   );
 }
 
-export function BooleanField({ id, spec, value, onChange }: FieldProps<boolean>) {
+export function BooleanField({ id, spec, value, onChange, error }: FieldProps<boolean>) {
   return (
-    <div className="field field--check">
+    <div className={`field field--check${error ? " field--error" : ""}`}>
       <label htmlFor={id}>
         <input
           id={id}
@@ -155,15 +157,20 @@ export function BooleanField({ id, spec, value, onChange }: FieldProps<boolean>)
           {spec.description}
         </p>
       )}
+      {error && (
+        <p id={`${id}-problem`} className="form__error">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
 
-export function ChoiceField({ id, spec, value, onChange, required, error }: FieldProps<string | number>) {
+export function ChoiceField({ id, spec, value, onChange, required, error, unsaved }: FieldProps<string | number>) {
   const options = spec.enum ?? [];
   const titles = spec["x-enum-titles"] ?? options.map(String);
   return (
-    <fieldset className={`field choice${error ? " field--error" : ""}`} aria-describedby={describedBy(id, spec, error)}>
+    <fieldset className={`field choice${error ? " field--error" : ""}`} aria-describedby={describedBy(id, spec, error, unsaved)}>
       <legend>
         {spec.title}
         {required && <span className="field__required"> ({ed.required})</span>}
@@ -173,6 +180,7 @@ export function ChoiceField({ id, spec, value, onChange, required, error }: Fiel
           <label key={String(option)} className="choice__option">
             <input
               type="radio"
+              id={index === 0 ? id : undefined} // "Vai al campo" porta alla prima scelta
               name={id}
               checked={value === option}
               onChange={() => onChange(option)}
@@ -186,9 +194,9 @@ export function ChoiceField({ id, spec, value, onChange, required, error }: Fiel
           {spec.description}
         </p>
       )}
-      {error && (
+      {(error || unsaved) && (
         <p id={`${id}-problem`} className="form__error">
-          {error}
+          {error ?? `${ed.save.unsavedField} (${unsaved})`}
         </p>
       )}
     </fieldset>

@@ -89,13 +89,12 @@ describe("moduli generati dagli schemi", () => {
     const box = screen.getByRole("textbox", { name: /Testo/ });
     expect(box).toHaveTextContent("Ciao");
     expect(screen.getByRole("button", { name: "Grassetto" })).toHaveAttribute("aria-pressed", "false");
+    // Senza testo selezionato il pulsante Link non c'è: un link vuoto non servirebbe.
+    expect(screen.queryByRole("button", { name: "Link" })).not.toBeInTheDocument();
     await act(async () => {
-      screen.getByRole("button", { name: "Link" }).click();
+      screen.getByRole("button", { name: "Titolo 1" }).click();
     });
-    const dialog = screen.getByRole("dialog", { name: "Inserisci un link" });
-    await userEvent.setup().type(within(dialog).getByLabelText("Indirizzo"), "javascript:x");
-    expect(within(dialog).getByText("Indirizzo non valido")).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Inserisci" })).toBeDisabled();
+    expect(data()).toEqual({ body: "<h2>Ciao</h2>" });
   });
 });
 

@@ -252,6 +252,36 @@ describe("editor della pagina", () => {
     expect([last.version, last.title]).toEqual([9, "Chi siamo mio"]);
   });
 
+  test("Duplica non supera il massimo della zona (homepage: una sola apertura)", async () => {
+    const api = fakeApi();
+    signedIn(api);
+    const home: PageDocument = {
+      title: "Home",
+      layout: "home",
+      seo: {},
+      zones: { hero: [{ uid: UID, type: "hero", variant: null, data: { title: "Ciao" } }], main: [] },
+    };
+    api.on("GET", "/pages/7", { data: node("Home", { id: 7, path: "/", is_home: true }) });
+    api.on("GET", "/pages/7/draft", { data: { version: 1, data: home, from_published: false, updated_at: null } });
+    api.on("GET", "/blocks", { data: catalog() });
+    api.on("GET", "/pages/tree", { data: [], meta: { truncated: false } });
+    render(<App />);
+    const row = await screen.findByRole("group", { name: 'Azioni per il blocco "Apertura"' });
+    expect(within(row).getByRole("button", { name: "Duplica" })).toBeDisabled();
+  });
+
+  test("Ctrl+Z dentro una finestra non annulla il documento dietro", async () => {
+    const { user } = open();
+    const title = await ready();
+    await user.type(title, "!");
+    await user.click(screen.getByRole("button", { name: /Invito all'azione/ }));
+    await user.click(within(screen.getByRole("group", { name: "Azioni per il blocco \"Invito all'azione\"" })).getByRole("button", { name: "Sposta in…" }));
+    const dialog = screen.getByRole("dialog");
+    within(dialog).getByRole("combobox").focus();
+    await user.keyboard("{Control>}z{/Control}");
+    expect(title).toHaveValue("Chi siamo!");
+  });
+
   test("ritira dal sito con conferma e la versione della pagina", async () => {
     const { api, user } = open();
     api.on("POST", "/pages/7/unpublish", { data: node("Chi siamo", { id: 7, status: "draft", path: "/chi-siamo", version: 5 }) });

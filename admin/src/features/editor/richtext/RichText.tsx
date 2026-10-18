@@ -5,7 +5,7 @@ import { Dialog } from "../../../ui/Dialog";
 import { FieldFrame, type FieldProps } from "../schema/fields";
 import { completeUrl, isSafeUrl, normalizeUrl } from "../schema/safeUrl";
 import { length } from "../schema/validate";
-import { HEADING_LEVELS, richTextExtensions } from "./extensions";
+import { HEADING_LEVELS, RICH_TEXT_EXTENSIONS } from "./extensions";
 
 type Level = (typeof HEADING_LEVELS)[number];
 
@@ -34,7 +34,8 @@ function Toolbar({ editor, onLink }: { editor: Editor; onLink: () => void }) {
       {button(ed.rich.bullet, editor.isActive("bulletList"), () => chain().toggleBulletList().run())}
       {button(ed.rich.ordered, editor.isActive("orderedList"), () => chain().toggleOrderedList().run())}
       {button(ed.rich.quote, editor.isActive("blockquote"), () => chain().toggleBlockquote().run())}
-      {button(ed.rich.link, editor.isActive("link"), onLink)}
+      {/* Il link si mette su un testo selezionato (o si modifica quello esistente). */}
+      {(!editor.state.selection.empty || editor.isActive("link")) && button(ed.rich.link, editor.isActive("link"), onLink)}
       {editor.isActive("link") && button(ed.rich.unlink, false, () => chain().extendMarkRange("link").unsetLink().run())}
     </div>
   );
@@ -77,7 +78,7 @@ export function RichTextField({ id, spec, value, onChange, required, error, unsa
   const emitted = useRef(value ?? "");
   const [linking, setLinking] = useState(false);
   const editor = useEditor({
-    extensions: richTextExtensions(),
+    extensions: RICH_TEXT_EXTENSIONS,
     content: value ?? "",
     injectCSS: false,
     immediatelyRender: true,
@@ -89,9 +90,6 @@ export function RichTextField({ id, spec, value, onChange, required, error, unsa
         role: "textbox",
         "aria-multiline": "true",
         "aria-labelledby": `${id}-label`,
-        "aria-describedby": [spec.description ? `${id}-help` : "", error || unsaved ? `${id}-problem` : ""]
-          .filter(Boolean)
-          .join(" "),
       },
     },
     onUpdate: ({ editor: current }) => {
@@ -109,6 +107,19 @@ export function RichTextField({ id, spec, value, onChange, required, error, unsa
       editor.commands.setContent(next, { emitUpdate: false });
     }
   }, [editor, value]);
+
+  // Errori e suggerimenti collegati al campo anche quando cambiano dopo la creazione.
+  const describedBy = [spec.description ? `${id}-help` : "", error || unsaved ? `${id}-problem` : ""]
+    .filter(Boolean)
+    .join(" ");
+  useEffect(() => {
+    const dom = editor?.view.dom;
+    if (!dom) return;
+    if (describedBy) dom.setAttribute("aria-describedby", describedBy);
+    else dom.removeAttribute("aria-describedby");
+    if (error || unsaved) dom.setAttribute("aria-invalid", "true");
+    else dom.removeAttribute("aria-invalid");
+  }, [editor, describedBy, error, unsaved]);
 
   const html = value ?? "";
   return (

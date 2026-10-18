@@ -85,7 +85,10 @@ export class Autosave {
   change(doc: PageDocument): void {
     this.latest = doc;
     if (!this.dirty) {
-      if (this.state.kind === "pending") this.set({ kind: "saved", at: null });
+      // Tornati al testo salvato (es. con Annulla): nessun errore resta in sospeso.
+      if (this.timer !== null) this.clock.cancel(this.timer);
+      this.timer = null;
+      if (!this.blocked && this.state.kind !== "saved") this.set({ kind: "saved", at: null });
       return;
     }
     if (this.blocked) return;
@@ -109,7 +112,10 @@ export class Autosave {
     }
     while (this.running) await this.running;
     if (this.blocked) return false;
-    if (!this.dirty) return this.state.kind === "saved";
+    if (!this.dirty) {
+      if (this.state.kind !== "saved") this.set({ kind: "saved", at: null });
+      return true;
+    }
     this.running = this.run();
     try {
       await this.running;
@@ -172,9 +178,10 @@ export class Autosave {
     this.set({ kind: "saved", at: null });
   }
 
+  /** Ferma l'attesa. Gli ascoltatori si tolgono con la funzione restituita da subscribe:
+   * in sviluppo React smonta e rimonta gli effetti, e l'istanza resta la stessa. */
   dispose(): void {
     if (this.timer !== null) this.clock.cancel(this.timer);
     this.timer = null;
-    this.listeners.clear();
   }
 }
