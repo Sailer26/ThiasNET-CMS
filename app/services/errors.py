@@ -37,7 +37,10 @@ def not_found(message: str = "Risorsa non trovata") -> ServiceError:
 def version_conflict(
     current_version: int, updated_by: int | None, updated_at: datetime | None
 ) -> ServiceError:
-    """Blocco ottimistico (D-44): qualcun altro ha salvato nel frattempo."""
+    """Blocco ottimistico (D-44): qualcun altro ha salvato nel frattempo. Il nome di chi
+    ha salvato serve al pannello anche per chi non può leggere gli utenti (D-92)."""
+    from app.services.authors import display_name  # usa il database: import solo qui
+
     return ServiceError(
         "version_conflict",
         "Qualcun altro ha modificato questa pagina: ricarica per vedere le ultime modifiche",
@@ -45,6 +48,7 @@ def version_conflict(
         details={
             "current_version": current_version,
             "updated_by": updated_by,
+            "updated_by_name": display_name(updated_by),
             "updated_at": updated_at.isoformat() if updated_at else None,
         },
     )

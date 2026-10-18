@@ -47,11 +47,11 @@ def _common(environ: Mapping[str, str]) -> dict[str, Any]:
         "MAX_CONTENT_LENGTH": max_upload_mb * BYTES_PER_MB,
         # Sessione e cookie
         "SESSION_COOKIE_HTTPONLY": True,
-        "SESSION_COOKIE_SAMESITE": "Lax",
+        "SESSION_COOKIE_SAMESITE": "Strict",  # D-91: pannello e anteprima sono dello stesso sito
         "PERMANENT_SESSION_LIFETIME": SESSION_LIFETIME,
         "SESSION_REFRESH_EACH_REQUEST": True,
         "REMEMBER_COOKIE_HTTPONLY": True,
-        "REMEMBER_COOKIE_SAMESITE": "Lax",
+        "REMEMBER_COOKIE_SAMESITE": "Strict",
         # CSRF (D-23): il token vive quanto la sessione, arriva alla SPA via header.
         "WTF_CSRF_TIME_LIMIT": None,
         "TRUSTED_PROXY_COUNT": _int_env(environ, "TRUSTED_PROXY_COUNT", 0, minimum=0),

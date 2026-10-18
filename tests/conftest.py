@@ -32,6 +32,7 @@ FAKE_IMAGES: dict[str, bytes] = {
 }
 APP_ENV_VARS = (
     "APP_ENV",
+    "ADMIN_DIST_DIR",
     "SECRET_KEY",
     "DATABASE_URL",
     "THEMES_DIR",
@@ -95,6 +96,10 @@ def _isolated_environment(
         monkeypatch.delenv(var, raising=False)
     # Ogni test ha la sua cartella dei media: nessun file finisce nel progetto (D-74).
     monkeypatch.setenv("MEDIA_ROOT", str(tmp_path_factory.mktemp("media")))
+    # Il pannello compilato non serve ai test Python: basta un index.html finto (D-87).
+    dist = tmp_path_factory.mktemp("admin-dist")
+    (dist / "index.html").write_text('<div id="root"></div>', encoding="utf-8")
+    monkeypatch.setenv("ADMIN_DIST_DIR", str(dist))
 
 
 @pytest.fixture

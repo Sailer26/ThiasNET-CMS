@@ -10,7 +10,7 @@ __pycache__/
 .coverage
 htmlcov/
 /data/
-media/
+/media/
 admin/node_modules/
 admin/dist/
 coverage.xml
@@ -18,3 +18,4 @@ coverage.xml
 *.db-shm
 instance/
 *.egg-info/
+admin/coverage/

@@ -2,18 +2,18 @@
 PY ?= python
 TASKS = $(PY) scripts/tasks.py
 
-.PHONY: dev test lint migrate seed theme-check admin-dev build
+.PHONY: dev test lint migrate seed theme-check admin-install admin-dev admin-build admin-test admin-lint build
 
 dev:            ## Avvia backend Flask in debug
 	$(TASKS) dev
 
-admin-dev:      ## Avvia il pannello React (Vite), dalla Fase 5
-	cd admin && npm run dev
+admin-install admin-dev admin-build admin-test admin-lint:  ## Pannello React (D-96)
+	$(TASKS) $@
 
 test:
 	$(TASKS) test
 
-lint:           ## ruff + mypy (+ eslint se esiste admin/)
+lint:           ## ruff + mypy (il pannello ha admin-lint)
 	$(TASKS) lint
 
 migrate:

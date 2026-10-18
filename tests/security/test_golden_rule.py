@@ -185,6 +185,9 @@ EXPECTED_PUBLIC_ROUTES = {
     "/_preview/<int:page_id>": {"POST"},  # anteprima live: nessuna scrittura (D-55)
     "/_contact": {"POST"},  # modulo contatti (D-61)
     "/media/<key>/<filename>": set(),  # file della libreria, solo lettura (D-75)
+    "/admin/": set(),  # pannello compilato, solo lettura (D-87)
+    "/admin/<path:subpath>": set(),
+    "/admin/assets/<path:filename>": set(),
 }
 
 
@@ -215,6 +218,9 @@ def test_themes_unchanged_after_every_public_route() -> None:
         "/sitemap.xml",
         "/robots.txt",
         "/_preview/1",
+        "/admin/",
+        "/admin/pagine",
+        "/admin/assets/x.js",
     ):
         client.get(path)
     client.post("/_contact", data={"token": "x"})

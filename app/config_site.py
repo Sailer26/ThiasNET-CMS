@@ -27,6 +27,7 @@ MEDIA_DEFAULTS = {
     "development": PROJECT_ROOT / "data" / "media",
     "testing": PROJECT_ROOT / "data" / "media-test",  # i test usano sempre una cartella temporanea
 }
+ADMIN_DIST_DEFAULT = PROJECT_ROOT / "admin" / "dist"
 DEFAULT_MAX_PIXELS = 25_000_000  # D-71: memoria per caricamento sotto controllo
 DEFAULT_QUOTA_MB = 5 * 1024  # D-71: 5 GB per sito
 
@@ -114,8 +115,23 @@ def _media_root(name: str, environ: Mapping[str, str]) -> Path:
     return root
 
 
+def _admin_dist(environ: Mapping[str, str]) -> Path:
+    """D-87: la build del pannello sta lontano dal tema e dal codice dell'app."""
+    raw = (environ.get("ADMIN_DIST_DIR") or "").strip()
+    root = Path(raw) if raw else ADMIN_DIST_DEFAULT
+    root = (root if root.is_absolute() else PROJECT_ROOT / root).resolve()
+    themes = Path(environ.get("THEMES_DIR", str(PROJECT_ROOT / "themes"))).resolve()
+    for protected in (themes, APP_DIR):
+        if _inside(root, protected) or _inside(protected, root):
+            raise ConfigError(
+                f"ADMIN_DIST_DIR non può stare dentro o sopra {protected}: usa admin/dist"
+            )
+    return root
+
+
 def site_config(name: str, environ: Mapping[str, str]) -> dict[str, Any]:
     return {
+        "ADMIN_DIST_DIR": _admin_dist(environ),
         "MEDIA_ROOT": _media_root(name, environ),
         "MEDIA_MAX_PIXELS": _int(environ, "MEDIA_MAX_PIXELS", DEFAULT_MAX_PIXELS),
         "MEDIA_QUOTA_MB": _int(environ, "MEDIA_QUOTA_MB", DEFAULT_QUOTA_MB),

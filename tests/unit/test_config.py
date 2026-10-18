@@ -4,7 +4,7 @@ from datetime import timedelta
 
 import pytest
 
-from app.config import ConfigError, build_config
+from app.config import PROJECT_ROOT, ConfigError, build_config
 
 
 def test_testing_config_flags() -> None:
@@ -105,7 +105,8 @@ def test_production_session_cookies_hardened() -> None:
     assert config["REMEMBER_COOKIE_NAME"] == "__Host-remember_token"
     assert config["REMEMBER_COOKIE_SECURE"] is True
     assert config["REMEMBER_COOKIE_HTTPONLY"] is True
-    assert config["REMEMBER_COOKIE_SAMESITE"] == "Lax"
+    assert config["REMEMBER_COOKIE_SAMESITE"] == "Strict"
+    assert config["SESSION_COOKIE_SAMESITE"] == "Strict"  # D-91
     assert config["TRUSTED_PROXY_COUNT"] == 1
 
 
@@ -203,3 +204,14 @@ def test_media_root_never_near_the_theme_or_the_code(inside: str) -> None:
 
     with pytest.raises(ConfigError, match="MEDIA_ROOT"):
         build_config("development", environ={"MEDIA_ROOT": str(PROJECT_ROOT / inside)})
+
+
+def test_admin_build_defaults_to_the_admin_folder() -> None:
+    config = build_config("development", environ={})
+    assert config["ADMIN_DIST_DIR"] == (PROJECT_ROOT / "admin" / "dist").resolve()
+
+
+@pytest.mark.parametrize("inside", ["themes/default", "app/static", "."])
+def test_admin_build_stays_away_from_theme_and_code(inside: str) -> None:
+    with pytest.raises(ConfigError, match="ADMIN_DIST_DIR"):
+        build_config("development", environ={"ADMIN_DIST_DIR": str(PROJECT_ROOT / inside)})
