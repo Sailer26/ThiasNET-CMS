@@ -23,6 +23,14 @@ __all__ = ["ACTIVE_THEME_KEY", "create_app", "get_theme"]
 MIGRATIONS_DIR = PROJECT_ROOT / "migrations"
 
 
+def _require_webp() -> None:
+    """D-84: senza WebP le varianti non si possono creare: meglio non partire."""
+    from PIL import features
+
+    if not features.check("webp"):
+        raise RuntimeError("Pillow senza supporto WebP: reinstallare Pillow con WebP")
+
+
 def create_app(config_name: str | None = None, overrides: Mapping[str, Any] | None = None) -> Flask:
     """Crea l'app. Se il tema attivo non è valido solleva ThemeValidationError e non parte."""
     app = Flask(__name__)
@@ -30,6 +38,7 @@ def create_app(config_name: str | None = None, overrides: Mapping[str, Any] | No
     if overrides:
         app.config.from_mapping(overrides)
 
+    _require_webp()
     app.extensions[ACTIVE_THEME_KEY] = load_theme(
         Path(app.config["THEMES_DIR"]), app.config["ACTIVE_THEME"]
     )

@@ -22,7 +22,7 @@ log = logging.getLogger("thiasnet.media")
 KEY_RE = re.compile(r"[0-9a-f]{32}")
 # r<rev>-master.<ext> · r<rev>-<formato>-<larghezza>.webp · r<rev>.pdf
 NAME_RE = re.compile(
-    r"r[0-9]{1,6}(?:-master\.(?:jpg|png|webp)|-_?[a-z][a-z0-9_]{0,39}-[0-9]{1,5}\.webp|\.pdf)"
+    r"r[0-9]{1,6}(?:-master\.(?:jpg|png|webp)|-_?[a-z][a-z0-9_]{0,63}-[0-9]{1,5}\.webp|\.pdf)"
 )
 
 
@@ -54,10 +54,27 @@ def put(key: str, name: str, data: bytes) -> None:
     if not path.parent.resolve().is_relative_to(_root()):
         raise MediaStorageError("la cartella esce dalla cartella dei media")
     try:
-        with path.open("xb") as handle:
-            handle.write(data)
+        handle = path.open("xb")
     except FileExistsError as exc:
         raise MediaStorageError(f"il file esiste già: {name}") from exc
+    try:
+        with handle:
+            handle.write(data)
+    except OSError:
+        path.unlink(missing_ok=True)  # niente file a metà (es. disco pieno)
+        raise
+
+
+def put_replacing_orphan(key: str, name: str, data: bytes, current: Iterable[str]) -> None:
+    """Come `put`, ma un file rimasto da un tentativo fallito (non nella revisione corrente)
+    si sostituisce: altrimenti quel media non potrebbe più cambiare revisione."""
+    try:
+        put(key, name, data)
+    except MediaStorageError:
+        if name in set(current):
+            raise
+        path_for(key, name).unlink(missing_ok=True)
+        put(key, name, data)
 
 
 def discard(key: str, names: Iterable[str]) -> None:

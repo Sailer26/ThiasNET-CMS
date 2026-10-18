@@ -27,7 +27,7 @@ MEDIA_DEFAULTS = {
     "development": PROJECT_ROOT / "data" / "media",
     "testing": PROJECT_ROOT / "data" / "media-test",  # i test usano sempre una cartella temporanea
 }
-DEFAULT_MAX_PIXELS = 40_000_000  # D-71
+DEFAULT_MAX_PIXELS = 25_000_000  # D-71: memoria per caricamento sotto controllo
 DEFAULT_QUOTA_MB = 5 * 1024  # D-71: 5 GB per sito
 
 

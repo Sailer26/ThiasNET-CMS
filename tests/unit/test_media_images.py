@@ -162,3 +162,19 @@ def test_crop_follows_the_focal_point() -> None:
     red = open_image(left.data).convert("RGB").getpixel((5, 50))
     assert isinstance(red, tuple) and red[0] > 200
     assert open_image(right.data).convert("RGB").getpixel((5, 50)) != (255, 0, 0)
+
+
+def test_extreme_ratios_never_crash() -> None:
+    sizes = {"strip": {"width": 100, "ratio": "99:1"}, "pole": {"width": 100, "ratio": "1:99"}}
+    for size in ((1, 1), (2, 1), (1, 3)):
+        assert variants(_decoded(size), sizes, (50, 50))
+
+
+def test_app_refuses_to_start_without_webp(monkeypatch: pytest.MonkeyPatch) -> None:
+    from PIL import features
+
+    from app import create_app
+
+    monkeypatch.setattr(features, "check", lambda name: name != "webp")
+    with pytest.raises(RuntimeError, match="WebP"):
+        create_app("testing")

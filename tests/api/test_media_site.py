@@ -144,3 +144,14 @@ def test_missing_media_disappears_on_the_site(
     response = visitor.get("/galleria")
     assert response.status_code == 200
     assert inspect(response.get_data(as_text=True)).find("img") == []
+
+
+# --- Regressioni dalla review ECC della Fase 4 -------------------------------------------
+
+
+def test_media_responses_never_carry_the_session_cookie(admin: FlaskClient) -> None:
+    media = uploaded(admin)
+    response = admin.get(media["url"])  # chi è loggato nel pannello
+    assert response.status_code == 200
+    assert "Set-Cookie" not in response.headers
+    assert "Cookie" not in response.headers.get("Vary", "")

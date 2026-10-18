@@ -187,7 +187,7 @@ def test_media_defaults_in_development() -> None:
 
     config = build_config("development", environ={})
     assert config["MEDIA_ROOT"] == (PROJECT_ROOT / "data" / "media").resolve()
-    assert config["MEDIA_MAX_PIXELS"] == 40_000_000
+    assert config["MEDIA_MAX_PIXELS"] == 25_000_000
     assert config["MEDIA_QUOTA_MB"] == 5120
 
 

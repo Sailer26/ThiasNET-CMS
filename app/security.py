@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from flask import Flask
+from flask import Flask, Response, request
+from flask.sessions import SecureCookieSessionInterface, SessionMixin
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app.api import unauthorized
@@ -10,8 +11,21 @@ from app.extensions import csrf, login_manager
 from app.services import passwords
 from app.services.auth import load_user
 
+MEDIA_PREFIX = "/media/"
+
+
+class SessionInterface(SecureCookieSessionInterface):
+    """I file della libreria sono pubblici e in cache (anche condivise): le loro risposte non
+    portano mai il cookie di sessione di chi è nel pannello (review sicurezza Fase 4)."""
+
+    def save_session(self, app: Flask, session: SessionMixin, response: Response) -> None:
+        if request.path.startswith(MEDIA_PREFIX):
+            return  # né Set-Cookie né Vary: Cookie
+        super().save_session(app, session, response)
+
 
 def init_security(app: Flask) -> None:
+    app.session_interface = SessionInterface()
     csrf.init_app(app)
     login_manager.init_app(app)
     # "basic" e non "strong": "strong" scollegherebbe i tablet che cambiano rete (D-26).

@@ -271,3 +271,61 @@ def test_folders(editor: FlaskClient) -> None:
 def _generation(app: Flask) -> int:
     with app.app_context():
         return page_cache.current_generation()
+
+
+# --- Regressioni dalla review ECC della Fase 4 -------------------------------------------
+
+
+def test_media_of_an_unpublished_page_stays_in_use(editor: FlaskClient) -> None:
+    from tests.pages_helpers import PAGES, page_version
+
+    media = uploaded(editor, alt="Lago")
+    page = _image_page(editor, media["id"])
+    editor.post(
+        f"{PAGES}/{page['id']}/unpublish", json={"version": page_version(editor, page["id"])}
+    )
+    response = editor.delete(f"{MEDIA}/{media['id']}", json={"version": 1})
+    assert (response.status_code, error_code(response)) == (409, "media_in_use")
+    assert {d["where"] for d in response.get_json()["error"]["details"]} == {"unpublished"}
+
+
+def test_phone_photos_tall_images_and_transparency(app: Flask, editor: FlaskClient) -> None:
+    from PIL import Image
+
+    from tests.media_fixtures import open_image
+
+    mpo = io.BytesIO()
+    frames = [Image.new("RGB", (60, 40), (200, 0, 0)), Image.new("RGB", (60, 40), (0, 0, 200))]
+    frames[0].save(mpo, format="MPO", save_all=True, append_images=frames[1:])
+    assert upload(editor, mpo.getvalue(), "telefono.jpg").status_code == 201
+    tall = uploaded(editor, image_bytes(size=(300, 20000), color=(5, 6, 7)), "lunga.png")
+    assert max(v["h"] for e in tall["sizes"].values() for v in e) <= 16383
+    keyed = uploaded(editor, image_bytes(color=(1, 2, 3), transparency=(1, 2, 3)), "chiave.png")
+    master = (
+        Path(app.config["MEDIA_ROOT"])
+        / keyed["key"][:2]
+        / keyed["key"]
+        / keyed["url"].rsplit("/", 1)[1]
+    )
+    assert open_image(master.read_bytes()).mode == "RGBA"
+
+
+def test_focal_point_change_keeps_the_master_bytes(app: Flask, editor: FlaskClient) -> None:
+    media = uploaded(editor)
+    root = Path(app.config["MEDIA_ROOT"]) / media["key"][:2] / media["key"]
+    before = (root / media["url"].rsplit("/", 1)[1]).read_bytes()
+    data = editor.patch(f"{MEDIA}/{media['id']}", json={"version": 1, "focal_x": 10}).get_json()[
+        "data"
+    ]
+    assert (root / data["url"].rsplit("/", 1)[1]).read_bytes() == before  # niente ricodifica
+
+
+def test_leftover_files_do_not_block_the_next_revision(app: Flask, editor: FlaskClient) -> None:
+    media = uploaded(editor)
+    root = Path(app.config["MEDIA_ROOT"]) / media["key"][:2] / media["key"]
+    (root / "r2-master.png").write_bytes(b"resto di un tentativo fallito")
+    body = {"file": (io.BytesIO(image_bytes(color=(9, 1, 1))), "nuova.png"), "version": "1"}
+    response = editor.post(
+        f"{MEDIA}/{media['id']}/file", data=body, content_type="multipart/form-data"
+    )
+    assert response.status_code == 200, response.get_json()

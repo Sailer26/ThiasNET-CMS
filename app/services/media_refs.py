@@ -65,6 +65,8 @@ def check_document(document: Any) -> list[FieldError]:
             )
         elif ref.kind == MediaKind.IMAGE and media.kind != MediaKind.IMAGE:
             errors.append(FieldError(ref.path, "media_not_image", "Qui serve un'immagine"))
+        elif ref.kind == "file" and media.kind != MediaKind.DOCUMENT:
+            errors.append(FieldError(ref.path, "media_not_file", "Qui serve un documento PDF"))
         elif media.kind == MediaKind.IMAGE and not media.alt.strip():
             errors.append(
                 FieldError(ref.path, "alt_missing", "Aggiungi il testo alternativo all'immagine")
@@ -78,16 +80,20 @@ def _uses(document: Any, media_id: int) -> bool:
 
 def _published(media_id: int) -> Iterator[tuple[Page, str]]:
     registry = get_registry()
-    online = (live(), Page.status == PageStatus.PUBLISHED)
+    # Anche le pagine ritirate o tornate dal cestino: i blocchi si ripubblicano così come sono.
     rows = db.session.execute(
-        select(Block, Page).join(Page, Page.id == Block.page_id).where(*online)
+        select(Block, Page).join(Page, Page.id == Block.page_id).where(live())
     )
     for block, page in rows:
         if media_id in registry.media_ids(block.type, block.data_json):
-            yield page, "published"
-    for page in db.session.execute(select(Page).where(*online)).scalars():
+            yield page, _where(page)
+    for page in db.session.execute(select(Page).where(live())).scalars():
         if (page.seo_json or {}).get("og_image_media_id") == media_id:
-            yield page, "published"
+            yield page, _where(page)
+
+
+def _where(page: Page) -> str:
+    return "published" if page.status == PageStatus.PUBLISHED else "unpublished"
 
 
 def _drafts(media_id: int) -> Iterator[tuple[Page, str]]:
@@ -131,5 +137,7 @@ def pages_using(media_id: int) -> list[dict[str, Any]]:
 
 
 def used_by_online_pages(media_id: int) -> bool:
-    """Usato da una pagina online o programmata (per non togliere l'alt, D-77)."""
-    return any(u["where"] in {"published", "scheduled"} for u in pages_using(media_id))
+    """Usato da una pagina online o programmata (per non togliere l'alt, D-77): si guardano
+    solo queste due fonti e ci si ferma al primo caso, senza il tetto di MAX_USAGES."""
+    online = (where for _page, where in _published(media_id) if where == "published")
+    return next(online, None) is not None or next(_scheduled(media_id), None) is not None

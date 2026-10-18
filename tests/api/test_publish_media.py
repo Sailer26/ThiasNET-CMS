@@ -72,3 +72,12 @@ def test_scheduling_checks_the_media_too(admin: FlaskClient) -> None:
         f"{PAGES}/{page['id']}/schedule", json={"draft_version": 2, "publish_at": when}
     )
     assert ("zones/main/0/data/media_id", "media_missing") in details(response)
+
+
+def test_files_block_needs_a_document(admin: FlaskClient) -> None:
+    image = uploaded(admin, alt="Foto")
+    files = {"uid": uid(1), "type": "files", "data": {"items": [{"media_id": image["id"]}]}}
+    page = _page_with(admin, files)
+    assert ("zones/main/0/data/items/0/media_id", "media_not_file") in details(
+        publish(admin, page["id"])
+    )

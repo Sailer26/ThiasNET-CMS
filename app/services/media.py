@@ -25,14 +25,19 @@ from app.models.user import User
 from app.services import audit, media_library, media_refs, media_storage, page_cache
 from app.services.errors import ServiceError, not_found, version_conflict
 from app.services.media_folders import get_folder
-from app.services.media_images import ImageError, decode, master, variants
+from app.services.media_images import (
+    EncodedImage,
+    ImageError,
+    Variant,
+    process,
+    variants_from_master,
+)
 from app.services.media_types import DetectedType, sniff
 from app.services.permissions import Permission, require
 from app.services.sanitize import clean_line
 from app.services.sql import rows_affected
 from app.services.theme import active_theme
 
-FORMAT_BY_EXT = {"jpg": "JPEG", "png": "PNG", "webp": "WEBP"}
 MB = 1024 * 1024
 
 
@@ -85,11 +90,19 @@ def _build(detected: DetectedType, data: bytes, rev: int, focal: tuple[int, int]
         return Built({f"r{rev}.pdf": data}, {}, None, None, detected.mime, detected.ext)
     max_pixels = int(current_app.config["MEDIA_MAX_PIXELS"])
     try:
-        image = decode(data, detected.format, max_pixels=max_pixels)
-        encoded = master(image, detected.format)
-        found = variants(image, active_theme().image_sizes, focal)
+        encoded, found = process(
+            data,
+            detected.format,
+            max_pixels=max_pixels,
+            image_sizes=active_theme().image_sizes,
+            focal=focal,
+        )
     except ImageError as exc:
         raise ServiceError("invalid_image", str(exc), 422) from exc
+    return _layout(rev, encoded, found)
+
+
+def _layout(rev: int, encoded: EncodedImage, found: list[Variant]) -> Built:
     master_name = f"r{rev}-master.{encoded.ext}"
     files = {master_name: encoded.data}
     sizes: dict[str, list[dict[str, Any]]] = {}
@@ -112,11 +125,11 @@ def _ensure_quota(new_bytes: int, freed_bytes: int = 0) -> None:
         raise ServiceError("storage_full", "Spazio esaurito, contatta Thias", 507)
 
 
-def _store(key: str, files: Mapping[str, bytes]) -> None:
+def _store(key: str, files: Mapping[str, bytes], current: list[str] | None = None) -> None:
     written: list[str] = []
     try:
         for name, data in files.items():
-            media_storage.put(key, name, data)
+            media_storage.put_replacing_orphan(key, name, data, current or [])
             written.append(name)
     except Exception:
         media_storage.discard(key, written)
@@ -237,8 +250,18 @@ def _reprocess(media: Media) -> tuple[Built, list[str]]:
     if path is None:
         raise ServiceError("missing_file", "Il file originale non è più disponibile", 409)
     data = path.read_bytes()
-    detected = DetectedType(MediaKind.IMAGE, FORMAT_BY_EXT[media.ext], media.mime, media.ext)
-    built = _build(detected, data, media.file_rev + 1, (media.focal_x, media.focal_y))
+    try:
+        found = variants_from_master(
+            data,
+            media.ext,
+            image_sizes=active_theme().image_sizes,
+            focal=(media.focal_x, media.focal_y),
+        )
+    except ImageError as exc:
+        raise ServiceError("invalid_image", str(exc), 422) from exc
+    # Il master non si ricodifica (niente perdita di qualità): stessi byte, revisione nuova.
+    encoded = EncodedImage(data, media.width or 0, media.height or 0, media.ext, media.mime)
+    built = _layout(media.file_rev + 1, encoded, found)
     return built, _new_revision(media, built)
 
 
@@ -367,10 +390,14 @@ def refresh_variants(items: list[Media]) -> tuple[int, int]:
     done = failed = 0
     for item in items:
         try:
+            _bump(item, item.version)  # chi ha il media aperto nel pannello vedrà il cambio
             built, old = _reprocess(item)
             _store(item.storage_key, built.files)
             item.file_rev += 1
             page_cache.mark_changed()
+            audit.record(
+                "media.variants_refreshed", actor_id=None, entity="media", entity_id=item.id
+            )
             _commit_or_discard(item.storage_key, built.files)
         except Exception:
             db.session.rollback()
