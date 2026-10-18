@@ -156,3 +156,34 @@ Decisioni D-102 … D-115.
 - 5c: pagina Media completa, caricamento multiplo, `blob:` nella CSP, revisioni e programmazione nell'editor.
 - 5d: controlli prima di pubblicare nella finestra di conferma (D-09), tour, "Chiedi a Thias", "Pubblica" da telefono.
 - IDEE: anteprima a larghezza telefono, copia di blocchi tra pagine, chi sta modificando la pagina adesso.
+
+---
+
+# 5c — Libreria e amministrazione
+
+Prodotto con `ecc:planner` il 2026-10-18 sul branch `phase-5c-admin` (partito da `phase-5b2-editor`).
+Decisioni D-116 … D-130.
+
+## Risposte di Thias (tutte le proposte)
+1. **Messaggi del modulo contatti:** li leggono solo gli amministratori del cliente e Thias (sono dati personali). → D-126
+2. **Cancellare i messaggi:** sì, uno alla volta con conferma (richieste dei visitatori). → D-126
+3. **Password di un nuovo utente:** la sceglie chi lo crea (pulsante "Genera"), poi la persona la cambia se vuole. → D-123
+4. **Punto focale:** clic sulla foto con due esempi di taglio (quadrato e largo). → D-119
+
+## Punti trovati prima di iniziare
+1. Il pannello scambia ogni 401 per sessione scaduta: una password attuale sbagliata nel Profilo (401 `invalid_password`) aprirebbe la finestra di nuovo accesso → D-127.
+2. Messaggi: nessuna API e nessuno stato "letto" → migrazione `read_at`.
+3. Revisioni: solo `author_id`, e un editor non può leggere gli utenti → nome di chi ha salvato e titolo dal server.
+4. Programmazione: il fuso si converte nel pannello con `Intl` (su Windows Python non ha i fusi senza `tzdata`).
+5. Media: manca lo spazio usato e il limite per file (`GET /media/usage`), il filtro "Senza cartella" e il numero di file per cartella; il punto focale rigenera le varianti (salvataggio con un pulsante).
+6. Registro: niente filtri né nome di chi ha agito; mancano indici su `action` ed `entity`.
+7. `update_user` scrive `user.updated` anche senza cambiamenti.
+
+## Divisione (D-116)
+- **5c-1 — Libreria e pagine:** pagina Media completa (cartelle, filtri, caricamento multiplo, dettaglio con punto focale, Sostituisci, Usato in, Elimina, spazio), `blob:` in `img-src`, versioni e programmazione nell'editor, badge nell'albero, chiavi stabili negli elenchi, Vimeo privato, e2e media e trascinamento.
+- **5c-2 — Amministrazione:** API e schermata Messaggi, Utenti, Registro con filtri, Profilo, menu secondo i permessi, regola del 401.
+
+## Rimandi
+- 5d: QR per il codice a 6 cifre (se il test d'uso lo chiede), "Apri nella libreria" dal selettore.
+- IDEE: esportazione e notifiche dei messaggi, "Riprova invio", azioni su più media, confronto tra versioni, invito via email, cambio password obbligatorio, fuso configurabile.
+- Fase 8: conservazione del registro, axe sulle schermate nuove.
