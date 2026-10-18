@@ -299,6 +299,71 @@ describe("editor della pagina", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Non riconosco questo link");
   });
 
+  test("versioni: guarda nell'anteprima e ripristina nella bozza dopo aver salvato", async () => {
+    const { api, user } = open();
+    api.on("GET", "/pages/7/revisions", {
+      data: [{ id: 31, kind: "published", author_name: "luca@example.ch", title: "Chi eravamo", created_at: "2026-10-01T08:00:00+00:00" }],
+      meta: { total: 1 },
+    });
+    api.on("GET", "/pages/7/revisions/31", { data: { id: 31, snapshot: { ...draftDoc(), title: "Chi eravamo" } } });
+    api.on("POST", "/pages/7/revisions/31/restore", { data: { version: 5 } });
+    const title = await ready();
+    await user.type(title, "!");
+    await user.click(screen.getByRole("button", { name: "Versioni" }));
+    const dialog = await screen.findByRole("dialog", { name: "Versioni della pagina" });
+    expect(within(dialog).getByText(/luca@example\.ch · Chi eravamo/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/1 ottobre 2026 alle 10:00/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Guarda" }));
+    expect(await screen.findByText(/Stai guardando la versione del/)).toBeInTheDocument();
+    await waitFor(() => expect(submits.some((s) => JSON.parse(s.fields.document!).title === "Chi eravamo")).toBe(true));
+    await user.click(screen.getByRole("button", { name: "Torna alla bozza" }));
+
+    api.on("GET", "/pages/7/draft", { data: { version: 5, data: { ...draftDoc(), title: "Chi eravamo" }, from_published: false, updated_at: null } });
+    await user.click(screen.getByRole("button", { name: "Versioni" }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Ripristina" }));
+    const confirm = screen.getByRole("dialog", { name: "Ripristinare questa versione?" });
+    await user.click(within(confirm).getByRole("button", { name: "Ripristina" }));
+    expect(await screen.findByText("Versione ripristinata nella bozza: controlla e pubblica.")).toBeInTheDocument();
+    expect(api.callsTo("PUT", "/pages/7/draft")).toHaveLength(1); // salvata prima di ripristinare
+    expect(api.callsTo("POST", "/pages/7/revisions/31/restore")[0]!.body).toEqual({ draft_version: 3 });
+    expect(screen.getByLabelText("Titolo della pagina")).toHaveValue("Chi eravamo");
+  });
+
+  test("programma nell'ora svizzera; avviso se si modifica dopo; annulla", async () => {
+    const { api, user } = open({ status: "draft" });
+    const scheduled = node("Chi siamo", {
+      id: 7,
+      status: "scheduled",
+      path: "/chi-siamo",
+      version: 5,
+      publish_at: "2026-11-01T07:00:00+00:00",
+      schedule: { publish_at: "2026-11-01T07:00:00+00:00", revision_id: 40, author_name: "anna@example.ch", draft_newer: false },
+    });
+    api.on("POST", "/pages/7/schedule", { data: scheduled });
+    api.on("GET", "/pages/7", { data: node("Chi siamo", { id: 7, status: "draft", path: "/chi-siamo", version: 4 }) }, { data: scheduled }, { data: node("Chi siamo", { id: 7, path: "/chi-siamo", version: 6 }) });
+    api.on("DELETE", "/pages/7/schedule", { data: node("Chi siamo", { id: 7, path: "/chi-siamo", version: 6 }) });
+    const title = await ready();
+    await user.click(screen.getByRole("button", { name: "Programma…" }));
+    const dialog = screen.getByRole("dialog", { name: "Programmare la pubblicazione" });
+    expect(within(dialog).getByText("Ora svizzera.")).toBeInTheDocument();
+    const day = within(dialog).getByLabelText("Giorno");
+    await user.clear(day);
+    await user.type(day, "2026-11-01");
+    await user.click(within(dialog).getByRole("button", { name: "Programma" }));
+    expect(await screen.findByText("Pagina programmata per domenica 1 novembre 2026 alle 08:00.")).toBeInTheDocument();
+    expect(api.callsTo("POST", "/pages/7/schedule")[0]!.body).toEqual({ draft_version: 2, publish_at: "2026-11-01T08:00:00+01:00" });
+    expect(screen.getByText("Programmata per domenica 1 novembre 2026 alle 08:00.")).toBeInTheDocument();
+
+    await user.type(title, "!");
+    await wait(SAVE_DELAY_MS + 10);
+    expect(await screen.findByText(/Hai modificato la pagina dopo averla programmata/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Annulla programmazione" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Annulla programmazione" }));
+    expect(await screen.findByText("Programmazione annullata.")).toBeInTheDocument();
+    expect(api.callsTo("DELETE", "/pages/7/schedule")[0]!.body).toEqual({ version: 5 });
+  });
+
   test("ritira dal sito con conferma e la versione della pagina", async () => {
     const { api, user } = open();
     api.on("POST", "/pages/7/unpublish", { data: node("Chi siamo", { id: 7, status: "draft", path: "/chi-siamo", version: 5 }) });

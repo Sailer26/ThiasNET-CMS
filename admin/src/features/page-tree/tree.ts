@@ -89,6 +89,7 @@ export function needsPublishToTrash(node: PageNode): boolean {
 
 export function statusLabels(node: PageNode): string[] {
   const labels: string[] = [it.tree.status[node.status]];
+  if (node.status === "published" && node.publish_at) labels.push(it.tree.status.scheduled);
   if (node.has_draft && node.status !== "draft") labels.push(it.tree.status.changes);
   return labels;
 }

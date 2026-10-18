@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
 import { ed } from "../../../text/editor";
 import type { Data } from "../model/document";
-import { placeFromLink, videoFromLink } from "./pasteLinks";
+import { isShortMapLink, placeFromLink, videoFromLink } from "./pasteLinks";
 
 const HELPERS: Record<string, { label: string; help: string; read: (text: string) => Data | null }> = {
   video: { label: ed.paste.videoLabel, help: ed.paste.videoHelp, read: (text) => videoFromLink(text) as Data | null },
@@ -23,7 +23,7 @@ export function PasteHelper({ type, onApply }: { type: string; onApply: (patch: 
   function apply() {
     const patch = helper!.read(text);
     if (!patch) {
-      setProblem(ed.paste.invalid);
+      setProblem(type === "map" && isShortMapLink(text) ? ed.paste.shortLink : ed.paste.invalid);
       setDone(false);
       return;
     }

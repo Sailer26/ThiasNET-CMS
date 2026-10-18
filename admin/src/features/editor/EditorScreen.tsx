@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, errorMessage } from "../../api/client";
-import { discardDraft, fetchDraft, publishPage, saveDraft, unpublishPage, type Draft } from "../../api/drafts";
+import { discardDraft, fetchDraft, fetchPage, publishPage, saveDraft, unpublishPage, type Draft } from "../../api/drafts";
+import { getRevision, restoreRevision, schedulePage, unschedulePage, type Revision } from "../../api/revisions";
+import { VersionsDialog } from "./history/VersionsDialog";
+import { ScheduleDialog } from "./schedule/ScheduleDialog";
+import { formatZurich } from "./schedule/siteTime";
 import type { Page } from "../../api/types";
 import { Link } from "../../router/Link";
 import { paths, setNavigationGuard } from "../../router/router";
@@ -41,7 +45,7 @@ import { useEditorData, type Loaded } from "./useEditorData";
 import { useEditorState } from "./useEditorState";
 import { ZoneList, type ZoneActions } from "./zones/ZoneList";
 
-type Confirm = "publish" | "unpublish" | "discard" | null;
+type Confirm = "publish" | "unpublish" | "discard" | "unschedule" | null;
 
 function byBlock(entries: Iterable<[string, string]>): Map<string, Map<string, string>> {
   const out = new Map<string, Map<string, string>>();
@@ -80,6 +84,11 @@ function Workspace({ data }: { data: Loaded }) {
   const [serverErrors, setServerErrors] = useState<Map<string, string>>(new Map());
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [view, setView] = useState<"edit" | "preview">("edit");
+  const [versionsOpen, setVersionsOpen] = useState(false);
+  const [viewing, setViewing] = useState<{ revision: Revision; doc: PageDocument } | null>(null);
+  const [restoring, setRestoring] = useState<Revision | null>(null);
+  const [scheduling, setScheduling] = useState(false);
+  const [editedAfterSchedule, setEditedAfterSchedule] = useState(false);
   // Ultima versione salvata, per l'ultimo valore valido dei campi (D-104): la tiene Autosave.
   const [saved, setSaved] = useState<PageDocument>(data.draft.data);
   // Un salvataggio per pagina caricata (Workspace ha key = id): ricaricare usa reset().
@@ -100,6 +109,8 @@ function Workspace({ data }: { data: Loaded }) {
       autosave.subscribe((state) => {
         setSave(state);
         setSaved(autosave.base);
+        // Salvato dopo la programmazione: le modifiche non entrano in quella già fissata (D-122).
+        if (state.kind === "saved" && state.at) setEditedAfterSchedule(true);
       }),
     [autosave],
   );
@@ -211,6 +222,42 @@ function Workspace({ data }: { data: Loaded }) {
     const fresh = normalize(draft.data, catalog, site.default_layout);
     autosave.reset(draft.version, fresh);
     editor.replace(fresh);
+  }
+
+  async function look(revision: Revision) {
+    try {
+      setViewing({ revision, doc: await getRevision(page.id, revision.id) });
+      setVersionsOpen(false);
+      setView("preview");
+    } catch (error) {
+      setNotice({ kind: "error", text: errorMessage(error) });
+    }
+  }
+
+  async function restore(revision: Revision) {
+    if (!(await autosave.flush())) throw new ApiError(0, "not_saved", ed.publish.notSaved);
+    await restoreRevision(page.id, revision.id, autosave.draftVersion);
+    await loadTheirs();
+    setRestoring(null);
+    setViewing(null);
+    setNotice({ kind: "success", text: ed.versions.done });
+  }
+
+  async function schedule(iso: string) {
+    if (!(await autosave.flush())) throw new ApiError(0, "not_saved", ed.publish.notSaved);
+    await schedulePage(page.id, autosave.draftVersion, iso);
+    const fresh = await fetchPage(page.id);
+    setPage(fresh);
+    setEditedAfterSchedule(false);
+    setScheduling(false);
+    setNotice({ kind: "success", text: ed.schedule.done(formatZurich(fresh.schedule?.publish_at ?? iso)) });
+  }
+
+  async function unschedule() {
+    await unschedulePage(page.id, page.version);
+    setPage(await fetchPage(page.id));
+    setConfirm(null);
+    setNotice({ kind: "success", text: ed.schedule.cancelled });
   }
 
   async function keepMine() {
@@ -339,6 +386,14 @@ function Workspace({ data }: { data: Loaded }) {
             {ed.bar.discard}
           </button>
         )}
+        <button type="button" className="button button--small" onClick={() => setVersionsOpen(true)}>
+          {ed.versions.button}
+        </button>
+        {can(Permission.publish) && !(online && !changes) && (
+          <button type="button" className="button button--small" onClick={() => setScheduling(true)}>
+            {ed.schedule.button}
+          </button>
+        )}
         {can(Permission.publish) ? (
           <button
             type="button"
@@ -357,6 +412,27 @@ function Workspace({ data }: { data: Loaded }) {
         notice={notice}
         onClose={() => setNotice(null)}
       />
+      {page.schedule && (
+        <div className="notice notice--info schedule-bar">
+          <p>
+            {ed.schedule.pending(formatZurich(page.schedule.publish_at))}
+            {(page.schedule.draft_newer || editedAfterSchedule) && <strong> {ed.schedule.newer}</strong>}
+          </p>
+          {can(Permission.publish) && (
+            <button type="button" className="button button--small" onClick={() => setConfirm("unschedule")}>
+              {ed.schedule.cancel}
+            </button>
+          )}
+        </div>
+      )}
+      {viewing && (
+        <div className="notice notice--info">
+          <p>{ed.versions.viewing(formatZurich(viewing.revision.created_at))}</p>
+          <button type="button" className="button button--small" onClick={() => setViewing(null)}>
+            {ed.versions.back}
+          </button>
+        </div>
+      )}
       <ErrorList errors={listed} />
       <div className="editor__body">
         <div className="editor__form">
@@ -382,7 +458,7 @@ function Workspace({ data }: { data: Loaded }) {
           <ZoneList doc={doc} catalog={catalog} selected={selected} errors={errorsWithZones(errors)} unsaved={unsaved} pages={data.pages} actions={actions} />
         </div>
         <div className="editor__preview">
-          <PreviewPane pageId={page.id} doc={safe.doc} selected={selected} onSelect={editor.select} />
+          <PreviewPane pageId={page.id} doc={viewing?.doc ?? safe.doc} selected={selected} onSelect={editor.select} />
         </div>
       </div>
       {save.kind === "conflict" && (
@@ -396,6 +472,39 @@ function Workspace({ data }: { data: Loaded }) {
       {confirm === "unpublish" && (
         <FormDialog title={ed.unpublish.title} submitLabel={ed.unpublish.confirm} danger onClose={() => setConfirm(null)} onSubmit={unpublish}>
           <p>{ed.unpublish.question}</p>
+        </FormDialog>
+      )}
+      {versionsOpen && (
+        <VersionsDialog
+          pageId={page.id}
+          onClose={() => setVersionsOpen(false)}
+          onLook={(revision) => void look(revision)}
+          onRestore={(revision) => {
+            setVersionsOpen(false);
+            setRestoring(revision);
+          }}
+        />
+      )}
+      {restoring && (
+        <FormDialog
+          title={ed.versions.confirmTitle}
+          submitLabel={ed.versions.confirm}
+          onClose={() => setRestoring(null)}
+          onSubmit={() => restore(restoring)}
+        >
+          <p>{ed.versions.confirmText}</p>
+        </FormDialog>
+      )}
+      {scheduling && <ScheduleDialog onClose={() => setScheduling(false)} onSchedule={schedule} />}
+      {confirm === "unschedule" && (
+        <FormDialog
+          title={ed.schedule.cancelTitle}
+          submitLabel={ed.schedule.cancelConfirm}
+          danger
+          onClose={() => setConfirm(null)}
+          onSubmit={unschedule}
+        >
+          <p>{ed.schedule.cancelText}</p>
         </FormDialog>
       )}
       {confirm === "discard" && (

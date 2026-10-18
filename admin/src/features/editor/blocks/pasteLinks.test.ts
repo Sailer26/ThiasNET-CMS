@@ -1,5 +1,5 @@
 import { describe, expect, it as test } from "vitest";
-import { placeFromLink, videoFromLink } from "./pasteLinks";
+import { isShortMapLink, placeFromLink, videoFromLink } from "./pasteLinks";
 
 describe("incolla il link del video", () => {
   test.each([
@@ -8,13 +8,26 @@ describe("incolla il link del video", () => {
     ["https://www.youtube.com/embed/dQw4w9WgXcQ", "dQw4w9WgXcQ"],
     ["https://youtube.com/shorts/dQw4w9WgXcQ", "dQw4w9WgXcQ"],
     ["https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ", "dQw4w9WgXcQ"],
-  ])("YouTube: %s", (link, id) => expect(videoFromLink(link)).toEqual({ provider: "youtube", video_id: id }));
+  ])("YouTube: %s", (link, id) =>
+    expect(videoFromLink(link)).toEqual({ provider: "youtube", video_id: id, video_hash: undefined }),
+  );
 
   test.each([
     ["https://vimeo.com/76979871", "76979871"],
     ["https://player.vimeo.com/video/76979871?h=abc", "76979871"],
     ["vimeo.com/channels/staffpicks/76979871", "76979871"],
-  ])("Vimeo: %s", (link, id) => expect(videoFromLink(link)).toEqual({ provider: "vimeo", video_id: id }));
+  ])("Vimeo: %s", (link, id) =>
+    expect(videoFromLink(link)).toEqual({ provider: "vimeo", video_id: id, video_hash: undefined }),
+  );
+
+  test("Vimeo privato: il codice dopo il numero o nel parametro h (D-129)", () => {
+    expect(videoFromLink("https://vimeo.com/76979871/a1b2c3d4e5")).toEqual({ provider: "vimeo", video_id: "76979871", video_hash: "a1b2c3d4e5" });
+    expect(videoFromLink("https://player.vimeo.com/video/76979871?h=a1b2c3d4e5")).toEqual({
+      provider: "vimeo",
+      video_id: "76979871",
+      video_hash: "a1b2c3d4e5",
+    });
+  });
 
   test.each(["", "ciao", "https://www.youtube.com/watch?v=corto", "https://evil.example/watch?v=dQw4w9WgXcQ", "https://youtube.com.evil.tld/watch?v=dQw4w9WgXcQ", "https://vimeo.com/abc"])(
     "non riconosciuto: %s",
@@ -42,4 +55,12 @@ describe("incolla il link della mappa", () => {
   test.each(["", "Lugano", "91, 8", "46, 181", "https://www.openstreetmap.org/"])("non riconosciuto: %s", (text) =>
     expect(placeFromLink(text)).toBeNull(),
   );
+});
+
+describe("link brevi delle mappe (D-129)", () => {
+  test("riconosciuti ma non aperti", () => {
+    expect(isShortMapLink("https://maps.app.goo.gl/AbCdEf")).toBe(true);
+    expect(isShortMapLink("https://www.openstreetmap.org/#map=17/46/8")).toBe(false);
+    expect(placeFromLink("https://maps.app.goo.gl/AbCdEf")).toBeNull();
+  });
 });

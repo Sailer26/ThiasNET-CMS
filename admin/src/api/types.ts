@@ -43,6 +43,13 @@ export interface Page {
   sort: number;
   version: number;
   has_draft: boolean;
+  /** Programmazione in attesa (solo nel dettaglio della pagina, D-122). */
+  schedule?: {
+    publish_at: string;
+    revision_id: number;
+    author_name: string;
+    draft_newer: boolean;
+  } | null;
   updated_at: string | null;
   updated_by: number | null;
   deleted_at: string | null;
