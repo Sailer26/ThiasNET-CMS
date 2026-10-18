@@ -31,3 +31,29 @@ jobs:
         run: python scripts/tasks.py theme-check
       - name: Test + coverage (soglia 80%)
         run: python scripts/tasks.py test
+
+  admin:
+    name: pannello (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+      - name: Installa dipendenze
+        run: npm ci
+      - name: Lint (tsc + eslint)
+        run: npm run lint
+      - name: Test + coverage (soglia 80%)
+        run: npm run test:coverage
+      - name: Build + controllo CSP
+        run: npm run build
