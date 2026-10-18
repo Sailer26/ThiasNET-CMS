@@ -20,7 +20,7 @@ registrate in `docs/DECISIONI.md` (D-50 … D-68), che prevale su questo documen
 - **D-51 Cosa mostra il sito:** solo `published` e non cestinate; programmazioni scadute passano da `publishing.ensure_due`; `page_redirects` → 301 solo verso pagine online, senza catene, query string scartata.
 - **D-52 Renderer unico:** un solo `ImmutableSandboxedEnvironment` (autoescape) in `app/services/render.py`, `FileSystemLoader([theme.directory], followlinks=False)`; mai `render_template` di Flask; ai template solo dati congelati costruiti dal renderer; nomi di template solo da costanti + nomi verificati contro il tema; il tema usa `render_zone()`/`render_block()`.
 - **D-53 Contenuto vecchio rispetto al tema:** al rendering si rivalidano layout, zone, blocchi e varianti; ciò che non torna si omette o prende il default, con un avviso nel log; mai un 500. `safe_html` ripulisce sempre.
-- **D-54 Cache HTML:** in memoria per worker (LRU 500 voci / 32 MB); invalidazione condivisa con `site_state.cache_generation` nel DB; `page_cache.touch()` nella stessa transazione di pubblica, programmata, ritira, cestino, slug/spostamento, riordino; l'autosave no; niente cache per anteprima, pagine con modulo, 404, POST; ETag + 304.
+- **D-54 Cache HTML:** in memoria per worker (LRU 500 voci / 32 MB); invalidazione condivisa con `site_state.cache_generation` nel DB; `page_cache.mark_changed()` nella stessa transazione di pubblica, programmata, ritira, cestino, slug/spostamento, riordino; l'autosave no; niente cache per anteprima, pagine con modulo, 404, POST; ETag + 304.
 - **D-55 Anteprima:** `GET /_preview/<id>` (bozza salvata) e `POST /_preview/<id>` (form con `document` JSON + `csrf_token`, inviato dal pannello con `target` sull'iframe); serve `content.edit`, altrimenti 404; `X-Frame-Options: SAMEORIGIN` e `frame-ancestors 'self'` solo qui, `no-store`, `noindex`; nessuna scrittura. `app/static/cms/preview.js` evidenzia i blocchi e comunica il click con `postMessage` verificando l'origine.
 - **D-56 Helper del contratto:** `cms_head()`, `cms_body_end()`, `render_zone()`, `zone_has_blocks()`, `img()`, `media_url()`, `asset()`, filtro `safe_html`, `cms_text()`, `embed()`, `menu()`, `widget_area()`, `breadcrumbs`, `settings`.
 - **D-57 Prima delle Fasi 4/6/7:** `img()` vuoto sul sito e segnaposto in anteprima; `media_url()` → `None`; `widget_area()` vuota; settings del tema = default di `theme.json`; impostazioni del sito da `.env` (`SITE_NAME`, `CONTACT_RECIPIENT`, `MATOMO_URL`, `MATOMO_SITE_ID`) tramite `site_settings.current()`; hreflang e selettore lingua in Fase 7.
@@ -42,7 +42,7 @@ registrate in `docs/DECISIONI.md` (D-50 … D-68), che prevale su questo documen
 2. Miniature sui byte (`services/theme.py`), `FAKE_PNG` nei test, `scripts/make_variant_thumbnails.py`, varianti del tema `default`.
 3. `services/render.py`, `render_context.py`, `render_helpers.py`, `public_texts.py`, `site_settings.py`.
 4. `services/public_pages.py`: `split_locale`, `resolve`, `public_url`, `breadcrumbs`, `auto_menu`, `sitemap_entries`.
-5. `services/page_cache.py` + `touch()` in pubblicazione e pagine.
+5. `services/page_cache.py` + `mark_changed()` in pubblicazione e pagine.
 6. `services/seo.py`.
 7. `services/preview.py`.
 8. `services/contact_form.py`, `services/mailer.py`, `app/cli_contact.py`.

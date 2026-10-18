@@ -173,6 +173,42 @@ _TEXTS: dict[str, dict[str, str]] = {
         "rm": "Laschai vid quest champ",
         "en": "Leave this field empty",
     },
+    "contact_error_name": {
+        "it": "Scrivi il tuo nome (massimo 120 caratteri).",
+        "de": "Bitte geben Sie Ihren Namen ein (höchstens 120 Zeichen).",
+        "rm": "Scrivai Voss num (maximalmain 120 caracters).",
+        "en": "Please enter your name (up to 120 characters).",
+    },
+    "contact_error_email": {
+        "it": "Indica un indirizzo email valido.",
+        "de": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+        "rm": "Inditgai ina adressa dad e-mail valida.",
+        "en": "Please enter a valid email address.",
+    },
+    "contact_error_phone": {
+        "it": "Il numero di telefono non sembra valido.",
+        "de": "Die Telefonnummer scheint ungültig zu sein.",
+        "rm": "Il numer da telefon na para betg valid.",
+        "en": "The phone number does not look valid.",
+    },
+    "contact_error_message": {
+        "it": "Scrivi il messaggio (massimo 5000 caratteri).",
+        "de": "Bitte schreiben Sie Ihre Nachricht (höchstens 5000 Zeichen).",
+        "rm": "Scrivai il messadi (maximalmain 5000 caracters).",
+        "en": "Please write your message (up to 5000 characters).",
+    },
+    "contact_expired": {
+        "it": "Il modulo è scaduto: ricarica la pagina e invia di nuovo il messaggio.",
+        "de": "Das Formular ist abgelaufen: Bitte laden Sie die Seite neu und senden Sie erneut.",
+        "rm": "Il formular è scadì: chargiai danovamain la pagina e trametti puspè il messadi.",
+        "en": "The form has expired: please reload the page and send your message again.",
+    },
+    "contact_too_many": {
+        "it": "Hai inviato troppi messaggi: riprova più tardi.",
+        "de": "Sie haben zu viele Nachrichten gesendet: Bitte versuchen Sie es später erneut.",
+        "rm": "Vus avais tramess memia blers messadis: empruvai pli tard.",
+        "en": "You have sent too many messages: please try again later.",
+    },
     "required": {"it": "obbligatorio", "de": "Pflichtfeld", "rm": "obligatoric", "en": "required"},
     "download": {"it": "Scarica", "de": "Herunterladen", "rm": "Telechargiar", "en": "Download"},
 }

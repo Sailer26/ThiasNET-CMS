@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import re
+import shutil
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 from typing import Any
@@ -95,6 +96,8 @@ def theme_data() -> dict[str, Any]:
     return copy.deepcopy(DEFAULT_THEME_DATA)
 
 
+DEFAULT_THEME_DIR = ROOT / "themes" / "default"
+TEMPLATE_FOLDERS = ("layouts", "partials", "blocks", "assets/css", "assets/js")
 VALID_THUMBNAIL = re.compile(r"variants/[a-z0-9][a-z0-9_-]*[.](png|jpg|webp)")
 
 
@@ -118,10 +121,15 @@ def make_theme(tmp_path: Path) -> MakeTheme:
         data: dict[str, Any] | str,
         name: str = "demo",
         thumbnails: Iterable[str] | None = None,
+        templates: bool = False,
     ) -> Path:
-        """`thumbnails=None`: crea le miniature valide dichiarate in block_variants."""
+        """`thumbnails=None`: crea le miniature valide dichiarate in block_variants.
+        `templates=True`: copia layout, partials, blocchi e asset del tema `default`."""
         theme_dir = themes_dir / name
         (theme_dir / "assets").mkdir(parents=True, exist_ok=True)
+        if templates:
+            for folder in TEMPLATE_FOLDERS:
+                shutil.copytree(DEFAULT_THEME_DIR / folder, theme_dir / folder, dirs_exist_ok=True)
         content = data if isinstance(data, str) else json.dumps({**data, "name": name})
         (theme_dir / "theme.json").write_text(content, encoding="utf-8")
         if thumbnails is None:

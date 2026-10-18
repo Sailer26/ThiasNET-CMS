@@ -222,6 +222,10 @@ main:focus { outline: none; }
   text-align: center;
 }
 
+/* Anteprima nel pannello (D-55): il blocco selezionato o sotto il mouse. */
+.cms-preview-active,
+.cms-preview [data-block-id]:hover { outline: 2px dashed var(--accent); outline-offset: 4px; }
+
 /* --- Modulo contatti --------------------------------------------------------- */
 
 .contact-form { display: grid; gap: 1rem; max-width: 40rem; }

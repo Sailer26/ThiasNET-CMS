@@ -234,3 +234,102 @@ def test_css_variables_from_theme_settings(visitor: FlaskClient) -> None:
     assert response.status_code == 200
     assert response.mimetype == "text/css"
     assert "--accent-color: #0B5FFF;" in response.get_data(as_text=True)
+
+
+# --- Sitemap e robots (D-62) -------------------------------------------------------------
+
+SITEMAP_NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
+
+
+def test_sitemap_lists_only_indexable_online_pages(
+    admin: FlaskClient, visitor: FlaskClient
+) -> None:
+    import xml.etree.ElementTree as ET
+
+    _online(admin, "Home", layout="home", slug="")
+    _online(admin, "Über uns", locale="de")
+    hidden = _online(admin, "Nascosta")
+    zones = {"main": [text_block(1)], "sidebar": []}
+    put_draft(
+        admin, hidden["id"], doc(title="Nascosta", zones=zones, seo={"noindex": True}), version=0
+    )
+    publish(admin, hidden["id"])
+    create_page(admin, "Bozza")
+
+    response = visitor.get("/sitemap.xml")
+    assert response.status_code == 200
+    assert response.mimetype == "application/xml"
+    root = ET.fromstring(response.get_data())  # noqa: S314
+    locations = {loc.text for loc in root.iter(f"{SITEMAP_NS}loc")}
+    assert locations == {"https://www.example.ch/", "https://www.example.ch/de/ueber-uns"}
+    assert all(lastmod.text for lastmod in root.iter(f"{SITEMAP_NS}lastmod"))
+
+
+def test_robots_blocks_everything_outside_production(visitor: FlaskClient) -> None:
+    response = visitor.get("/robots.txt")
+    assert response.mimetype == "text/plain"
+    assert response.get_data(as_text=True) == "User-agent: *\nDisallow: /\n"
+
+
+def test_robots_in_production_points_to_the_sitemap(app: Flask, visitor: FlaskClient) -> None:
+    app.config["ROBOTS_ALLOW_INDEXING"] = True
+    body = visitor.get("/robots.txt").get_data(as_text=True)
+    assert "Disallow: /_preview/" in body and "Disallow: /api/" in body
+    assert "Sitemap: https://www.example.ch/sitemap.xml" in body
+    assert "Disallow: /\n" not in body
+
+
+# --- Consenso e statistiche (D-60, D-66) -----------------------------------------------------
+
+
+def test_stats_choice_appears_only_with_matomo(
+    app: Flask, admin: FlaskClient, visitor: FlaskClient
+) -> None:
+    _online(admin, "Chi siamo")
+    without = inspect(visitor.get("/chi-siamo").get_data(as_text=True))
+    assert not [a for a in without.find("input") if a.get("name") == "stats"]
+    app.config.update(MATOMO_URL="https://stat.thiasnet.ch", MATOMO_SITE_ID="7")
+    with app.app_context():
+        from app.services import page_cache
+
+        page_cache.mark_changed()
+        db.session.commit()
+    page = inspect(visitor.get("/chi-siamo").get_data(as_text=True))
+    assert [a for a in page.find("input") if a.get("name") == "stats"]
+    consent = [
+        s for s in page.find("script") if (s.get("src") or "").startswith("/static/cms/consent.js")
+    ]
+    assert consent[0]["data-matomo-url"] == "https://stat.thiasnet.ch"
+    assert consent[0]["data-matomo-site"] == "7"
+
+
+# --- Accessibilità di base (WCAG 2.1 AA sul tema default) -----------------------------------
+
+
+def test_accessibility_smoke(admin: FlaskClient, visitor: FlaskClient) -> None:
+    from tests.unit.test_blocks_registry import VALID
+
+    page = create_page(admin, "Tutto")
+    blocks = [
+        {"uid": f"{n:032x}", "type": block_type, "data": data}
+        for n, (block_type, data) in enumerate(sorted(VALID.items()), start=1)
+        if block_type != "hero"
+    ]
+    put_draft(admin, page["id"], doc(title="Tutto", zones={"main": blocks, "sidebar": []}))
+    assert publish(admin, page["id"]).status_code == 200
+    html = visitor.get("/tutto").get_data(as_text=True)
+    found = inspect(html)
+
+    assert found.find("html")[0]["lang"] == "it"
+    assert len(found.find("h1")) == 1
+    skip = found.find("a")[0]
+    assert skip["href"] == "#main" and {"id": "main", "tabindex": "-1"} in found.find("main")
+    labels = {a.get("for") for a in found.find("label")}
+    for field in found.find("input") + found.find("textarea"):
+        if field.get("type") in {"hidden", "checkbox"}:
+            continue
+        assert field.get("id") in labels, field
+    dialog = next(a for _, a in found.tags if a.get("role") == "dialog")
+    assert dialog["aria-labelledby"] == "cms-consent-title"
+    choices = {a.get("data-cms-consent") for a in found.find("button")}
+    assert {"all", "necessary", "choose"} <= choices

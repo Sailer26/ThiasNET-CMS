@@ -97,6 +97,11 @@ def page_context(
     )
 
 
+def cacheable(context: PageContext) -> bool:
+    """Le pagine con modulo contatti hanno un token fresco a ogni visita (D-61)."""
+    return context.mode is RenderMode.PUBLIC and not context.forms
+
+
 def not_found_context(locale: str, path: str) -> PageContext:
     theme = active_theme()
     values, css_version = theme_values(theme)

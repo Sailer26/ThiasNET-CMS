@@ -20,7 +20,7 @@ from app.extensions import db
 from app.models.page import SLUG_MAX_LENGTH, TITLE_MAX_LENGTH, Page, PageDraft, PageStatus
 from app.models.types import utcnow
 from app.models.user import User
-from app.services import audit, page_paths, revisions
+from app.services import audit, page_cache, page_paths, revisions
 from app.services.content import empty_document
 from app.services.errors import ServiceError, not_found, version_conflict
 from app.services.page_paths import MAX_DEPTH, depth, live, path_for, path_taken
@@ -291,6 +291,7 @@ def update_page(actor: User, page: Page, *, version: int, changes: Mapping[str, 
         page_paths.apply_paths(branch, new_paths)
         page.slug, page.parent_id, page.sort = new_slug, new_parent_id, sort
         page.updated_by = actor.id
+        page_cache.mark_changed()
         action = "page.moved" if moved else "page.slug_changed"
         audit.record(action, actor_id=actor.id, entity="page", entity_id=page.id, diff=diff)
         db.session.commit()
@@ -307,6 +308,7 @@ def reorder(actor: User, *, parent_id: int | None, locale: str, ids: Sequence[in
         )
     for position, page_id in enumerate(ids):
         children[page_id].sort = position
+    page_cache.mark_changed()  # l'ordine del menu automatico (D-58)
     audit.record(
         "page.reordered",
         actor_id=actor.id,
@@ -334,6 +336,7 @@ def trash(actor: User, page: Page, version: int) -> Page:
     page_paths.drop_redirects_of(page.id)
     page.deleted_at, page.deleted_by, page.updated_by = utcnow(), actor.id, actor.id
     page.status, page.publish_at, page.published_at = PageStatus.DRAFT, None, None
+    page_cache.mark_changed()
     audit.record(
         "page.trashed",
         actor_id=actor.id,
