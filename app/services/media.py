@@ -349,3 +349,34 @@ def delete_media(actor: User, media: Media, version: int) -> None:
     page_cache.mark_changed()
     db.session.commit()
     media_storage.discard(key, files)
+
+
+# --- Varianti dopo un cambio del tema (D-73) ---------------------------------------------
+
+CORE_SIZES = frozenset({"_panel", "_og"})
+
+
+def media_missing_variants() -> list[Media]:
+    expected = set(active_theme().image_sizes) | CORE_SIZES
+    images = db.session.execute(select(Media).where(Media.kind == MediaKind.IMAGE)).scalars()
+    return [m for m in images if not expected <= set(media_library.size_files(m))]
+
+
+def refresh_variants(items: list[Media]) -> tuple[int, int]:
+    """Nuova revisione con tutte le varianti del tema attuale; un errore non ferma le altre."""
+    done = failed = 0
+    for item in items:
+        try:
+            built, old = _reprocess(item)
+            _store(item.storage_key, built.files)
+            item.file_rev += 1
+            page_cache.mark_changed()
+            _commit_or_discard(item.storage_key, built.files)
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("varianti del media %s non create", item.id)
+            failed += 1
+            continue
+        media_storage.discard(item.storage_key, old)
+        done += 1
+    return done, failed
