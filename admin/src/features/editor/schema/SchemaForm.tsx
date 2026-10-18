@@ -92,10 +92,11 @@ function ItemsField({ spec, path, props, value }: { name: string; spec: FieldSch
         <MediaPicker
           kind={mediaKind}
           multiple
+          {...(room !== Infinity ? { limit: room } : {})}
           onClose={() => setPicking(false)}
           onChoose={(chosen) => {
             setPicking(false);
-            update([...items, ...chosen.slice(0, room).map((media) => ({ [mediaKey]: media.id }))]);
+            update([...items, ...chosen.map((media) => ({ [mediaKey]: media.id }))]);
           }}
         />
       )}

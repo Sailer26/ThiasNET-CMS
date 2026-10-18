@@ -214,6 +214,7 @@ export function MediaField({ id, spec, value, onChange, required, error, unsaved
         value={value}
         onChange={onChange}
         describedBy={describedBy(id, spec, error, unsaved)}
+        labelledBy={`${id}-label`}
       />
     </FieldFrame>
   );

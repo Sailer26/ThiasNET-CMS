@@ -42,3 +42,5 @@ def live_server(tmp_path: Path) -> Iterator[str]:
     finally:
         server.shutdown()
         thread.join(timeout=5)
+        with app.app_context():
+            db.engine.dispose()

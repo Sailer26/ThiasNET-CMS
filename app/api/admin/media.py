@@ -76,7 +76,7 @@ def _form_int(name: str) -> int | None:
 
 
 MAX_IDS = 100
-ID_PART = r"[1-9][0-9]{0,9}"
+ID_PART = r"[1-9][0-9]{0,8}"  # sotto 2^31: niente errori con colonne integer di PostgreSQL
 IDS_RE = re.compile(rf"{ID_PART}(?:,{ID_PART}){{0,{MAX_IDS - 1}}}")
 
 

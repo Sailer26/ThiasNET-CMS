@@ -9,12 +9,12 @@ const HELPERS: Record<string, { label: string; help: string; read: (text: string
 };
 
 export function hasPasteHelper(type: string): boolean {
-  return type in HELPERS;
+  return Object.hasOwn(HELPERS, type);
 }
 
 /** "Incolla il link": compila i campi tecnici del blocco (D-112). */
 export function PasteHelper({ type, onApply }: { type: string; onApply: (patch: Data) => void }) {
-  const helper = HELPERS[type];
+  const helper = Object.hasOwn(HELPERS, type) ? HELPERS[type] : undefined;
   const id = useId();
   const [text, setText] = useState("");
   const [problem, setProblem] = useState<string | null>(null);

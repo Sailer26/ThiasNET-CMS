@@ -16,7 +16,7 @@ describe("incolla il link del video", () => {
     ["vimeo.com/channels/staffpicks/76979871", "76979871"],
   ])("Vimeo: %s", (link, id) => expect(videoFromLink(link)).toEqual({ provider: "vimeo", video_id: id }));
 
-  test.each(["", "ciao", "https://www.youtube.com/watch?v=corto", "https://evil.example/watch?v=dQw4w9WgXcQ", "https://vimeo.com/abc"])(
+  test.each(["", "ciao", "https://www.youtube.com/watch?v=corto", "https://evil.example/watch?v=dQw4w9WgXcQ", "https://youtube.com.evil.tld/watch?v=dQw4w9WgXcQ", "https://vimeo.com/abc"])(
     "non riconosciuto: %s",
     (link) => expect(videoFromLink(link)).toBeNull(),
   );

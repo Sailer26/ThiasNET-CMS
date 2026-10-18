@@ -119,6 +119,7 @@ export function PageSettings({ doc, catalog, site, path, errors, onTitle, onLayo
             value={doc.seo.og_image_media_id}
             onChange={(id) => onSeo("og_image_media_id", id)}
             describedBy="seo-og-help"
+            labelledBy="seo-og-label"
           />
           <p id="seo-og-help" className="hint">
             {ed.media.ogImageHelp}

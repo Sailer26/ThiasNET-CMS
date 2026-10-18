@@ -1,9 +1,12 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import { afterEach, expect } from "vitest";
 import { forgetCatalog } from "../api/catalog";
 import { setCsrfToken } from "../api/client";
 import { unexpectedCalls } from "./fakeApi";
+
+// L'editor (TipTap) si carica la prima volta in qualche secondo quando i file girano in parallelo.
+configure({ asyncUtilTimeout: 5000 });
 
 // jsdom non implementa <dialog>: basta aprirlo e chiuderlo con i suoi attributi.
 if (!HTMLDialogElement.prototype.showModal) {

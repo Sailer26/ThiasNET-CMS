@@ -2,7 +2,7 @@ import {
   closestCenter,
   DndContext,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
   TouchSensor,
   useSensor,
   useSensors,
@@ -206,7 +206,7 @@ export function ZoneList(props: Props) {
   const { doc, catalog, actions } = props;
   const [adding, setAdding] = useState<string | null>(null);
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: POINTER_DISTANCE } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: POINTER_DISTANCE } }),
     useSensor(TouchSensor, { activationConstraint: { delay: TOUCH_DELAY_MS, tolerance: TOUCH_TOLERANCE } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );

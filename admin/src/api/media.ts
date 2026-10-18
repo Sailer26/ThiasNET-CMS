@@ -30,9 +30,15 @@ export async function listMedia(options: { kind: MediaKind; q?: string; page?: n
   return { items: data, total: typeof meta.total === "number" ? meta.total : data.length };
 }
 
+const IDS_PER_REQUEST = 100; // tetto del server (app/api/admin/media.py, MAX_IDS)
+
 export async function mediaByIds(ids: number[]): Promise<Media[]> {
-  if (ids.length === 0) return [];
-  return (await request<Media[]>("GET", `/media?ids=${ids.join(",")}`)).data;
+  const found: Media[] = [];
+  for (let start = 0; start < ids.length; start += IDS_PER_REQUEST) {
+    const batch = ids.slice(start, start + IDS_PER_REQUEST);
+    found.push(...(await request<Media[]>("GET", `/media?ids=${batch.join(",")}`)).data);
+  }
+  return found;
 }
 
 export interface Uploaded {

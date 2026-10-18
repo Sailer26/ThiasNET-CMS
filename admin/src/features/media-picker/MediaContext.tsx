@@ -41,7 +41,7 @@ export function MediaProvider({ ids, children }: { ids: number[]; children: Reac
     mediaByIds(missing.split(",").map(Number)).then(
       (found) => {
         if (!active) return;
-        setKnown((current) => new Map([...current, ...found.map((m) => [m.id, m] as const)]));
+        setKnown((current) => new Map([...found.map((m) => [m.id, m] as const), ...current]));
       },
       (failure: unknown) => {
         if (active) setError(errorMessage(failure));

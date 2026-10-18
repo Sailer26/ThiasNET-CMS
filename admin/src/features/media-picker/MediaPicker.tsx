@@ -14,42 +14,58 @@ const SEARCH_PAUSE_MS = 300;
 interface Props {
   kind: MediaKind;
   multiple?: boolean;
+  /** Quanti se ne possono ancora aggiungere (es. galleria quasi piena). */
+  limit?: number;
   onChoose: (media: Media[]) => void;
   onClose: () => void;
 }
 
-function Library({ kind, multiple, onChoose }: Omit<Props, "onClose">) {
+interface Listing {
+  items: Media[];
+  total: number;
+  /** Ultima pagina caricata davvero: "Mostra altri" chiede la successiva. */
+  page: number;
+}
+
+function Library({ kind, multiple, limit = Infinity, onChoose }: Omit<Props, "onClose">) {
   const [query, setQuery] = useState("");
-  const [items, setItems] = useState<Media[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [listing, setListing] = useState<Listing | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [chosen, setChosen] = useState<Media[]>([]);
   const latest = useRef(0);
   const { remember } = useMedia();
 
   const load = useCallback(
-    (q: string, pageNo: number) => {
+    (q: string, page: number) => {
       const request = ++latest.current;
-      listMedia({ kind, q, page: pageNo }).then(
+      setLoading(true);
+      listMedia({ kind, q, page }).then(
         (result) => {
           if (request !== latest.current) return;
-          setItems((current) => (pageNo === 1 ? result.items : [...current, ...result.items]));
-          setTotal(result.total);
+          setListing((current) => ({
+            items: page === 1 || !current ? result.items : [...current.items, ...result.items],
+            total: result.total,
+            page,
+          }));
           setError(null);
+          setLoading(false);
         },
         (failure: unknown) => {
-          if (request === latest.current) setError(errorMessage(failure));
+          if (request !== latest.current) return;
+          setError(errorMessage(failure));
+          setLoading(false);
         },
       );
     },
     [kind],
   );
 
+  // Ricerca: si riparte dalla prima pagina dopo una pausa (mentre si scrive "Mostra altri" sparisce).
   useEffect(() => {
-    const timer = setTimeout(() => load(query, page), query && page === 1 ? SEARCH_PAUSE_MS : 0);
+    const timer = setTimeout(() => load(query, 1), query ? SEARCH_PAUSE_MS : 0);
     return () => clearTimeout(timer);
-  }, [load, query, page]);
+  }, [load, query]);
 
   function pick(media: Media) {
     remember(media);
@@ -57,11 +73,13 @@ function Library({ kind, multiple, onChoose }: Omit<Props, "onClose">) {
       onChoose([media]);
       return;
     }
-    setChosen((current) =>
-      current.some((m) => m.id === media.id) ? current.filter((m) => m.id !== media.id) : [...current, media],
-    );
+    setChosen((current) => {
+      if (current.some((m) => m.id === media.id)) return current.filter((m) => m.id !== media.id);
+      return current.length >= limit ? current : [...current, media];
+    });
   }
 
+  const items = listing?.items ?? [];
   const missingAlt = items.filter((m) => m.kind === "image" && !m.alt.trim()).length;
   return (
     <div className="picker">
@@ -72,17 +90,24 @@ function Library({ kind, multiple, onChoose }: Omit<Props, "onClose">) {
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
-            setPage(1);
+            setLoading(true);
           }}
         />
       </label>
-      {missingAlt > 0 && <p className="hint">{ed.media.missingAltCount(missingAlt)}</p>}
+      <div aria-live="polite" className="picker__status">
+        {loading && <p className="hint">{ed.media.loading}</p>}
+        {!loading && listing && items.length === 0 && <p className="hint">{ed.media.empty}</p>}
+        {!loading && missingAlt > 0 && <p className="hint">{ed.media.missingAltCount(missingAlt)}</p>}
+        {multiple && limit !== Infinity && <p className="hint">{ed.media.limit(limit)}</p>}
+      </div>
       {error && (
-        <p className="form__error" role="alert">
-          {error}
-        </p>
+        <div className="form__error" role="alert">
+          <p>{error}</p>
+          <button type="button" className="button button--small" onClick={() => load(query, (listing?.page ?? 0) + 1)}>
+            {ed.save.retry}
+          </button>
+        </div>
       )}
-      {items.length === 0 && !error && <p className="hint">{ed.media.empty}</p>}
       <ul className="picker__grid">
         {items.map((media) => {
           const selected = chosen.some((m) => m.id === media.id);
@@ -109,9 +134,9 @@ function Library({ kind, multiple, onChoose }: Omit<Props, "onClose">) {
         })}
       </ul>
       <div className="form__actions">
-        {items.length < total && (
-          <button type="button" className="button" onClick={() => setPage(page + 1)}>
-            {ed.media.more(Math.min(PICKER_PAGE_SIZE, total - items.length))}
+        {!loading && listing && items.length < listing.total && (
+          <button type="button" className="button" onClick={() => load(query, listing.page + 1)}>
+            {ed.media.more(Math.min(PICKER_PAGE_SIZE, listing.total - items.length))}
           </button>
         )}
         {multiple && (
@@ -138,6 +163,14 @@ function Upload({ kind, onChoose }: Omit<Props, "onClose">) {
   const fileId = useId();
   const altId = useId();
   const { remember } = useMedia();
+  const open = useRef(true);
+
+  useEffect(() => {
+    open.current = true;
+    return () => {
+      open.current = false; // finestra chiusa durante il caricamento: il campo non cambia più
+    };
+  }, []);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -147,12 +180,13 @@ function Upload({ kind, onChoose }: Omit<Props, "onClose">) {
     try {
       const result = await uploadMedia(file, alt);
       remember(result.media);
+      if (!open.current) return;
       if (result.duplicate) setDuplicate(result.media);
       else onChoose([result.media]);
     } catch (failure) {
-      setError(errorMessage(failure));
+      if (open.current) setError(errorMessage(failure));
     } finally {
-      setBusy(false);
+      if (open.current) setBusy(false);
     }
   }
 
@@ -210,7 +244,7 @@ function Upload({ kind, onChoose }: Omit<Props, "onClose">) {
 }
 
 /** Scelta di un media dalla libreria o caricamento di un file nuovo (D-111). */
-export function MediaPicker({ kind, multiple = false, onChoose, onClose }: Props) {
+export function MediaPicker({ kind, multiple = false, limit, onChoose, onClose }: Props) {
   const [tab, setTab] = useState<"library" | "upload">("library");
   return (
     <Dialog title={kind === "image" ? ed.media.titleImage : ed.media.titleDocument} onClose={onClose}>
@@ -232,11 +266,11 @@ export function MediaPicker({ kind, multiple = false, onChoose, onClose }: Props
           {ed.media.uploadTab}
         </button>
       </div>
-      {tab === "library" ? (
-        <Library kind={kind} multiple={multiple} onChoose={onChoose} />
-      ) : (
-        <Upload kind={kind} onChoose={onChoose} />
-      )}
+      {/* La libreria resta montata: ricerca, pagine e scelte non si perdono cambiando scheda. */}
+      <div hidden={tab !== "library"}>
+        <Library kind={kind} multiple={multiple} {...(limit !== undefined ? { limit } : {})} onChoose={onChoose} />
+      </div>
+      {tab === "upload" && <Upload kind={kind} onChoose={onChoose} />}
       <div className="form__actions">
         <button type="button" className="button" onClick={onClose}>
           {ed.zones.close}

@@ -130,4 +130,63 @@ describe("media nell'editor (D-111)", () => {
     await user.click(screen.getByRole("button", { name: "Aggiungi 2 immagini" }));
     expect(chosen).toEqual([[1, 3]]);
   });
+
+  test("testo alternativo cambiato da un altro: si ricarica e si può salvare di nuovo", async () => {
+    api.on("GET", "/media", { data: [media(5, { alt: "" })] }, { data: [media(5, { alt: "Lago", version: 3 })] });
+    api.on(
+      "PATCH",
+      "/media/5",
+      { status: 409, error: { code: "version_conflict", message: "Conflitto", details: {} } },
+      { data: media(5, { alt: "Lago blu", version: 4 }) },
+    );
+    const user = userEvent.setup();
+    render(<Choice initial={5} />);
+    await user.click(await screen.findByRole("button", { name: "Testo alternativo…" }));
+    const dialog = screen.getByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Testo alternativo"), "Lago blu");
+    await user.click(within(dialog).getByRole("button", { name: "Salva" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Qualcun altro ha appena cambiato");
+    await user.click(within(dialog).getByRole("button", { name: "Salva" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(api.callsTo("PATCH", "/media/5").map((c) => (c.body as { version: number }).version)).toEqual([1, 3]);
+  });
+
+  test("più di 100 media: richieste a gruppi di 100", async () => {
+    const ids = Array.from({ length: 150 }, (_, i) => i + 1);
+    api.on("GET", "/media", (call) => ({ data: call.path.split("ids=")[1]!.split(",").map((id) => media(Number(id))) }));
+    render(
+      <MediaProvider ids={ids}>
+        <span />
+      </MediaProvider>,
+    );
+    await waitFor(() => expect(api.callsTo("GET", "/media")).toHaveLength(2));
+    expect(api.callsTo("GET", "/media").map((c) => c.path.split("ids=")[1]!.split(",").length)).toEqual([100, 50]);
+  });
+
+  test("galleria quasi piena: non si scelgono più immagini del posto rimasto", async () => {
+    api.on("GET", "/media", { data: [media(1), media(2), media(3)], meta: { total: 3 } });
+    const chosen: number[][] = [];
+    const user = userEvent.setup();
+    render(
+      <MediaProvider ids={[]}>
+        <MediaPicker kind="image" multiple limit={1} onClose={() => undefined} onChoose={(list) => chosen.push(list.map((m) => m.id))} />
+      </MediaProvider>,
+    );
+    expect(await screen.findByText("Puoi aggiungere ancora 1 elemento.")).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: /foto-1\.jpg/ }));
+    await user.click(screen.getByRole("button", { name: /foto-2\.jpg/ }));
+    expect(screen.getByRole("button", { name: /foto-2\.jpg/ })).toHaveAttribute("aria-pressed", "false");
+    await user.click(screen.getByRole("button", { name: "Aggiungi 1 immagine" }));
+    expect(chosen).toEqual([[1]]);
+  });
+
+  test("il pulsante si annuncia con l'etichetta del campo e la sua azione", () => {
+    render(
+      <MediaProvider ids={[]}>
+        <span id="lbl">Immagine di sfondo</span>
+        <MediaChoice id="m" kind="image" value={undefined} onChange={() => undefined} labelledBy="lbl" />
+      </MediaProvider>,
+    );
+    expect(screen.getByRole("button", { name: "Immagine di sfondo Scegli immagine" })).toBeInTheDocument();
+  });
 });
