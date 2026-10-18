@@ -35,8 +35,18 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
-export function navigate(to: string): void {
-  if (to !== window.location.pathname) window.history.pushState(null, "", to);
+type Guard = () => Promise<boolean>;
+let guard: Guard | null = null;
+
+/** Una schermata (l'editor) può chiedere di finire qualcosa prima di uscire (D-104). */
+export function setNavigationGuard(next: Guard | null): void {
+  guard = next;
+}
+
+export async function navigate(to: string): Promise<void> {
+  if (to === window.location.pathname) return;
+  if (guard && !(await guard())) return;
+  window.history.pushState(null, "", to);
   listeners.forEach((listener) => listener());
 }
 

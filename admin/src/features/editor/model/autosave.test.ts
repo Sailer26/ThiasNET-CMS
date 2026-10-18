@@ -4,6 +4,7 @@ import { Autosave, type Clock, type SaveState } from "./autosave";
 import type { PageDocument } from "./document";
 
 const page = (title: string): PageDocument => ({ title, layout: "page", seo: {}, zones: {} });
+const ok = (version: number) => ({ version, saved: page("salvato") });
 
 function manualClock() {
   const timers: { run: () => void; ms: number }[] = [];
@@ -43,7 +44,7 @@ const conflict = () =>
 describe("salvataggio automatico", () => {
   test("salva dopo la pausa, con la versione che cresce; niente timer senza modifiche", async () => {
     const { clock, timers, fire } = manualClock();
-    const save = vi.fn(async (_doc: PageDocument, version: number) => version + 1);
+    const save = vi.fn(async (doc: PageDocument, version: number) => ({ version: version + 1, saved: doc }));
     const auto = new Autosave(save, 3, page("a"), clock);
     const states: SaveState["kind"][] = [];
     auto.subscribe((state) => states.push(state.kind));
@@ -56,7 +57,8 @@ describe("salvataggio automatico", () => {
     expect(timers[0]!.ms).toBe(1500);
     await fire();
     expect(save).toHaveBeenCalledTimes(1);
-    expect(save).toHaveBeenCalledWith(page("abc"), 3);
+    expect(save).toHaveBeenCalledWith(page("abc"), 3, page("a"));
+    expect(auto.base).toEqual(page("abc"));
     expect(auto.draftVersion).toBe(4);
     expect(auto.current).toEqual({ kind: "saved", at: new Date("2026-10-18T10:42:00+02:00") });
     expect(states).toEqual(["pending", "saving", "saved"]);
@@ -65,7 +67,7 @@ describe("salvataggio automatico", () => {
   test("una richiesta alla volta; le modifiche durante il salvataggio partono dopo", async () => {
     const { clock } = manualClock();
     const first = deferred<number>();
-    const save = vi.fn().mockReturnValueOnce(first.promise).mockResolvedValueOnce(6);
+    const save = vi.fn().mockReturnValueOnce(first.promise.then(ok)).mockResolvedValueOnce(ok(6));
     const auto = new Autosave(save, 4, page("a"), clock);
     auto.change(page("b"));
     const flushing = auto.flush();
@@ -82,7 +84,7 @@ describe("salvataggio automatico", () => {
 
   test("409: si ferma finché non si sceglie; Tieni la mia salva sopra la versione attuale", async () => {
     const { clock } = manualClock();
-    const save = vi.fn().mockRejectedValueOnce(conflict()).mockResolvedValueOnce(9);
+    const save = vi.fn().mockRejectedValueOnce(conflict()).mockResolvedValueOnce(ok(9));
     const auto = new Autosave(save, 2, page("a"), clock);
     auto.change(page("mio"));
     expect(await auto.flush()).toBe(false);
@@ -91,7 +93,7 @@ describe("salvataggio automatico", () => {
     expect(await auto.flush()).toBe(false);
     expect(save).toHaveBeenCalledTimes(1);
     expect(await auto.keepMine(8)).toBe(true);
-    expect(save).toHaveBeenLastCalledWith(page("mio 2"), 8);
+    expect(save.mock.lastCall?.slice(0, 2)).toEqual([page("mio 2"), 8]);
   });
 
   test("Carica la sua: nuova base, nulla da salvare", async () => {
@@ -114,7 +116,7 @@ describe("salvataggio automatico", () => {
       .fn()
       .mockRejectedValueOnce(new ApiError(401, "unauthorized", "Accesso richiesto"))
       .mockRejectedValueOnce(new ApiError(0, "network", "Connessione non disponibile"))
-      .mockResolvedValueOnce(3);
+      .mockResolvedValueOnce(ok(3));
     const auto = new Autosave(save, 2, page("a"), clock);
     auto.change(page("b"));
     await auto.flush();

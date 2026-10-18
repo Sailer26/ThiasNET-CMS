@@ -1,0 +1,113 @@
+// Modulo di un blocco generato dal suo schema (D-106, D-112).
+import type { FieldSchema } from "../../../api/catalog";
+import { ed } from "../../../text/editor";
+import type { Data, Path } from "../model/document";
+import { RichTextField } from "../richtext/RichText";
+import { BooleanField, ChoiceField, MediaField, NumberField, TextField } from "./fields";
+import { effectiveField } from "./validate";
+
+export interface FormProps {
+  schema: FieldSchema;
+  data: Data;
+  idPrefix: string;
+  /** Errori del server e campi non salvati, per percorso ("items/0/caption"). */
+  errors: ReadonlyMap<string, string>;
+  unsaved: ReadonlyMap<string, string>;
+  pages: string[];
+  onChange: (path: Path, value: unknown) => void;
+}
+
+export function fieldId(prefix: string, path: Path): string {
+  return `${prefix}-${path.join("-")}`;
+}
+
+function Field({ name, spec, required, path, props }: { name: string; spec: FieldSchema; required: boolean; path: Path; props: FormProps }) {
+  const key = path.join("/");
+  const common = {
+    id: fieldId(props.idPrefix, path),
+    spec,
+    required,
+    error: props.errors.get(key),
+    unsaved: props.unsaved.get(key),
+    pages: props.pages,
+  };
+  const value = path.reduce<unknown>((node, part) => (node as Record<string | number, unknown> | undefined)?.[part], props.data);
+  const set = (next: unknown) => props.onChange(path, next);
+  if (spec["x-media"]) return <MediaField {...common} value={value as number | undefined} onChange={set} />;
+  if (spec["x-richtext"]) return <RichTextField {...common} value={value as string | undefined} onChange={set} />;
+  if (spec.enum) return <ChoiceField {...common} value={value as string | number | undefined} onChange={set} />;
+  if (spec.type === "boolean") return <BooleanField {...common} value={value as boolean | undefined} onChange={set} />;
+  if (spec.type === "integer" || spec.type === "number") {
+    return <NumberField {...common} value={value as number | undefined} onChange={set} />;
+  }
+  if (spec.type === "array") return <ItemsField name={name} spec={spec} path={path} props={props} value={value} />;
+  return <TextField {...common} value={value as string | undefined} onChange={set} />;
+}
+
+function ItemsField({ spec, path, props, value }: { name: string; spec: FieldSchema; path: Path; props: FormProps; value: unknown }) {
+  const items = Array.isArray(value) ? (value as Data[]) : [];
+  const itemSpec = spec.items ?? {};
+  const label = itemSpec.title ?? spec.title ?? "";
+  const full = spec.maxItems !== undefined && items.length >= spec.maxItems;
+  const update = (next: Data[]) => props.onChange(path, next.length ? next : undefined);
+  const swap = (from: number, to: number) => {
+    const next = [...items];
+    [next[from], next[to]] = [next[to]!, next[from]!];
+    update(next);
+  };
+  return (
+    <fieldset className="field items">
+      <legend>{spec.title}</legend>
+      {spec.description && <p className="hint">{spec.description}</p>}
+      {items.map((item, index) => (
+        <fieldset key={index} className="items__item">
+          <legend>{ed.fields.items.item(label, index + 1)}</legend>
+          <FieldsOf schema={itemSpec} data={item} prefix={[...path, index]} props={props} />
+          <div className="items__actions">
+            <button type="button" className="button button--small" disabled={index === 0} onClick={() => swap(index, index - 1)}>
+              {ed.fields.items.up}
+            </button>
+            <button type="button" className="button button--small" disabled={index === items.length - 1} onClick={() => swap(index, index + 1)}>
+              {ed.fields.items.down}
+            </button>
+            <button type="button" className="button button--small button--danger" onClick={() => update(items.filter((_, i) => i !== index))}>
+              {ed.fields.items.remove}
+            </button>
+          </div>
+        </fieldset>
+      ))}
+      <button type="button" className="button button--small" disabled={full} onClick={() => update([...items, {}])}>
+        {ed.fields.items.add}
+      </button>
+    </fieldset>
+  );
+}
+
+function FieldsOf({ schema, data, prefix, props }: { schema: FieldSchema; data: Data; prefix: Path; props: FormProps }) {
+  const required = new Set(schema.required ?? []);
+  return (
+    <>
+      {Object.keys(schema.properties ?? {}).map((name) => (
+        <Field
+          key={name}
+          name={name}
+          spec={effectiveField(schema, data, name)}
+          required={required.has(name)}
+          path={[...prefix, name]}
+          props={props}
+        />
+      ))}
+    </>
+  );
+}
+
+export function SchemaForm(props: FormProps) {
+  if (Object.keys(props.schema.properties ?? {}).length === 0) {
+    return <p className="hint">{ed.zones.noSettings}</p>;
+  }
+  return (
+    <div className="schema-form">
+      <FieldsOf schema={props.schema} data={props.data} prefix={[]} props={props} />
+    </div>
+  );
+}

@@ -235,7 +235,11 @@ describe("albero delle pagine", () => {
     const user = userEvent.setup();
     render(<App />);
     expect(await screen.findByText("Ci sono molte pagine: ne mostro solo una parte.")).toBeInTheDocument();
+    api.on("GET", "/pages/2", { status: 404, error: { code: "not_found", message: "Pagina non trovata" } });
+    api.on("GET", "/pages/2/draft", { status: 404, error: { code: "not_found", message: "Pagina non trovata" } });
+    api.on("GET", "/blocks", { status: 404, error: { code: "not_found", message: "Pagina non trovata" } });
     await user.click(screen.getByRole("link", { name: "Servizi" }));
-    expect(await screen.findByText("L'editor della pagina arriva presto.")).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/admin/pagine/2");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Pagina non trovata");
   });
 });

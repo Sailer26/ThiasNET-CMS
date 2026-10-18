@@ -1,4 +1,4 @@
-import { PagePlaceholder } from "./features/page-tree/PagePlaceholder";
+import { lazy, Suspense } from "react";
 import { PageTreeScreen } from "./features/page-tree/PageTreeScreen";
 import { TrashScreen } from "./features/page-tree/TrashScreen";
 import { Link } from "./router/Link";
@@ -7,6 +7,11 @@ import { SessionProvider } from "./session/SessionProvider";
 import { AppShell } from "./shell/AppShell";
 import { it } from "./text/it";
 
+// L'editor (con TipTap) si scarica solo quando si apre una pagina.
+const EditorScreen = lazy(() =>
+  import("./features/editor/EditorScreen").then((module) => ({ default: module.EditorScreen })),
+);
+
 function Screen({ route }: { route: Route }) {
   switch (route.name) {
     case "pages":
@@ -14,7 +19,11 @@ function Screen({ route }: { route: Route }) {
     case "trash":
       return <TrashScreen />;
     case "page":
-      return <PagePlaceholder />;
+      return (
+        <Suspense fallback={<p role="status">{it.loading}</p>}>
+          <EditorScreen key={route.id} pageId={route.id} />
+        </Suspense>
+      );
     case "not-found":
       return (
         <section className="screen">

@@ -5,6 +5,8 @@ export type NoticeKind = "success" | "error" | "info";
 export interface NoticeState {
   kind: NoticeKind;
   text: string;
+  /** Azione accanto al testo, es. "Annulla" dopo un'eliminazione. */
+  action?: { label: string; run: () => void };
 }
 
 interface Props {
@@ -23,6 +25,18 @@ export function NoticeArea({ notice, onClose }: Props) {
           role={notice.kind === "error" ? "alert" : undefined}
         >
           <p>{notice.text}</p>
+          {notice.action && (
+            <button
+              type="button"
+              className="button button--small"
+              onClick={() => {
+                notice.action?.run();
+                onClose?.();
+              }}
+            >
+              {notice.action.label}
+            </button>
+          )}
           {onClose && (
             <button
               type="button"

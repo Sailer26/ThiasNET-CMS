@@ -16,7 +16,9 @@ describe("router del pannello", () => {
   test("navigate cambia la schermata e indietro torna alla precedente", async () => {
     window.history.replaceState(null, "", "/admin/pagine");
     const { result } = renderHook(() => useRoute());
-    act(() => navigate(paths.trash));
+    await act(async () => {
+      await navigate(paths.trash);
+    });
     expect(result.current).toEqual({ name: "trash" });
     expect(window.location.pathname).toBe("/admin/cestino");
     await act(async () => {

@@ -10,7 +10,7 @@ export function Link({ to, onClick, children, ...rest }: Props) {
     const elsewhere = rest.target !== undefined && rest.target !== "_self";
     if (event.defaultPrevented || event.button !== 0 || modified || elsewhere) return;
     event.preventDefault();
-    navigate(to);
+    void navigate(to);
   }
   return (
     <a {...rest} href={to} onClick={handle}>

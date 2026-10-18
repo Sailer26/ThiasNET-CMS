@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, expect } from "vitest";
+import { forgetCatalog } from "../api/catalog";
 import { setCsrfToken } from "../api/client";
 import { unexpectedCalls } from "./fakeApi";
 
@@ -18,6 +19,7 @@ if (!HTMLDialogElement.prototype.showModal) {
 afterEach(() => {
   cleanup();
   setCsrfToken(null);
+  forgetCatalog();
   const unexpected = unexpectedCalls.splice(0);
   expect(unexpected, "chiamate all'API senza risposta preparata").toEqual([]);
 });

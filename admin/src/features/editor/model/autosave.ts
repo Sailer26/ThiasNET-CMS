@@ -25,12 +25,14 @@ export const realClock: Clock = {
   now: () => new Date(),
 };
 
-type Save = (doc: PageDocument, version: number) => Promise<number>;
+/** Salva `doc` (base = ultima versione salvata); restituisce versione e documento salvato. */
+type Save = (doc: PageDocument, version: number, base: PageDocument) => Promise<{ version: number; saved: PageDocument }>;
 
 export class Autosave {
   private version: number;
   private latest: PageDocument | null = null;
   private savedJson: string;
+  private savedDoc: PageDocument;
   private timer: unknown = null;
   private running: Promise<void> | null = null;
   private blocked = false;
@@ -46,11 +48,17 @@ export class Autosave {
   ) {
     this.version = version;
     this.savedJson = JSON.stringify(saved);
+    this.savedDoc = saved;
     this.state = { kind: "saved", at: null };
   }
 
   get current(): SaveState {
     return this.state;
+  }
+
+  /** L'ultima versione salvata (per l'ultimo valore valido dei campi, D-104). */
+  get base(): PageDocument {
+    return this.savedDoc;
   }
 
   get draftVersion(): number {
@@ -117,7 +125,9 @@ export class Autosave {
       const json = JSON.stringify(doc);
       this.set({ kind: "saving" });
       try {
-        this.version = await this.save(doc, this.version);
+        const result = await this.save(doc, this.version, this.savedDoc);
+        this.version = result.version;
+        this.savedDoc = result.saved;
         this.savedJson = json;
         this.set({ kind: "saved", at: this.clock.now() });
       } catch (error) {
@@ -158,6 +168,7 @@ export class Autosave {
     this.latest = null;
     this.blocked = false;
     this.savedJson = JSON.stringify(doc);
+    this.savedDoc = doc;
     this.set({ kind: "saved", at: null });
   }
 
