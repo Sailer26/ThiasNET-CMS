@@ -125,6 +125,15 @@ export const ed = {
     ogImage: "Immagine per i social",
     ogImageHelp: "Se non la scegli, si usa la prima immagine della pagina.",
   },
+  paste: {
+    videoLabel: "Incolla il link del video",
+    videoHelp: "Copia l'indirizzo del video da YouTube o Vimeo e incollalo qui: piattaforma e codice si compilano da soli.",
+    mapLabel: "Incolla il link della mappa",
+    mapHelp: "Da OpenStreetMap o Google Maps (oppure scrivi \"46.0037, 8.9511\"): posizione e ingrandimento si compilano da soli.",
+    apply: "Usa questo link",
+    invalid: "Non riconosco questo link: controlla di averlo copiato tutto.",
+    done: "Fatto: controlla i campi qui sotto.",
+  },
   rich: {
     toolbar: "Formattazione",
     paragraph: "Paragrafo",

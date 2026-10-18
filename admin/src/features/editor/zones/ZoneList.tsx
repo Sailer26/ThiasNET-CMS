@@ -15,7 +15,8 @@ import type { Catalog } from "../../../api/catalog";
 import { ed } from "../../../text/editor";
 import { FormDialog } from "../../../ui/FormDialog";
 import { Dialog } from "../../../ui/Dialog";
-import { hasRoom, zonesFor, type BlockDoc, type PageDocument, type Path } from "../model/document";
+import { PasteHelper, hasPasteHelper } from "../blocks/PasteHelper";
+import { hasRoom, zonesFor, type BlockDoc, type Data, type PageDocument, type Path } from "../model/document";
 import { SchemaForm } from "../schema/SchemaForm";
 import { VariantPicker } from "../page/VariantPicker";
 import { BlockIcon } from "./BlockIcon";
@@ -36,6 +37,7 @@ export interface ZoneActions {
   remove: (uid: string) => void;
   setVariant: (uid: string, variant: string) => void;
   editField: (uid: string, path: Path, value: unknown) => void;
+  patchData: (uid: string, patch: Data) => void;
 }
 
 interface Props {
@@ -171,6 +173,7 @@ function BlockRow({ block, zone, index, count, props }: { block: BlockDoc; zone:
             error={errors.get("variant")}
             onChange={(variant) => actions.setVariant(block.uid, variant)}
           />
+          {hasPasteHelper(block.type) && <PasteHelper type={block.type} onApply={(patch) => actions.patchData(block.uid, patch)} />}
           <SchemaForm
             schema={schema}
             data={block.data}

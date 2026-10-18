@@ -282,6 +282,23 @@ describe("editor della pagina", () => {
     expect(title).toHaveValue("Chi siamo!");
   });
 
+  test("video: incolla il link e piattaforma e codice si compilano, un passo solo di annulla", async () => {
+    const { user } = open();
+    await ready();
+    const main = screen.getByRole("region", { name: "Contenuto principale" });
+    await user.click(within(main).getByRole("button", { name: "Aggiungi blocco" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: /Video.*YouTube/ }));
+    await user.type(screen.getByLabelText("Incolla il link del video"), "https://youtu.be/dQw4w9WgXcQ");
+    await user.click(screen.getByRole("button", { name: "Usa questo link" }));
+    expect(screen.getByRole("radio", { name: "YouTube" })).toBeChecked();
+    expect(screen.getByLabelText(/Codice del video/)).toHaveValue("dQw4w9WgXcQ");
+    await user.click(screen.getByRole("button", { name: "Annulla" }));
+    expect(screen.getByLabelText(/Codice del video/)).toHaveValue("");
+    await user.type(screen.getByLabelText("Incolla il link del video"), "non è un link");
+    await user.click(screen.getByRole("button", { name: "Usa questo link" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Non riconosco questo link");
+  });
+
   test("ritira dal sito con conferma e la versione della pagina", async () => {
     const { api, user } = open();
     api.on("POST", "/pages/7/unpublish", { data: node("Chi siamo", { id: 7, status: "draft", path: "/chi-siamo", version: 5 }) });

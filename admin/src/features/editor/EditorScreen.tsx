@@ -181,6 +181,9 @@ function Workspace({ data }: { data: Loaded }) {
       });
     },
     setVariant: (uid, variant) => editor.update((d) => setVariant(d, uid, variant)),
+    // Più campi insieme (aiuti "incolla il link"): un passo solo di annulla.
+    patchData: (uid, patch) =>
+      editor.update((d) => Object.entries(patch).reduce((acc, [key, value]) => updateField(acc, uid, [key], value), d)),
     editField: (uid: string, path: Path, value: unknown) => {
       dropError(problemKey(uid, path));
       editor.update((d) => updateField(d, uid, path, value), problemKey(uid, path));

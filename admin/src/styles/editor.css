@@ -141,3 +141,9 @@ fieldset.field legend { font-weight: 600; padding: 0; margin-bottom: 0.35rem; }
 }
 .block-row__handle:active { cursor: grabbing; }
 .block-row--dragging { position: relative; z-index: 2; box-shadow: 0 8px 20px rgb(0 0 0 / 0.15); }
+
+/* Aiuti "incolla il link" (D-112) */
+.paste-helper { display: grid; gap: 0.35rem; padding: 0.75rem; border: 1px dashed var(--tn-accent); border-radius: var(--radius); background: var(--tn-sky); }
+.paste-helper label { font-weight: 600; }
+.paste-helper__row { display: flex; gap: 0.4rem; }
+.paste-helper__row input { flex: 1; min-height: var(--target); padding: 0 0.75rem; border: 1px solid var(--tn-border); border-radius: var(--radius); font: inherit; }
