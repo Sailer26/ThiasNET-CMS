@@ -12,7 +12,8 @@ Aggiornato: 2026-10-18. Leggi questo file **dopo** `CLAUDE.md` e prima di qualsi
 - **Fase 3 — Rendering pubblico:** chiusa e unita in `main` (PR #3).
 - **Fase 4 — Media library:** completata sul branch `phase-4-media` (870 test verdi, copertura 94 %). PR verso `main` da aprire/unire.
 - **Fase 5a — Pannello: telaio, accesso, pagine:** completata sul branch `phase-5-admin`, partito da `phase-4-media`.
-- **Fase 5b-1 — Editor della pagina:** completata sul branch `phase-5b-editor`, partito da `phase-5-admin` (1036 test Python, 170 del pannello, review ECC fatta). **Nessuna delle PR 4/5a/5b-1 risulta unita in `main`**: la PR da `phase-5b-editor` verso `main` le contiene tutte. Prossima: **5b-2 — Media nell'editor, trascinamento, aiuti, primo e2e**.
+- **Fase 5b-1 — Editor della pagina:** completata sul branch `phase-5b-editor`, partito da `phase-5-admin` (1036 test Python, 170 del pannello, review ECC fatta). **Nessuna delle PR 4/5a/5b-1 risulta unita in `main`**: la PR da `phase-5b-editor` verso `main` le contiene tutte. Prossima: **5b-2**.
+- **Fase 5b-2 — Media nell'editor, trascinamento, aiuti, primo e2e:** completata sul branch `phase-5b2-editor`, partito da `phase-5b-editor` (1059 test Python, 205 del pannello, 1 e2e, review ECC fatta). La PR da `phase-5b2-editor` verso `main` contiene anche le Fasi 4, 5a e 5b-1 se non sono ancora unite. Prossima: **5c — Libreria e amministrazione**.
 - Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-115). Prevalgono sugli altri documenti.
 
 ## 2. Preparare l'ambiente (se la `.venv` non c'è)
@@ -79,10 +80,14 @@ nuovo blocco, testo, salvataggio, anteprima, pubblicazione (il testo compare sul
 - TipTap nei test jsdom: si provano schema e HTML (`richtext/extensions.test.ts`), non la scrittura a tastiera.
 - Gli script statici del CMS (`preview.js`, `consent.js`) si provano in `admin/src/test/static/` con jsdom.
 
-## 8. Prossimo passo: Fase 5b-2 — Media nell'editor, trascinamento, aiuti, primo e2e
-1. Branch `phase-5b2-editor` da `phase-5b-editor` (o da `main` se le PR precedenti sono unite).
-2. Il piano c'è già (sezione "5b" di `docs/PIANO-FASE-5.md`, punti 22–29): niente domande nuove salvo dubbi veri.
-3. `GET /api/admin/media?ids=`, finestra di scelta e caricamento con alt nei campi media (D-111), dnd-kit dentro
-   le zone (D-109), aiuti "incolla il link" per video e mappa, primo e2e con `pytest-playwright` ed Edge (D-114).
-4. Test prima, codice, review ECC in parallelo (`ecc:code-reviewer`, `ecc:typescript-reviewer`,
-   `ecc:python-reviewer`, `ecc:security-reviewer` con `/check-template-lock`), docs, push, link della PR.
+## 8. Fase 5b-2 — fatta
+- `python scripts/tasks.py e2e` (dopo `admin-build`) apre Edge, fa accesso → homepage → testo → anteprima → annulla → pubblica.
+  Gli e2e sono esclusi dalla suite normale (`-m 'not e2e'` in `pyproject.toml`); in CI c'è un job Linux con Chromium.
+- I media nell'editor passano da `MediaProvider` (`admin/src/features/media-picker/`): un'unica lettura `?ids=` a gruppi di 100.
+
+## 9. Prossimo passo: Fase 5c — Libreria e amministrazione
+1. Branch `phase-5c-admin` dall'ultimo branch (o da `main` se le PR sono unite).
+2. Piano con `ecc:planner` (sezione 5c di `docs/PIANO-FASE-5.md`), al massimo 4 domande per Thias.
+3. Pagina Media completa (cartelle, punto focale, Sostituisci file, pagine che usano un media), revisioni e
+   programmazione nell'editor, utenti, registro attività, profilo (password, TOTP), messaggi del modulo contatti (API nuova).
+4. Test prima, codice, review ECC in parallelo, docs, push, link della PR.

@@ -90,7 +90,13 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - [x] Pubblica con conferma, errori con "Vai al campo", Ritira, Scarta (D-113)
 - [x] Rimandi: `uid` dal pannello (D-39), 409 con chi ha salvato, test di `preview.js` e `consent.js`
 
-**5b-2 — Media nell'editor, trascinamento, aiuti, primo e2e** · **5c — Libreria e amministrazione** · **5d — Aiuto e prova sul campo** (criteri qui sotto)
+**5b-2 — Media nell'editor, trascinamento, aiuti, primo e2e**
+- [x] Scelta e caricamento di immagini e PDF nei campi, testo alternativo dall'editor, `GET /media?ids=` (D-111)
+- [x] Trascinamento dei blocchi dentro una zona con maniglia, tocco prolungato e tastiera (D-109)
+- [x] Aiuti "incolla il link" per video (YouTube, Vimeo) e mappa (OpenStreetMap, Google Maps) (D-112)
+- [x] Primo e2e con Playwright: scrivi → anteprima → annulla → pubblica, Edge su Windows e Chromium in CI (D-114)
+
+**5c — Libreria e amministrazione** · **5d — Aiuto e prova sul campo** (criteri qui sotto)
 - [ ] Shell Vite+TS, login, layout, gestione errori/sessione scaduta
 - [ ] Albero pagine, editor pagina con zone e blocchi drag&drop (dnd-kit), TipTap
 - [ ] Anteprima live affiancata (iframe), click sul blocco → apre il form (D-02)
@@ -102,7 +108,7 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - [ ] Test d'uso con un cliente vero (PREMORTEM #6)
 
 **Rimandati dalla 5b-1:**
-- 5b-2: scelta e caricamento dei media nei campi (oggi in sola lettura), `GET /media?ids=`, dnd-kit, aiuti per video e mappa, e2e Playwright; chiavi stabili per gli elementi degli elenchi (oggi per posizione).
+- 5c: chiavi stabili per gli elementi degli elenchi (oggi per posizione); link brevi (maps.app.goo.gl) e video Vimeo privati negli aiuti; e2e anche per media e trascinamento.
 - 5d: barra del testo formattato con un solo punto di tabulazione (roving tabindex); banner dei cookie nascosto nell'anteprima del pannello se il test d'uso lo chiede.
 
 **Rimandati dalla 5a:**
