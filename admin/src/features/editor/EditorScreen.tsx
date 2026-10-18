@@ -160,6 +160,7 @@ function Workspace({ data }: { data: Loaded }) {
       focusFirstField(uid);
     },
     shift: (uid, delta) => editor.update((d) => shiftBlock(d, uid, delta)),
+    reorder: (uid, zone, index) => editor.update((d) => moveBlock(d, uid, zone, index)),
     moveTo: (uid, zone) =>
       editor.update((d) => (hasRoom(d, catalog, zone) ? moveBlock(d, uid, zone, d.zones[zone]?.length ?? 0) : d)),
     duplicate: (uid) => {

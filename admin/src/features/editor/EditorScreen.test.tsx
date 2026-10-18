@@ -143,7 +143,7 @@ describe("editor della pagina", () => {
   test("modulo dal suo schema: etichette, scelte, link con le pagine del sito", async () => {
     const { user } = open();
     await ready();
-    await user.click(screen.getByRole("button", { name: /Invito all'azione/ }));
+    await user.click(screen.getByRole("button", { name: /^Invito all'azione/ }));
     expect(screen.getByLabelText(/Testo del pulsante/)).toBeInTheDocument();
     const link = screen.getByLabelText(/Link del pulsante/);
     await user.type(link, "www.comune.ch");
@@ -157,7 +157,7 @@ describe("editor della pagina", () => {
   test("campo scritto a metà: avviso accanto e al server l'ultimo valore valido", async () => {
     const { api, user } = open();
     await ready();
-    await user.click(screen.getByRole("button", { name: /Invito all'azione/ }));
+    await user.click(screen.getByRole("button", { name: /^Invito all'azione/ }));
     await user.type(screen.getByLabelText(/Link del pulsante/), "htt");
     expect(screen.getByText(/Non ancora salvato: controlla il formato/)).toBeInTheDocument();
     await wait(SAVE_DELAY_MS + 10);
@@ -274,7 +274,7 @@ describe("editor della pagina", () => {
     const { user } = open();
     const title = await ready();
     await user.type(title, "!");
-    await user.click(screen.getByRole("button", { name: /Invito all'azione/ }));
+    await user.click(screen.getByRole("button", { name: /^Invito all'azione/ }));
     await user.click(within(screen.getByRole("group", { name: "Azioni per il blocco \"Invito all'azione\"" })).getByRole("button", { name: "Sposta in…" }));
     const dialog = screen.getByRole("dialog");
     within(dialog).getByRole("combobox").focus();

@@ -133,3 +133,11 @@ fieldset.field legend { font-weight: 600; padding: 0; margin-bottom: 0.35rem; }
 .media-field__chosen img { width: 96px; height: 72px; object-fit: cover; border-radius: 4px; }
 .alt-preview { display: block; max-width: 100%; height: auto; border-radius: 4px; margin-bottom: 0.75rem; }
 .field__label { font-weight: 600; }
+
+/* Trascinamento (D-109): solo dalla maniglia, lo scorrimento della pagina resta libero */
+.block-row__handle {
+  min-width: var(--target); min-height: var(--target); border: 0; background: none; cursor: grab;
+  font-size: 1.2rem; color: var(--tn-muted); touch-action: none; border-radius: 6px;
+}
+.block-row__handle:active { cursor: grabbing; }
+.block-row--dragging { position: relative; z-index: 2; box-shadow: 0 8px 20px rgb(0 0 0 / 0.15); }

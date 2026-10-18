@@ -1,3 +1,15 @@
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useState } from "react";
 import type { Catalog } from "../../../api/catalog";
 import { ed } from "../../../text/editor";
@@ -7,12 +19,18 @@ import { hasRoom, zonesFor, type BlockDoc, type PageDocument, type Path } from "
 import { SchemaForm } from "../schema/SchemaForm";
 import { VariantPicker } from "../page/VariantPicker";
 import { BlockIcon } from "./BlockIcon";
+import { announcements, dropIndex, instructions } from "./sortable";
 import { summary } from "./summary";
+
+const POINTER_DISTANCE = 5; // un clic non è un trascinamento
+const TOUCH_DELAY_MS = 250; // sul tablet si tiene premuto: lo scorrimento resta libero
+const TOUCH_TOLERANCE = 5;
 
 export interface ZoneActions {
   select: (uid: string | null) => void;
   add: (zone: string, type: string) => void;
   shift: (uid: string, delta: -1 | 1) => void;
+  reorder: (uid: string, zone: string, index: number) => void;
   moveTo: (uid: string, zone: string) => void;
   duplicate: (uid: string) => void;
   remove: (uid: string) => void;
@@ -90,9 +108,26 @@ function BlockRow({ block, zone, index, count, props }: { block: BlockDoc; zone:
   const unsaved = props.unsaved.get(block.uid) ?? EMPTY;
   const [moving, setMoving] = useState(false);
   const schema = catalog.types[block.type]?.schema ?? {};
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.uid });
+  // Spostamento durante il trascinamento: proprietà CSS impostate da JS, ammesse dalla CSP (D-88).
+  const style = { transform: CSS.Transform.toString(transform), transition };
   return (
-    <li className={`block-row${open ? " block-row--open" : ""}`} data-uid={block.uid}>
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={`block-row${open ? " block-row--open" : ""}${isDragging ? " block-row--dragging" : ""}`}
+      data-uid={block.uid}
+    >
       <div className="block-row__head">
+        <button
+          type="button"
+          className="block-row__handle"
+          aria-label={ed.zones.drag(label)}
+          {...attributes}
+          {...listeners}
+        >
+          ⠿
+        </button>
         <button
           type="button"
           className="block-row__title"
@@ -167,6 +202,11 @@ function BlockRow({ block, zone, index, count, props }: { block: BlockDoc; zone:
 export function ZoneList(props: Props) {
   const { doc, catalog, actions } = props;
   const [adding, setAdding] = useState<string | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: POINTER_DISTANCE } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: TOUCH_DELAY_MS, tolerance: TOUCH_TOLERANCE } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
   const layout = catalog.layouts[doc.layout];
   if (!layout) return null;
   return (
@@ -174,6 +214,15 @@ export function ZoneList(props: Props) {
       {Object.entries(layout.zones).map(([name, zone]) => {
         const blocks = doc.zones[name] ?? [];
         const room = hasRoom(doc, catalog, name);
+        const order = blocks.map((block) => block.uid);
+        const labelOf = (uid: string) => {
+          const block = blocks.find((b) => b.uid === uid);
+          return block ? (catalog.types[block.type]?.label ?? block.type) : "";
+        };
+        const dragEnd = ({ active, over }: DragEndEvent) => {
+          const index = dropIndex(order, String(active.id), over ? String(over.id) : null);
+          if (index !== null) actions.reorder(String(active.id), name, index);
+        };
         return (
           <section key={name} className="zone" aria-labelledby={`zone-${name}`}>
             <h2 id={`zone-${name}`} className="zone__title">
@@ -183,11 +232,23 @@ export function ZoneList(props: Props) {
               <p className="form__error">{[...props.errors.get(`zone:${name}`)!.values()].join(" ")}</p>
             )}
             {blocks.length === 0 && <p className="hint">{ed.zones.empty}</p>}
-            <ul className="zone__blocks">
-              {blocks.map((block, index) => (
-                <BlockRow key={block.uid} block={block} zone={name} index={index} count={blocks.length} props={props} />
-              ))}
-            </ul>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={dragEnd}
+              accessibility={{
+                announcements: announcements(labelOf, (uid) => order.indexOf(uid) + 1),
+                screenReaderInstructions: instructions,
+              }}
+            >
+              <SortableContext items={order} strategy={verticalListSortingStrategy}>
+                <ul className="zone__blocks">
+                  {blocks.map((block, index) => (
+                    <BlockRow key={block.uid} block={block} zone={name} index={index} count={blocks.length} props={props} />
+                  ))}
+                </ul>
+              </SortableContext>
+            </DndContext>
             <button type="button" className="button" disabled={!room} onClick={() => setAdding(name)}>
               {ed.zones.add}
             </button>

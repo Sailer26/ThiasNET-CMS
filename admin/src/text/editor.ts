@@ -56,6 +56,7 @@ export const ed = {
     full: "Questa zona è piena.",
     addTitle: (zone: string) => `Aggiungi un blocco in "${zone}"`,
     blockActions: (label: string) => `Azioni per il blocco "${label}"`,
+    drag: (label: string) => `Trascina per spostare il blocco "${label}"`,
     up: "Su",
     down: "Giù",
     moveTo: "Sposta in…",
