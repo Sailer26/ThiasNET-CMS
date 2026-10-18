@@ -16,7 +16,7 @@
     "media_id": {
       "type": "integer",
       "minimum": 1,
-      "x-media": true
+      "x-media": "image"
     },
     "cta_label": {
       "type": "string",

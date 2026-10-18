@@ -141,8 +141,6 @@ def test_themes_unchanged_after_startup_and_theme_check() -> None:
 
 
 SKIPPED_UNTIL_ROUTE = {
-    "test_media_upload_rejects_renderable_files": ("/api/admin/media", "POST"),
-    "test_media_upload_rejects_disguised_svg": ("/api/admin/media", "POST"),
     "test_unknown_theme_setting_rejected": ("/api/admin/settings/appearance", "PUT"),
 }
 

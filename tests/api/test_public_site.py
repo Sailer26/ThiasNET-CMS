@@ -314,11 +314,28 @@ def test_stats_choice_appears_only_with_matomo(
 
 
 def test_accessibility_smoke(admin: FlaskClient, visitor: FlaskClient) -> None:
+    from tests.api.test_media_api import uploaded
+    from tests.media_fixtures import PDF_BYTES
     from tests.unit.test_blocks_registry import VALID
+
+    image = uploaded(admin, alt="Foto di prova")["id"]
+    pdf = uploaded(admin, PDF_BYTES, "orari.pdf")["id"]
+
+    def with_media(block_type: str, data: Any) -> Any:  # media veri: si pubblica solo così
+        if isinstance(data, dict):
+            return {
+                k: (pdf if block_type == "files" else image)
+                if k == "media_id"
+                else with_media(block_type, v)
+                for k, v in data.items()
+            }
+        if isinstance(data, list):
+            return [with_media(block_type, item) for item in data]
+        return data
 
     page = create_page(admin, "Tutto")
     blocks = [
-        {"uid": f"{n:032x}", "type": block_type, "data": data}
+        {"uid": f"{n:032x}", "type": block_type, "data": with_media(block_type, data)}
         for n, (block_type, data) in enumerate(sorted(VALID.items()), start=1)
         if block_type != "hero"
     ]

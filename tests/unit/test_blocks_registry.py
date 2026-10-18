@@ -171,6 +171,7 @@ def test_schema_is_closed_and_bounded(registry: BlockRegistry, block_type: str) 
             assert "maxItems" in node, f"{where}: array senza maxItems"
         if node.get("x-media"):
             assert kind == "integer" and node.get("minimum") == 1, where
+            assert node["x-media"] in {"image", "file"}, where
 
 
 # --- Validazione -------------------------------------------------------------
@@ -290,3 +291,12 @@ def test_tabs_become_spaces_and_emoji_joiners_survive(registry: BlockRegistry) -
 def test_heading_anchor_cannot_reuse_reserved_ids(registry: BlockRegistry, anchor: str) -> None:
     errors = registry.errors("heading", {"text": "x", "anchor": anchor}, Mode.DRAFT)
     assert errors and errors[0].path == "data/anchor"
+
+
+def test_media_refs_know_kind_and_field(registry: BlockRegistry) -> None:
+    from types import MappingProxyType
+
+    gallery = MappingProxyType({"items": (MappingProxyType({"media_id": 4}),)})  # dati del renderer
+    [ref] = registry.media_refs("gallery", gallery, prefix="zones/main/0/data")
+    assert (ref.media_id, ref.kind, ref.path) == (4, "image", "zones/main/0/data/items/0/media_id")
+    assert registry.media_refs("files", VALID["files"])[0].kind == "file"

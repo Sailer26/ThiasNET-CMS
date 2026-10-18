@@ -124,7 +124,6 @@ def owner_client(client):
 
 # Skip mirati: la route non esiste ancora. test_golden_rule.py fallisce se la route compare
 # mentre lo skip è ancora presente, così lo skip non sopravvive alla sua fase.
-SKIP_UNTIL_MEDIA = pytest.mark.skip(reason="Attivare in Fase 4: route /api/admin/media assente")
 SKIP_UNTIL_SETTINGS = pytest.mark.skip(
     reason="Attivare in Fase 6: route /api/admin/settings/appearance assente"
 )
@@ -135,7 +134,6 @@ def test_owner_client_is_really_logged_in(owner_client):
     assert me["role"] == "owner"
 
 
-@SKIP_UNTIL_MEDIA
 @pytest.mark.parametrize("ext", FORBIDDEN_UPLOAD_EXT)
 def test_media_upload_rejects_renderable_files(owner_client, ext):
     before = _themes_hash()
@@ -149,7 +147,6 @@ def test_media_upload_rejects_renderable_files(owner_client, ext):
     assert _themes_hash() == before
 
 
-@SKIP_UNTIL_MEDIA
 def test_media_upload_rejects_disguised_svg(owner_client):
     svg = b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'
     resp = owner_client.post(

@@ -20,8 +20,9 @@ from app.extensions import db
 from app.models.page import Block, Page, PageDraft, PageRevision, PageStatus, RevisionKind
 from app.models.types import utcnow
 from app.models.user import User
-from app.services import audit, drafts, page_cache, pages, revisions
+from app.services import audit, drafts, media_refs, page_cache, pages, revisions
 from app.services.blocks import Mode
+from app.services.content import invalid as content_invalid
 from app.services.content import validate_document
 from app.services.errors import ServiceError, version_conflict
 from app.services.permissions import Permission, require
@@ -52,6 +53,16 @@ def _source(page: Page, draft_version: int) -> tuple[Any, PageDraft | None]:
     if page.status == PageStatus.PUBLISHED:
         raise ServiceError("no_draft", "Non ci sono modifiche da pubblicare", 409)
     return drafts.published_document(page), None
+
+
+def _validated(source: Any) -> Document:
+    """Validazione completa per andare online: contenuto e tema (D-46), poi i media usati
+    esistono, sono del tipo giusto e le immagini hanno il testo alternativo (D-77, D-78)."""
+    document = validate_document(active_theme(), source, Mode.PUBLISH)
+    problems = media_refs.check_document(document)
+    if problems:
+        raise content_invalid(problems)
+    return document
 
 
 def _apply(page: Page, document: Document, actor_id: int | None, now: datetime) -> None:
@@ -91,7 +102,7 @@ def _drop_draft(page_id: int, draft_version: int) -> None:
 def publish(actor: User, page: Page, draft_version: int) -> Page:
     require(actor, Permission.PUBLISH)
     source, draft = _source(page, draft_version)
-    document = validate_document(active_theme(), source, Mode.PUBLISH)
+    document = _validated(source)
     cancelled = revisions.cancel_schedule(page.id)
     _apply(page, document, actor.id, utcnow())
     revisions.add(page.id, RevisionKind.PUBLISHED, document, actor.id)
@@ -131,7 +142,7 @@ def schedule(actor: User, page: Page, draft_version: int, publish_at: str) -> Pa
     require(actor, Permission.PUBLISH)
     when = parse_publish_at(publish_at, utcnow())
     source, _draft = _source(page, draft_version)
-    document = validate_document(active_theme(), source, Mode.PUBLISH)
+    document = _validated(source)
     try:
         pages.bump_version(page, page.version)
         revisions.cancel_schedule(page.id)
@@ -242,7 +253,7 @@ def _publish_scheduled(page: Page, now: datetime) -> bool:
         return False
     snapshot, author_id = revision.snapshot_json, revision.author_id
     try:
-        document = validate_document(active_theme(), snapshot, Mode.PUBLISH)
+        document = _validated(snapshot)
     except ServiceError as exc:
         _fail(page, revision, exc, now)
         return False

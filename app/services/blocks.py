@@ -10,7 +10,7 @@ sono in più o non sono validi, l'app non parte. Annotazioni proprie:
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -176,16 +176,27 @@ def _clean_value(schema: Mapping[str, Any], value: Any) -> Any:
     return value
 
 
-def _media_ids(schema: Mapping[str, Any], value: Any) -> Iterator[int]:
-    if schema.get("x-media") and isinstance(value, int) and not isinstance(value, bool):
-        yield value
-    elif isinstance(value, dict):
+@dataclass(frozen=True)
+class MediaRef:
+    """Un media usato da un blocco: id, tipo richiesto ("image" o "file") e campo."""
+
+    media_id: int
+    kind: str
+    path: str
+
+
+def _media_refs(schema: Mapping[str, Any], value: Any, path: str) -> Iterator[MediaRef]:
+    """Accetta anche le strutture congelate del renderer (MappingProxyType, tuple)."""
+    kind = schema.get("x-media")
+    if kind and isinstance(value, int) and not isinstance(value, bool):
+        yield MediaRef(value, str(kind), path)
+    elif isinstance(value, Mapping):
         for key, sub in schema.get("properties", {}).items():
             if key in value:
-                yield from _media_ids(sub, value[key])
-    elif isinstance(value, list) and "items" in schema:
-        for item in value:
-            yield from _media_ids(schema["items"], item)
+                yield from _media_refs(sub, value[key], join_path(path, key))
+    elif isinstance(value, Sequence) and not isinstance(value, str) and "items" in schema:
+        for index, item in enumerate(value):
+            yield from _media_refs(schema["items"], item, join_path(path, index))
 
 
 @dataclass(frozen=True)
@@ -236,9 +247,12 @@ class BlockRegistry:
             return [FieldError("type", "unknown_type", "Tipo di blocco sconosciuto")]
         return schema_errors(entry.validators[mode], data, prefix)
 
-    def media_ids(self, block_type: str, data: Any) -> tuple[int, ...]:
+    def media_refs(self, block_type: str, data: Any, prefix: str = "data") -> tuple[MediaRef, ...]:
         entry = self._entries.get(block_type)
-        return () if entry is None else tuple(_media_ids(entry.schema, data))
+        return () if entry is None else tuple(_media_refs(entry.schema, data, prefix))
+
+    def media_ids(self, block_type: str, data: Any) -> tuple[int, ...]:
+        return tuple(ref.media_id for ref in self.media_refs(block_type, data))
 
 
 def _read_schema(path: Path, name: str) -> dict[str, Any]:
