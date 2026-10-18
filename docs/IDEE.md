@@ -4,3 +4,5 @@ Ogni idea nuova finisce qui, non nel codice (PREMORTEM #1). Si rivaluta dopo la 
 
 - **Assistente AI nel pannello** (D-13): "scrivimi un testo per questa pagina", riformulazione, traduzione automatica it↔de/rm/en, suggerimento alt text. Il pannello va progettato con un punto d'aggancio per azioni contestuali sui campi testo.
 - **Multi-tenant**: rivalutare se si superano 15–20 clienti (PREMORTEM, decisione finale).
+- **Svuotare il cestino delle pagine** / eliminazione definitiva da parte dell'admin (D-43: in Fase 2 il cestino è solo recuperabile).
+- **"Salva versione" manuale**: revisione con un nome scelto dal cliente, oltre a quelle automatiche (D-40).

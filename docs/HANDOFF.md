@@ -8,8 +8,8 @@ Aggiornato: 2026-10-18. Leggi questo file **dopo** `CLAUDE.md` e prima di qualsi
 - Identità git del repo: `Sailer26 <thias.nietli@gmail.com>` (impostata per-repo, non globale)
 - **Fase 0 — Fondamenta:** chiusa e unita in `main`.
 - **Fase 1 — Utenti e autenticazione:** chiusa e unita in `main` (PR #1, commit `e2ae055`). 235 test verdi, copertura 96.6 %, CI verde su Linux e Windows.
-- **Fase 2 — Pagine e blocchi (backend):** **piano pronto, nessun codice scritto.** Branch `phase-2-pages` creato da `main`. Si aspettano le 4 risposte di Thias (sezione 5) prima di iniziare il TDD.
-- Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-37). Prevalgono sugli altri documenti.
+- **Fase 2 — Pagine e blocchi (backend):** completata sul branch `phase-2-pages` (600 test verdi, copertura 96 %, review ECC fatta, problemi alti e medi corretti). In attesa della PR verso `main`. Prossima: **Fase 3 — Rendering pubblico** (rimandi in ROADMAP).
+- Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-49). Prevalgono sugli altri documenti.
 
 ## 2. Preparare l'ambiente (se la `.venv` non c'è)
 ```bash
@@ -41,9 +41,11 @@ L'app non parte senza `APP_ENV` (D-20); `tasks.py` usa `development` di default.
 - Test: la fixture `app` crea il DB in memoria con `create_all` e **non tiene il contesto attivo** durante le richieste (altrimenti `g`/utente loggato verrebbero condivisi). Usare `make_user(app, …)`, `api_client(app)`, `login(...)`, `adopt_csrf(...)` da `tests/helpers.py` e la fixture `login_as(role)`.
 - Le migrazioni sono scritte a mano; `tests/unit/test_models.py::test_migrations_match_models` verifica la parità con i modelli. Gli indici parziali non sono confrontati da `compare_metadata`: serve un test dedicato.
 - Ogni route `/api/admin/*` deve avere `@require_permission(...)` o `@public` (meta-test `tests/api/test_route_permissions.py`).
+- Script Python che scrivono file su Windows: usare `newline="\n"` (altrimenti CRLF e pre-commit fallisce). Nei testi passati agli strumenti di scrittura gli escape Unicode possono diventare caratteri invisibili veri: nei sorgenti usare `chr(0x...)`.
+- `.gitignore` esclude solo `/data/` della radice (database): `app/data/` (password comuni) è nel repository.
 - I test del kit in `tests/security/test_template_lock.py` su media (Fase 4) e settings (Fase 6) sono saltati con skip mirati: `test_golden_rule.py` fallisce se la route nasce e lo skip resta. Toglierli nella fase giusta.
 
-## 5. Fase 2 — domande aperte per Thias (rispondere prima di iniziare)
+## 5. Fase 2 — domande per Thias (risposta: tutte le proposte, registrate in D-40, D-43, D-45)
 1. **Pagina eliminata:** cestino recuperabile, per ora non svuotabile dal pannello; un editor senza permesso di pubblicazione non può cestinare una pagina online. *(Proposta)* — alternativa: l'admin può anche eliminare definitivamente.
 2. **Versioni precedenti per pagina:** ultime 50 *(proposta)* — alternative: 20, oppure tutte.
 3. **Cambio indirizzo di una pagina online:** reindirizzamento 301 automatico dal vecchio al nuovo, attivo in Fase 3 *(proposta)* — alternativa: lo gestisce il cliente a mano.
