@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Catalog } from "../../../api/catalog";
 import type { Site } from "../../../api/types";
+import { MediaChoice } from "../../media-picker/MediaChoice";
 import { ed } from "../../../text/editor";
 import { FormDialog } from "../../../ui/FormDialog";
 import type { PageDocument, Seo } from "../model/document";
@@ -107,6 +108,22 @@ export function PageSettings({ doc, catalog, site, path, errors, onTitle, onLayo
             />
             {ed.page.noindex}
           </label>
+        </div>
+        <div className="field">
+          <span className="field__label" id="seo-og-label">
+            {ed.media.ogImage}
+          </span>
+          <MediaChoice
+            id="seo-og_image_media_id"
+            kind="image"
+            value={doc.seo.og_image_media_id}
+            onChange={(id) => onSeo("og_image_media_id", id)}
+            describedBy="seo-og-help"
+          />
+          <p id="seo-og-help" className="hint">
+            {ed.media.ogImageHelp}
+          </p>
+          <Problem id="seo-og-problem" text={errors.get("seo/og_image_media_id")} />
         </div>
         <div className="google" aria-label={ed.page.googlePreview}>
           <p className="hint">{ed.page.googlePreview}</p>

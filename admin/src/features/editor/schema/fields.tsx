@@ -2,6 +2,7 @@
 // `undefined` toglie la chiave dal documento.
 import { useId, type ReactNode } from "react";
 import type { FieldSchema } from "../../../api/catalog";
+import { MediaChoice } from "../../media-picker/MediaChoice";
 import { ed } from "../../../text/editor";
 import { completeUrl } from "./safeUrl";
 import { length } from "./validate";
@@ -203,14 +204,17 @@ export function ChoiceField({ id, spec, value, onChange, required, error, unsave
   );
 }
 
-/** 5b-1: si vede il file scelto; la scelta arriva in 5b-2 (D-111). */
-export function MediaField({ id, spec, value, required, error }: FieldProps<number>) {
+/** Immagine o documento dalla libreria (D-111); `x-media: "file"` = documento PDF. */
+export function MediaField({ id, spec, value, onChange, required, error, unsaved }: FieldProps<number>) {
   return (
-    <FieldFrame id={id} spec={spec} required={required} error={error}>
-      <output id={id} className="media-field">
-        {value ? ed.fields.media.chosen(value) : ed.fields.media.none}
-      </output>
-      <p className="hint">{ed.fields.media.soon}</p>
+    <FieldFrame id={id} spec={spec} required={required} error={error} unsaved={unsaved}>
+      <MediaChoice
+        id={id}
+        kind={spec["x-media"] === "file" ? "document" : "image"}
+        value={value}
+        onChange={onChange}
+        describedBy={describedBy(id, spec, error, unsaved)}
+      />
     </FieldFrame>
   );
 }

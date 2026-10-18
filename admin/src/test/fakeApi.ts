@@ -53,7 +53,7 @@ export function fakeApi(): FakeApi {
       const call: Call = {
         method,
         path,
-        body: init.body ? JSON.parse(String(init.body)) : undefined,
+        body: init.body instanceof FormData ? init.body : init.body ? JSON.parse(String(init.body)) : undefined,
         headers: (init.headers ?? {}) as Record<string, string>,
       };
       calls.push(call);

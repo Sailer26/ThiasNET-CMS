@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from flask import Response, request
@@ -74,9 +75,24 @@ def _form_int(name: str) -> int | None:
     return int(raw)
 
 
+MAX_IDS = 100
+ID_PART = r"[1-9][0-9]{0,9}"
+IDS_RE = re.compile(rf"{ID_PART}(?:,{ID_PART}){{0,{MAX_IDS - 1}}}")
+
+
+def _ids(raw: str) -> list[int]:
+    """`?ids=3,1,2`: i media già scelti in una pagina, letti con una richiesta sola (D-111)."""
+    if not IDS_RE.fullmatch(raw):
+        raise _invalid(f"Elenco di id non valido (al massimo {MAX_IDS}, separati da virgole)")
+    return list(dict.fromkeys(int(part) for part in raw.split(",")))
+
+
 @bp.get("/media")
 @require_permission(EDIT)
 def list_media() -> Response:
+    if "ids" in request.args:
+        wanted = _ids(request.args["ids"])
+        return ok([media_library.serialize(m) for m in media_library.by_ids(wanted)])
     page_no, limit = pagination()
     kind = request.args.get("kind") or None
     if kind is not None and kind not in set(MediaKind):

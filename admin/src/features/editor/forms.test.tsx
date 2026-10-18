@@ -8,13 +8,14 @@ import type { SaveState } from "./model/autosave";
 import { VariantPicker } from "./page/VariantPicker";
 import { SaveIndicator } from "./SaveIndicator";
 import { SchemaForm } from "./schema/SchemaForm";
+import { MediaProvider } from "../media-picker/MediaContext";
 
 const NONE = new Map<string, string>();
 
 function Form({ type, initial = {}, errors = NONE }: { type: string; initial?: Data; errors?: Map<string, string> }) {
   const [data, setData] = useState<Data>(initial);
   return (
-    <>
+    <MediaProvider ids={[]}>
       <SchemaForm
         schema={catalog().types[type]!.schema}
         data={data}
@@ -25,7 +26,7 @@ function Form({ type, initial = {}, errors = NONE }: { type: string; initial?: D
         onChange={(path: Path, value: unknown) => setData((current) => setPath(current, path, value) as Data)}
       />
       <output data-testid="data">{JSON.stringify(data)}</output>
-    </>
+    </MediaProvider>
   );
 }
 
@@ -68,9 +69,9 @@ describe("moduli generati dagli schemi", () => {
     const second = screen.getByRole("group", { name: "File n. 2" });
     await user.click(within(second).getByRole("button", { name: "Su" }));
     expect((data().items as Data[]).map((i) => i.label)).toEqual(["B", "A"]);
-    await user.click(within(screen.getByRole("group", { name: "File n. 1" })).getByRole("button", { name: "Togli" }));
+    await user.click(within(screen.getByRole("group", { name: "File n. 1" })).getByRole("button", { name: "Togli dall'elenco" }));
     expect((data().items as Data[]).map((i) => i.label)).toEqual(["A"]);
-    await user.click(within(screen.getByRole("group", { name: "File n. 1" })).getByRole("button", { name: "Togli" }));
+    await user.click(within(screen.getByRole("group", { name: "File n. 1" })).getByRole("button", { name: "Togli dall'elenco" }));
     expect(data()).toEqual({});
     await user.click(screen.getByRole("button", { name: "Aggiungi" }));
     expect(screen.getByText("Nessun file scelto")).toBeInTheDocument();

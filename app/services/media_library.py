@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unicodedata
+from collections.abc import Sequence
 from types import MappingProxyType
 from typing import Any
 
@@ -120,6 +121,12 @@ def list_media(
         .limit(limit)
     )
     return list(rows.scalars()), total
+
+
+def by_ids(ids: Sequence[int]) -> list[Media]:
+    """I media con questi id, nell'ordine chiesto; quelli che non esistono si omettono."""
+    found = {m.id: m for m in db.session.execute(select(Media).where(Media.id.in_(ids))).scalars()}
+    return [found[i] for i in ids if i in found]
 
 
 def used_bytes() -> int:

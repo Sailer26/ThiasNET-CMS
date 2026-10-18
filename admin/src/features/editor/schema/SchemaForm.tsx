@@ -1,5 +1,7 @@
 // Modulo di un blocco generato dal suo schema (D-106, D-112).
+import { useState } from "react";
 import type { FieldSchema } from "../../../api/catalog";
+import { MediaPicker } from "../../media-picker/MediaPicker";
 import { ed } from "../../../text/editor";
 import type { Data, Path } from "../model/document";
 import { RichTextField } from "../richtext/RichText";
@@ -49,6 +51,11 @@ function ItemsField({ spec, path, props, value }: { name: string; spec: FieldSch
   const itemSpec = spec.items ?? {};
   const label = itemSpec.title ?? spec.title ?? "";
   const full = spec.maxItems !== undefined && items.length >= spec.maxItems;
+  // Galleria e file: "Aggiungi immagini/documenti" sceglie più file in una volta (D-111).
+  const mediaKey = Object.entries(itemSpec.properties ?? {}).find(([, field]) => field["x-media"])?.[0];
+  const mediaKind = itemSpec.properties?.[mediaKey ?? ""]?.["x-media"] === "file" ? "document" : "image";
+  const [picking, setPicking] = useState(false);
+  const room = spec.maxItems === undefined ? Infinity : spec.maxItems - items.length;
   const update = (next: Data[]) => props.onChange(path, next.length ? next : undefined);
   const swap = (from: number, to: number) => {
     const next = [...items];
@@ -76,6 +83,22 @@ function ItemsField({ spec, path, props, value }: { name: string; spec: FieldSch
           </div>
         </fieldset>
       ))}
+      {mediaKey && (
+        <button type="button" className="button button--small" disabled={full} onClick={() => setPicking(true)}>
+          {mediaKind === "image" ? ed.media.addImages : ed.media.addFiles}
+        </button>
+      )}
+      {picking && mediaKey && (
+        <MediaPicker
+          kind={mediaKind}
+          multiple
+          onClose={() => setPicking(false)}
+          onChoose={(chosen) => {
+            setPicking(false);
+            update([...items, ...chosen.slice(0, room).map((media) => ({ [mediaKey]: media.id }))]);
+          }}
+        />
+      )}
       <button type="button" className="button button--small" disabled={full} onClick={() => update([...items, {}])}>
         {ed.fields.items.add}
       </button>

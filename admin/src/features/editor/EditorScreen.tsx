@@ -9,6 +9,7 @@ import { useSession } from "../../session/context";
 import { ed } from "../../text/editor";
 import { FormDialog } from "../../ui/FormDialog";
 import { NoticeArea, type NoticeState } from "../../ui/Notice";
+import { MediaProvider, mediaIdsIn } from "../media-picker/MediaContext";
 import { ErrorList, type ListedError } from "./ErrorList";
 import { Autosave, type SaveState } from "./model/autosave";
 import {
@@ -288,7 +289,9 @@ function Workspace({ data }: { data: Loaded }) {
 
   const online = page.status === "published";
   const changes = autosave.draftVersion > 0 || autosave.dirty;
+  const mediaIds = [...mediaIdsIn(doc)];
   return (
+    <MediaProvider ids={mediaIds}>
     <div className={`editor editor--${view}`} onKeyDownCapture={keys}>
       <header className="editor__bar">
         <Link className="button button--ghost" to={paths.pages}>
@@ -395,6 +398,7 @@ function Workspace({ data }: { data: Loaded }) {
         </FormDialog>
       )}
     </div>
+    </MediaProvider>
   );
 }
 

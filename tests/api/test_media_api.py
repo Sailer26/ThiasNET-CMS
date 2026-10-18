@@ -329,3 +329,24 @@ def test_leftover_files_do_not_block_the_next_revision(app: Flask, editor: Flask
         f"{MEDIA}/{media['id']}/file", data=body, content_type="multipart/form-data"
     )
     assert response.status_code == 200, response.get_json()
+
+
+# --- Più media per id, per l'editor (D-111) -----------------------------------------------
+
+
+def test_media_by_ids_in_the_requested_order(editor: FlaskClient) -> None:
+    first = uploaded(editor, image_bytes(color=(1, 1, 1)), "a.png")
+    second = uploaded(editor, PDF_BYTES, "b.pdf")
+    response = editor.get(f"{MEDIA}?ids={second['id']},999999,{first['id']},{second['id']}")
+    assert response.status_code == 200
+    assert [m["id"] for m in response.get_json()["data"]] == [second["id"], first["id"]]
+
+
+@pytest.mark.parametrize("ids", ["", "a,b", "1,,2", "-1", ",".join(["1"] * 101), "1;2"])
+def test_media_by_ids_rejects_bad_lists(editor: FlaskClient, ids: str) -> None:
+    response = editor.get(f"{MEDIA}?ids={ids}")
+    assert response.status_code == 422
+
+
+def test_media_by_ids_needs_login(api: FlaskClient) -> None:
+    assert api.get(f"{MEDIA}?ids=1").status_code == 401
