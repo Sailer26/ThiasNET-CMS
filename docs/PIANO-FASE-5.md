@@ -187,3 +187,29 @@ Decisioni D-116 … D-130.
 - 5d: QR per il codice a 6 cifre (se il test d'uso lo chiede), "Apri nella libreria" dal selettore.
 - IDEE: esportazione e notifiche dei messaggi, "Riprova invio", azioni su più media, confronto tra versioni, invito via email, cambio password obbligatorio, fuso configurabile.
 - Fase 8: conservazione del registro, axe sulle schermate nuove.
+
+---
+
+# 5d — Aiuto e prova sul campo (piano del 2026-10-19)
+
+Decisioni D-132 … D-136.
+
+## Risposte di Thias (tutte le proposte)
+1. **Tour:** breve, 5 passi, saltabile e rifacibile dal menu Aiuto. → D-133
+2. **"Chiedi a Thias":** un'email a Thias con cliente, sito, pagina, link e testo; risponde lui direttamente. → D-134
+3. **Controllo prima di pubblicare:** come deciso in D-09 (bloccano solo le immagini senza descrizione, il resto avvisa). → D-135
+4. **Telefono:** solo "Pubblica le modifiche", con gli stessi controlli. → D-136
+
+## 5d-1 — Controlli e assistenza
+1. `app/services/prepublish.py`: bloccanti dalla stessa funzione di `publish` (estratta da `publishing._validated`), avvisi `seo_empty`, `page_empty`, `link_broken` con `path` per "Vai al campo"; link letti con `html.parser` della libreria standard.
+2. `GET /api/admin/pages/<id>/checks` (`content.publish`).
+3. Finestra Pubblica nell'editor: controlli, "Vai al campo", "Pubblica comunque"; componente condiviso.
+4. Pubblica dal telefono nell'albero (sotto 600 px, `has_draft`, `content.publish`).
+5. Modello `support_requests` (migrazione `0009`), servizio con salva-poi-invia, limite per utente, `SUPPORT_EMAIL`; `POST /api/admin/support-requests` (`profile`); comandi `send-support-requests` e `purge-support-requests`.
+6. Menu Aiuto nell'intestazione con "Chiedi a Thias" (pagina corrente se aperto dall'editor).
+
+## 5d-2 — Guida e rifiniture
+7. `POST /api/admin/me/tour`; tour scritto a mano (`data-tour`, riquadro posizionato con le props `style`), passi senza elemento saltati.
+8. Suggerimenti mancanti (impostazioni pagina, media, utenti, programmazione, filtri del registro).
+9. Rimandi: indicatore e controllo date nel registro, numero dei messaggi azzerato all'uscita, barra del testo con un solo punto di tabulazione, "Apri nella libreria" dal selettore.
+10. e2e (tour e Pubblica comunque) e `docs/TEST-USO.md` per il test con un cliente vero (lo esegue Thias).
