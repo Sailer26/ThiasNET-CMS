@@ -112,33 +112,40 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - [x] "Pubblica le modifiche" dal telefono con lo stesso controllo
 - [x] "Chiedi a Thias": richieste salvate (migrazione `0009`), email a `SUPPORT_EMAIL`, limite per persona, nuovo invio e cancellazione dopo 12 mesi da CLI
 
-**5d-2 — Guida e rifiniture** (criteri qui sotto)
+**5d-2 — Guida e rifiniture** (D-133, D-138)
+- [x] Tour di 5 passi al primo accesso (`POST /auth/me/tour`), menu Aiuto con "Chiedi a Thias" e "Rifai il tour"
+- [x] Suggerimenti mancanti accanto ai campi (programmazione, utenti), barra del testo con un solo punto di tabulazione
+- [x] Rimandi: registro con indicatore e controllo Dal/Al, numero dei messaggi azzerato all'uscita, "Apri nella libreria" dal selettore, avviso senza `SUPPORT_EMAIL`
+- [x] e2e del tour e di "Pubblica comunque"; script del test d'uso in `docs/TEST-USO.md`
+
+**Criteri della Fase 5**
 - [x] Shell Vite+TS, login, layout, gestione errori/sessione scaduta
 - [x] Albero pagine, editor pagina con zone e blocchi drag&drop (dnd-kit), TipTap
 - [x] Anteprima live affiancata (iframe), click sul blocco → apre il form (D-02)
 - [x] Scelta varianti blocco da miniature (D-03)
 - [x] Autosave + annulla/ripristina (D-07)
 - [x] Media picker, gestione utenti (admin/owner), audit log (owner), messaggi del modulo contatti
-- [ ] Tour guidato al primo accesso, suggerimenti accanto ai campi, controllo prima di pubblicare, "Chiedi a Thias" (D-08, D-09)
-- [ ] UI tutta in italiano, PC + tablet, azioni rapide da telefono (D-10)
-- [ ] Test d'uso con un cliente vero (PREMORTEM #6)
+- [x] Tour guidato al primo accesso, suggerimenti accanto ai campi, controllo prima di pubblicare, "Chiedi a Thias" (D-08, D-09)
+- [x] UI tutta in italiano, PC + tablet, azioni rapide da telefono (D-10)
+- [ ] Test d'uso con un cliente vero (PREMORTEM #6) — lo fa Thias seguendo `docs/TEST-USO.md`; da lì si decidono menu "⋯", banner cookie nell'anteprima e QR (D-132)
+
+**Rimandati dalla 5d-2:**
+- Fase 8: limite di richieste anche su `POST /auth/me/tour` (scrive una volta sola: nessun danno); aggiornare l'utente della sessione dopo il tour (oggi si legge solo all'avvio del pannello).
 
 **Rimandati dalla 5d-1:**
-- 5d-2: menu Aiuto con "Chiedi a Thias" e "Rifai il tour" (oggi un pulsante nella testata); avviso nel log all'avvio in produzione se `SUPPORT_EMAIL` manca.
 - Fase 8: invio delle email di assistenza fuori dalla richiesta, se il server di posta è lento (oggi come i messaggi del modulo contatti, con limite di 5 all'ora per persona); limite di richieste anche su `/checks`.
 
 **Rimandati dalla 5c-2:**
-- 5d: indicatore di caricamento quando si cambiano i filtri del registro; avviso se "dal" viene dopo "al"; numero dei messaggi azzerato all'uscita (oggi si aggiorna al nuovo accesso).
 - Fase 8: limite di richieste per utente su tutta `/api/admin` (oggi solo accesso e codice a 6 cifre); pagine nell'elenco utenti oltre 100.
 
 **Rimandati dalla 5b-1:**
 - 5c: chiavi stabili per gli elementi degli elenchi (oggi per posizione); link brevi (maps.app.goo.gl) e video Vimeo privati negli aiuti; e2e anche per media e trascinamento.
-- 5d: barra del testo formattato con un solo punto di tabulazione (roving tabindex); banner dei cookie nascosto nell'anteprima del pannello se il test d'uso lo chiede.
+- Dopo il test d'uso: banner dei cookie nascosto nell'anteprima del pannello, se serve.
 
 **Rimandati dalla 5a:**
 - 5b: titolo, layout e SEO della pagina nell'editor (oggi il clic sul titolo apre un segnaposto); bozza risalvata dopo un nuovo accesso.
 - 5c: `blob:` nella CSP del pannello per l'anteprima dei file da caricare.
-- 5d: menu "⋯" per le azioni delle righe su tablet, se il test d'uso lo chiede (oggi le azioni vanno a capo sotto il titolo).
+- Dopo il test d'uso: menu "⋯" per le azioni delle righe su tablet, se serve (oggi le azioni vanno a capo sotto il titolo).
 - Fase 6: azione rapida "banner avviso" da telefono (D-97). Fase 7: lingue nel pannello (D-94), azione "notizia".
 - Fase 8: Docker con `npm ci && npm run build` (che include il controllo CSP), Caddy per `/admin/assets/`, build obbligatoria all'avvio in produzione, e2e completi, `npm audit` e action fissate a SHA, axe sul pannello.
 - Fase 8 (dalla review di sicurezza della 5a): guardiani della regola d'oro e del pannello basati sull'albero del codice (oggi controllano i nomi: `getattr` con nomi calcolati o import rinominati non si vedono), `eslint-plugin-jsx-a11y` se l'audit axe lo chiede.

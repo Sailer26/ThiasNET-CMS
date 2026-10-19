@@ -147,6 +147,8 @@ SPA ──fetch──► /api/admin/* (cookie di sessione SameSite=Strict + head
   nulla; la conferma di pubblicazione mostra gli avvisi (`WarningList`) e sul telefono `PhonePublish`.
   `POST /support-requests` (`app/services/support.py`): salva, poi email a `SUPPORT_EMAIL` della configurazione;
   `flask send-support-requests` / `purge-support-requests` da cron come per i messaggi.
+- 5d-2: `admin/src/features/help/` (tour `Tour.tsx` con passi in `text/help.ts` e `data-tour` sugli elementi,
+  `HelpMenu.tsx`, `AskThias.tsx`); `POST /auth/me/tour` segna il tour una volta sola.
 - API dell'amministrazione: `GET/PATCH/DELETE /messages[/<id>]`, `GET /messages/summary` (`messages.view`,
   admin e owner), `GET /audit` con filtri controllati (`audit.view`, solo owner), `/users`, `/auth/password`,
   `/auth/totp/*`. L'eliminazione di un messaggio scrive nel registro solo l'id.

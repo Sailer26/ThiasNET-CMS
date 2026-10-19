@@ -16,8 +16,9 @@ Aggiornato: 2026-10-19. Leggi questo file **dopo** `CLAUDE.md` e prima di qualsi
 - **Fase 5b-2 — Media nell'editor, trascinamento, aiuti, primo e2e:** completata sul branch `phase-5b2-editor`, partito da `phase-5b-editor` (1059 test Python, 205 del pannello, 1 e2e, review ECC fatta). La PR da `phase-5b2-editor` verso `main` contiene anche le Fasi 4, 5a e 5b-1 se non sono ancora unite. Prossima: **5c**.
 - **Fase 5c-1 — Libreria e pagine:** completata sul branch `phase-5c-admin`, partito da `phase-5b2-editor` (1076 test Python, 227 del pannello, 3 e2e, review ECC fatta). Prossima: **5c-2**.
 - **Fase 5c-2 — Amministrazione:** completata sul branch `phase-5c2-admin`, partito da `phase-5c-admin` (1103 test Python, 249 del pannello, 4 e2e, review ECC fatta). `origin/main` è ancora alla PR #3: la PR da `phase-5c2-admin` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **5d**.
-- **Fase 5d-1 — Controlli e assistenza:** completata sul branch `phase-5d-help`, partito da `phase-5c2-admin` (1130 test Python, 259 del pannello, 4 e2e, review ECC fatta). La PR da `phase-5d-help` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **5d-2 — Guida e rifiniture** sul branch `phase-5d2-help`.
-- Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-137). Prevalgono sugli altri documenti.
+- **Fase 5d-1 — Controlli e assistenza:** completata sul branch `phase-5d-help`, partito da `phase-5c2-admin` (1130 test Python, 259 del pannello, 4 e2e, review ECC fatta). La PR da `phase-5d-help` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **5d-2**.
+- **Fase 5d-2 — Guida e rifiniture:** completata sul branch `phase-5d2-help`, partito da `phase-5d-help` (1138 test Python, 272 del pannello, 4 e2e, review ECC fatta). **La Fase 5 è chiusa** tranne il test d'uso con un cliente vero, che fa Thias con `docs/TEST-USO.md`. La PR da `phase-5d2-help` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **Fase 6 — Widget, menu, impostazioni**.
+- Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-138). Prevalgono sugli altri documenti.
 
 ## 2. Preparare l'ambiente (se la `.venv` non c'è)
 ```bash
@@ -104,9 +105,16 @@ nuovo blocco, testo, salvataggio, anteprima, pubblicazione (il testo compare sul
 - Trappola: `ruff format`/`ruff check --fix` lanciati con il percorso `migrations/` esplicito toccano anche le
   migrazioni vecchie (escluse dalla configurazione): lanciarli su `app tests` o senza percorso.
 
-## 11. Prossimo passo: Fase 5d-2 — Guida e rifiniture
-1. Branch `phase-5d2-help` da `phase-5d-help` (o da `main` se le PR sono unite). Il piano c'è già
-   (`docs/PIANO-FASE-5.md`, sezione 5d-2) e le domande sono state fatte (D-133).
-2. `POST /me/tour`, tour di 5 passi con `data-tour`, menu Aiuto (Chiedi a Thias, Rifai il tour), suggerimenti
-   mancanti, rimandi della 5c-2 e 5d-1 (vedi ROADMAP), "Apri nella libreria", e2e, `docs/TEST-USO.md`.
-3. Test prima, codice, review ECC in parallelo, docs, push, link della PR.
+## 11. Fase 5d-2 — fatta
+- Tour: `admin/src/features/help/Tour.tsx`, passi in `text/help.ts`; parte da solo solo sull'elenco delle pagine
+  quando `tour_completed_at` è vuoto. Nei test del pannello l'utente `ME` ha già visto il tour; negli e2e l'owner
+  pure (fixture `live_app`), mentre l'editor creato in `test_admin_flow` lo vede davvero.
+- Menu Aiuto (`HelpMenu.tsx`), barra del testo con roving tabindex, "Apri nella libreria" (`/admin/media?apri=<id>`).
+- Test d'uso: `docs/TEST-USO.md` (8 compiti, cosa osservare, cosa decidere dopo).
+
+## 12. Prossimo passo: Fase 6 — Widget, menu, impostazioni
+1. Branch `phase-6-widgets` dall'ultimo branch (o da `main` se le PR sono unite).
+2. Piano con `ecc:planner` (Fase 6 di `docs/ROADMAP.md`), al massimo 4 domande per Thias.
+3. Attenzione alla regola d'oro: le impostazioni sono solo quelle di `theme.json > settings`, tipizzate; si
+   attivano i due test saltati di `tests/security/test_template_lock.py` (rotta `settings/appearance`, CRUD).
+4. Test prima, codice, review ECC in parallelo, docs, push, link della PR.
