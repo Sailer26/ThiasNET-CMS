@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { errorMessage } from "../api/client";
 import { refreshUnread, useUnread } from "../features/admin/unread";
+import { AskThias } from "../features/help/AskThias";
+import { hp } from "../text/help";
 import { Link } from "../router/Link";
 import { paths, useRoute } from "../router/router";
 import { Permission } from "../session/can";
@@ -42,6 +44,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const route = useRoute();
   const [error, setError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const [sent, setSent] = useState<string | null>(null);
   const firstRoute = useRef(true);
   const showMessages = can(Permission.messagesView);
   const unread = useUnreadCount(showMessages);
@@ -108,6 +112,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
         </nav>
         <div className="shell__account">
+          <button type="button" className="button button--ghost" onClick={() => setAsking(true)}>
+            {hp.ask}
+          </button>
           <a className="button button--ghost" href={site.url} target="_blank" rel="noopener noreferrer">
             {it.shell.openSite}
           </a>
@@ -119,8 +126,24 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
         </div>
       </header>
-      <NoticeArea notice={error ? { kind: "error", text: error } : null} onClose={() => setError(null)} />
+      <NoticeArea
+        notice={error ? { kind: "error", text: error } : sent ? { kind: "success", text: sent } : null}
+        onClose={() => {
+          setError(null);
+          setSent(null);
+        }}
+      />
       <main className="shell__main">{children}</main>
+      {asking && (
+        <AskThias
+          pageId={route.name === "page" ? route.id : null}
+          onClose={() => setAsking(false)}
+          onSent={(text) => {
+            setAsking(false);
+            setSent(text);
+          }}
+        />
+      )}
     </div>
   );
 }
