@@ -17,8 +17,9 @@ Aggiornato: 2026-10-19. Leggi questo file **dopo** `CLAUDE.md` e prima di qualsi
 - **Fase 5c-1 — Libreria e pagine:** completata sul branch `phase-5c-admin`, partito da `phase-5b2-editor` (1076 test Python, 227 del pannello, 3 e2e, review ECC fatta). Prossima: **5c-2**.
 - **Fase 5c-2 — Amministrazione:** completata sul branch `phase-5c2-admin`, partito da `phase-5c-admin` (1103 test Python, 249 del pannello, 4 e2e, review ECC fatta). `origin/main` è ancora alla PR #3: la PR da `phase-5c2-admin` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **5d**.
 - **Fase 5d-1 — Controlli e assistenza:** completata sul branch `phase-5d-help`, partito da `phase-5c2-admin` (1130 test Python, 259 del pannello, 4 e2e, review ECC fatta). La PR da `phase-5d-help` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **5d-2**.
-- **Fase 5d-2 — Guida e rifiniture:** completata sul branch `phase-5d2-help`, partito da `phase-5d-help` (1138 test Python, 272 del pannello, 4 e2e, review ECC fatta). **La Fase 5 è chiusa** tranne il test d'uso con un cliente vero, che fa Thias con `docs/TEST-USO.md`. La PR da `phase-5d2-help` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **Fase 6 — Widget, menu, impostazioni**.
-- Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-138). Prevalgono sugli altri documenti.
+- **Fase 5d-2 — Guida e rifiniture:** completata sul branch `phase-5d2-help`, partito da `phase-5d-help` (1138 test Python, 272 del pannello, 4 e2e, review ECC fatta). **La Fase 5 è chiusa** tranne il test d'uso con un cliente vero, che fa Thias con `docs/TEST-USO.md`. La PR da `phase-5d2-help` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **Fase 6**.
+- **Fase 6a — Impostazioni:** completata sul branch `phase-6-widgets`, partito da `phase-5d2-help` (1180 test Python, 278 del pannello, 5 e2e, review ECC fatta). La PR da `phase-6-widgets` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **6b — Menu** sul branch `phase-6b-menus`.
+- Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-144). Prevalgono sugli altri documenti.
 
 ## 2. Preparare l'ambiente (se la `.venv` non c'è)
 ```bash
@@ -112,9 +113,17 @@ nuovo blocco, testo, salvataggio, anteprima, pubblicazione (il testo compare sul
 - Menu Aiuto (`HelpMenu.tsx`), barra del testo con roving tabindex, "Apri nella libreria" (`/admin/media?apri=<id>`).
 - Test d'uso: `docs/TEST-USO.md` (8 compiti, cosa osservare, cosa decidere dopo).
 
-## 12. Prossimo passo: Fase 6 — Widget, menu, impostazioni
-1. Branch `phase-6-widgets` dall'ultimo branch (o da `main` se le PR sono unite).
-2. Piano con `ecc:planner` (Fase 6 di `docs/ROADMAP.md`), al massimo 4 domande per Thias.
-3. Attenzione alla regola d'oro: le impostazioni sono solo quelle di `theme.json > settings`, tipizzate; si
-   attivano i due test saltati di `tests/security/test_template_lock.py` (rotta `settings/appearance`, CRUD).
-4. Test prima, codice, review ECC in parallelo, docs, push, link della PR.
+## 12. Fase 6a — fatta
+- Piano della Fase 6 in `docs/PIANO-FASE-6.md` (6a impostazioni, 6b menu, 6c widget; domande già fatte, D-139 … D-143).
+- Impostazioni: `app/services/settings_fields.py`, `settings_store.py`, `entity_revisions.py`, migrazione `0010`;
+  pannello `admin/src/features/settings/`. I test della regola d'oro non hanno più skip: il test della sessione
+  completa va esteso a menu (6b) e widget (6c).
+- Trappola: `ruff format` va a capo nelle righe lunghe; gli script di modifica con testo esatto vanno scritti
+  sul file già formattato (o resi tolleranti), altrimenti si fermano a metà.
+
+## 13. Prossimo passo: Fase 6b — Menu
+1. Branch `phase-6b-menus` da `phase-6-widgets` (o da `main` se le PR sono unite).
+2. Piano della 6b in `docs/PIANO-FASE-6.md`: `menus` + `menu_items` (migrazione `0011`), albero intero salvato con
+   versione, profondità da `theme.json`, pagine risolte al render, "Torna automatico" (D-141), salvataggio subito
+   online per chi può pubblicare (D-140), versioni con `entity_revisions`.
+3. Test prima, codice, review ECC in parallelo, docs, push, link della PR.

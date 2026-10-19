@@ -151,9 +151,20 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - Fase 8 (dalla review di sicurezza della 5a): guardiani della regola d'oro e del pannello basati sull'albero del codice (oggi controllano i nomi: `getattr` con nomi calcolati o import rinominati non si vedono), `eslint-plugin-jsx-a11y` se l'audit axe lo chiede.
 
 ## Fase 6 — Widget, menu, impostazioni
-- [ ] Widget per area con visibilità per pagina
-- [ ] Menu per posizione, drag&drop, profondità massima
-- [ ] Impostazioni sito + settings del tema generate da `theme.json` (form dinamico tipizzato) su `PUT /api/admin/settings/appearance` (D-14)
+**6a — Impostazioni** (D-139, D-143, D-144)
+- [x] Tabelle `settings` ed `entity_revisions` (migrazione `0010`), `GET /settings`, `PUT /settings/site` e `/settings/appearance` con versione, registro, versioni e cache
+- [x] Validazione tipizzata (testo, email, url https per i social, colori della palette, scelte, sì/no, logo con alt); chiavi sconosciute rifiutate
+- [x] Logo e stile della testata nel tema; il logo conta in "Usato in"; avviso al vecchio destinatario dei messaggi
+- [x] Schermata Impostazioni nel pannello ("Dati del sito", "Aspetto"); e2e; test della regola d'oro senza più skip
+
+**Criteri della Fase 6**
+- [ ] Widget per area con visibilità per pagina (6c)
+- [ ] Menu per posizione, drag&drop, profondità massima (6b)
+- [x] Impostazioni sito + settings del tema generate da `theme.json` (form dinamico tipizzato) su `PUT /api/admin/settings/appearance` (D-14)
+
+**Rimandati dalla 6a:**
+- 6b/6c: estendere `test_theme_files_unchanged_after_full_admin_session` a menu e widget; contatti e social del sito nei widget (D-142).
+- Fase 8: limite di dimensione del corpo per le API JSON del pannello (oggi vale quello dei caricamenti); limite di richieste sulle scritture.
 
 ## Fase 7 — Collezioni e multilingua
 - [ ] Collezioni da `theme.json` (news, eventi), listing paginato, dettaglio

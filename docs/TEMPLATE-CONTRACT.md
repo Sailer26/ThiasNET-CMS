@@ -57,8 +57,8 @@ I template sono eseguiti in sandbox (D-52): non possono leggere file fuori dal t
 | Nome | Contenuto |
 |---|---|
 | `page` | `title`, `locale`, `layout`, `path`, `seo`, `is_home`, `noindex`, `zones` |
-| `site` | `name`, `base_url`, `locale` (lingua principale), `year` |
-| `settings` | impostazioni del tema (fino alla Fase 6: i `default` di `theme.json`) |
+| `site` | `name`, `base_url`, `locale` (lingua principale), `year`, `logo` (id per `img()`, o `None`), `email`, `phone`, `address`, `social` (coppie `(rete, url)`): dal pannello, D-143 |
+| `settings` | impostazioni del tema: i valori scelti nel pannello, validati contro `theme.json > settings`; un valore non più valido vale il `default` |
 | `breadcrumbs` | elenco di `{title, url, current}` |
 | `preview` | `true` dentro l'anteprima del pannello |
 | `cms_head()` · `cms_body_end()` | `<title>`, description, canonical, robots, `/_vars.css` · banner del consenso e script del CMS |

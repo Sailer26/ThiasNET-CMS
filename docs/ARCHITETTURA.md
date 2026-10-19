@@ -53,7 +53,8 @@ media(id, storage_key, kind[image|document], mime, ext, original_name, search_ke
 media_folders(id, parent_id, name, name_key)   -- nome unico per cartella madre (indice parziale per la radice)
 widgets(id, type, title, data_json, area, sort, visibility_json)
 menus(id, location, locale) · menu_items(id, menu_id, parent_id, label, target_type, target_id, url, sort)
-settings(key, value_json)       -- sito + settings esposti dal tema
+settings(scope PK 'site'|'appearance', values_json, version, updated_by, updated_at)  -- D-143, D-144
+entity_revisions(id, entity_type, entity_key, snapshot_json, author_id, created_at)   -- versioni di impostazioni, menu, widget (D-139)
 redirects(id, from_path, to_path, code)
 audit_log(id, user_id, action, entity, entity_id, diff_json, ip_hash, created_at)   -- D-30
 page_drafts(page_id, data_json, version, author_id, created_at, updated_at)   -- autosave (D-07, D-44)
@@ -149,6 +150,10 @@ SPA ──fetch──► /api/admin/* (cookie di sessione SameSite=Strict + head
   `flask send-support-requests` / `purge-support-requests` da cron come per i messaggi.
 - 5d-2: `admin/src/features/help/` (tour `Tour.tsx` con passi in `text/help.ts` e `data-tour` sugli elementi,
   `HelpMenu.tsx`, `AskThias.tsx`); `POST /auth/me/tour` segna il tour una volta sola.
+- 6a: `GET /settings`, `PUT /settings/site`, `PUT /settings/appearance` (`settings.edit`, admin e owner).
+  `settings_fields.py` dà schema (per `SchemaForm` del pannello, con `x-color` per la palette) e validazione;
+  `settings_store.py` salva con versione, registro, versioni e `mark_changed()`; `site_settings.current()` e
+  `theme_settings()` leggono dal database (cache per richiesta in `g`).
 - API dell'amministrazione: `GET/PATCH/DELETE /messages[/<id>]`, `GET /messages/summary` (`messages.view`,
   admin e owner), `GET /audit` con filtri controllati (`audit.view`, solo owner), `/users`, `/auth/password`,
   `/auth/totp/*`. L'eliminazione di un messaggio scrive nel registro solo l'id.
