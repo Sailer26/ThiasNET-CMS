@@ -20,7 +20,7 @@ from app.models.page import (
     SLUG_MAX_LENGTH,
     Page,
 )
-from app.services import page_views, pages, publishing, revisions
+from app.services import page_views, pages, prepublish, publishing, revisions
 from app.services.errors import ServiceError
 from app.services.permissions import Permission
 from app.services.theme import active_theme
@@ -199,6 +199,13 @@ def restore_page(page_id: int) -> Response:
 
 
 # --- Pubblicazione ----------------------------------------------------------------
+
+
+@bp.get("/pages/<int:page_id>/checks")
+@require_permission(PUBLISH)
+def page_checks(page_id: int) -> Response:
+    """Controllo prima di pubblicare (D-135): non scrive nulla."""
+    return ok(prepublish.report(pages.get_page(page_id)))
 
 
 @bp.post("/pages/<int:page_id>/publish")

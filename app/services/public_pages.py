@@ -98,7 +98,9 @@ def _publish_if_due(page: Page, now: datetime) -> None:
         log.exception("pubblicazione programmata della pagina %s non riuscita", page.id)
 
 
-def resolve(path: str, theme: Theme, now: datetime) -> Resolution:
+def resolve(path: str, theme: Theme, now: datetime, *, publish_due: bool = True) -> Resolution:
+    """Con `publish_due=False` non scrive nulla: una programmazione scaduta conta già come
+    online (la pubblicherà il cron). Lo usa il controllo dei link (D-135)."""
     default = theme.locales[0]
     if len(path) > MAX_PUBLIC_PATH or not PATH_CHARS.fullmatch(path) or "//" in path:
         return _not_found(default)  # niente query per indirizzi impossibili
@@ -107,10 +109,11 @@ def resolve(path: str, theme: Theme, now: datetime) -> Resolution:
         return split
     locale, inner = split
     page = _live_page(locale, inner)
-    if page is not None and page.publish_at is not None and page.publish_at <= now:
+    due = page is not None and page.publish_at is not None and page.publish_at <= now
+    if due and publish_due and page is not None:
         _publish_if_due(page, now)
         page = _live_page(locale, inner)
-    if page is not None and _is_online(page):
+    if page is not None and (_is_online(page) or (due and not publish_due)):
         return Resolution(Outcome.PAGE, locale, page=page)
     query = select(PageRedirect).where(
         PageRedirect.locale == locale, PageRedirect.from_path == inner

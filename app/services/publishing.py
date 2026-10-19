@@ -21,7 +21,7 @@ from app.models.page import Block, Page, PageDraft, PageRevision, PageStatus, Re
 from app.models.types import utcnow
 from app.models.user import User
 from app.services import audit, drafts, media_refs, page_cache, pages, revisions
-from app.services.blocks import Mode
+from app.services.blocks import FieldError, Mode
 from app.services.content import invalid as content_invalid
 from app.services.content import validate_document
 from app.services.errors import ServiceError, version_conflict
@@ -55,13 +55,27 @@ def _source(page: Page, draft_version: int) -> tuple[Any, PageDraft | None]:
     return drafts.published_document(page), None
 
 
-def _validated(source: Any) -> Document:
+def problems(source: Any) -> tuple[Document | None, list[FieldError]]:
     """Validazione completa per andare online: contenuto e tema (D-46), poi i media usati
-    esistono, sono del tipo giusto e le immagini hanno il testo alternativo (D-77, D-78)."""
-    document = validate_document(active_theme(), source, Mode.PUBLISH)
-    problems = media_refs.check_document(document)
-    if problems:
-        raise content_invalid(problems)
+    esistono, sono del tipo giusto e le immagini hanno il testo alternativo (D-77, D-78).
+    Restituisce gli errori invece di sollevarli: la usa anche il controllo prima di
+    pubblicare (D-135), così i due non possono dire cose diverse."""
+    try:
+        document = validate_document(active_theme(), source, Mode.PUBLISH)
+    except ServiceError as error:
+        if error.code != "invalid_content":
+            return None, [FieldError("", error.code, error.message)]
+        found = [FieldError(d["path"], d["code"], d["message"]) for d in error.details or []]
+        # Anche i media del documento non valido: il cliente vede tutto in una volta sola.
+        media = [e for e in media_refs.check_document(source) if e not in found]
+        return None, found + media
+    return document, media_refs.check_document(document)
+
+
+def _validated(source: Any) -> Document:
+    document, found = problems(source)
+    if found or document is None:
+        raise content_invalid(found)
     return document
 
 
