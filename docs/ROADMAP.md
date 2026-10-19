@@ -96,7 +96,12 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - [x] Aiuti "incolla il link" per video (YouTube, Vimeo) e mappa (OpenStreetMap, Google Maps) (D-112)
 - [x] Primo e2e con Playwright: scrivi → anteprima → annulla → pubblica, Edge su Windows e Chromium in CI (D-114)
 
-**5c — Libreria e amministrazione** · **5d — Aiuto e prova sul campo** (criteri qui sotto)
+**5c-1 — Libreria e pagine** (D-116 … D-122, D-128, D-129)
+- [x] Pagina Media: cartelle, ricerca e filtri, caricamento multiplo in coda con anteprima, spazio usato, dettaglio con punto focale, Sostituisci, Usato in, Elimina
+- [x] Versioni nell'editor (Guarda, Ripristina nella bozza) e programmazione nell'ora svizzera
+- [x] Chiavi stabili negli elenchi, Vimeo privato, link brevi spiegati; e2e per media e trascinamento
+
+**5c-2 — Amministrazione** · **5d — Aiuto e prova sul campo** (criteri qui sotto)
 - [ ] Shell Vite+TS, login, layout, gestione errori/sessione scaduta
 - [ ] Albero pagine, editor pagina con zone e blocchi drag&drop (dnd-kit), TipTap
 - [ ] Anteprima live affiancata (iframe), click sul blocco → apre il form (D-02)

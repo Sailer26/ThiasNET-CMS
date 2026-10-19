@@ -13,7 +13,8 @@ Aggiornato: 2026-10-18. Leggi questo file **dopo** `CLAUDE.md` e prima di qualsi
 - **Fase 4 — Media library:** completata sul branch `phase-4-media` (870 test verdi, copertura 94 %). PR verso `main` da aprire/unire.
 - **Fase 5a — Pannello: telaio, accesso, pagine:** completata sul branch `phase-5-admin`, partito da `phase-4-media`.
 - **Fase 5b-1 — Editor della pagina:** completata sul branch `phase-5b-editor`, partito da `phase-5-admin` (1036 test Python, 170 del pannello, review ECC fatta). **Nessuna delle PR 4/5a/5b-1 risulta unita in `main`**: la PR da `phase-5b-editor` verso `main` le contiene tutte. Prossima: **5b-2**.
-- **Fase 5b-2 — Media nell'editor, trascinamento, aiuti, primo e2e:** completata sul branch `phase-5b2-editor`, partito da `phase-5b-editor` (1059 test Python, 205 del pannello, 1 e2e, review ECC fatta). La PR da `phase-5b2-editor` verso `main` contiene anche le Fasi 4, 5a e 5b-1 se non sono ancora unite. Prossima: **5c — Libreria e amministrazione**.
+- **Fase 5b-2 — Media nell'editor, trascinamento, aiuti, primo e2e:** completata sul branch `phase-5b2-editor`, partito da `phase-5b-editor` (1059 test Python, 205 del pannello, 1 e2e, review ECC fatta). La PR da `phase-5b2-editor` verso `main` contiene anche le Fasi 4, 5a e 5b-1 se non sono ancora unite. Prossima: **5c**.
+- **Fase 5c-1 — Libreria e pagine:** completata sul branch `phase-5c-admin`, partito da `phase-5b2-editor` (1076 test Python, 227 del pannello, 3 e2e, review ECC fatta). Prossima: **5c-2 — Amministrazione** (messaggi, utenti, registro, profilo) sul branch `phase-5c2-admin`.
 - Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-115). Prevalgono sugli altri documenti.
 
 ## 2. Preparare l'ambiente (se la `.venv` non c'è)
