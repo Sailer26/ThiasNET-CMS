@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import click
+from flask import current_app
 from flask.cli import with_appcontext
 
 from app.services import support
@@ -16,6 +17,10 @@ from app.services import support
 @with_appcontext
 def send_support_requests_command() -> None:
     """Ritenta l'invio delle richieste di assistenza non ancora consegnate."""
+    if not current_app.config.get("SUPPORT_EMAIL"):
+        # Senza destinatario non c'è niente da ritentare: si avvisa senza far fallire il cron.
+        click.echo("SUPPORT_EMAIL non impostato: le richieste restano salvate.", err=True)
+        return
     sent, failed = support.retry_pending()
     click.echo(f"Richieste inviate: {sent}")
     if failed:

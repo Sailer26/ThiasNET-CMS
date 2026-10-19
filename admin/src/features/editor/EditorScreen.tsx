@@ -83,6 +83,7 @@ function Workspace({ data }: { data: Loaded }) {
   const [notice, setNotice] = useState<NoticeState | null>(null);
   const [serverErrors, setServerErrors] = useState<Map<string, string>>(new Map());
   const [warnings, setWarnings] = useState<Map<string, string>>(new Map());
+  const [checking, setChecking] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [view, setView] = useState<"edit" | "preview">("edit");
   const [versionsOpen, setVersionsOpen] = useState(false);
@@ -301,6 +302,16 @@ function Workspace({ data }: { data: Loaded }) {
   }
 
   async function askPublish() {
+    if (checking) return; // un doppio clic farebbe due controlli
+    setChecking(true);
+    try {
+      await prepareConfirm();
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  async function prepareConfirm() {
     if (!(await autosave.flush())) {
       setNotice({ kind: "error", text: ed.publish.notSaved });
       return;
@@ -309,7 +320,10 @@ function Workspace({ data }: { data: Loaded }) {
     // Controllo prima di pubblicare (D-135); se non risponde si conferma lo stesso: ricontrolla publish.
     const checks = await fetchChecks(page.id).catch(() => null);
     if (checks && checks.blocking.length > 0) {
-      setServerErrors(listErrors(checks.blocking, sent));
+      const found = listErrors(checks.blocking, sent);
+      // Un errore che non si trova più nella pagina (cambiata nel frattempo) non resta muto.
+      if (found.size < checks.blocking.length) found.set("zone::unlocated", ed.publish.unlocated);
+      setServerErrors(found);
       return;
     }
     setWarnings(checks ? listErrors(checks.warnings, sent) : new Map());
@@ -416,7 +430,7 @@ function Workspace({ data }: { data: Loaded }) {
           <button
             type="button"
             className="button button--primary"
-            disabled={online && !changes}
+            disabled={(online && !changes) || checking}
             onClick={() => void askPublish()}
           >
             {ed.bar.publish}

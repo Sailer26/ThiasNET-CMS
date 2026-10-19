@@ -26,6 +26,7 @@ from app.services.public_pages import Outcome
 from app.services.theme import Theme, active_theme
 
 MAX_LINKS = 200  # oltre, il controllo smette: è un aiuto, non una scansione completa
+MAX_HOPS = 3  # forme da correggere ("/pagina/", "/it/pagina") e vecchi indirizzi
 SEO_EMPTY = FieldError(
     "seo/description",
     "seo_empty",
@@ -51,7 +52,9 @@ def _hrefs(value: str) -> list[str]:
         parser = _Links()
         parser.feed(value)
         return parser.hrefs
-    return [value] if value.startswith("/") or value.startswith("http") else []
+    # Un testo semplice è un link solo se è tutto attaccato ("/ 24 ore" è un titolo).
+    looks_like_link = value.startswith(("/", "http")) and not any(ch.isspace() for ch in value)
+    return [value] if looks_like_link else []
 
 
 def _strings(value: Any, path: str) -> Iterator[tuple[str, str]]:
@@ -84,32 +87,49 @@ def _media_exists(path: str) -> bool:
 
 
 def _reachable(path: str, theme: Theme, now: datetime) -> bool:
-    if path.startswith("/media/"):
-        return _media_exists(path)
-    if path.split("/", 2)[1] in {"assets", "admin", "api", "static"}:
-        return True  # non sono pagine: non si controllano
-    resolution = public_pages.resolve(path, theme, now, publish_due=False)
-    return resolution.outcome is not Outcome.NOT_FOUND
+    """Come il sito: si seguono i redirect (pochi) e conta solo se si arriva a una pagina."""
+    for _ in range(MAX_HOPS):
+        if path.startswith("/media/"):
+            return _media_exists(path)
+        if path.split("/", 2)[1] in {"assets", "admin", "api", "static"}:
+            return True  # non sono pagine: non si controllano
+        resolution = public_pages.resolve(path, theme, now, publish_due=False)
+        if resolution.outcome is Outcome.PAGE:
+            return True
+        if resolution.outcome is Outcome.NOT_FOUND or not resolution.location:
+            return False
+        path = urlsplit(resolution.location).path or "/"
+    return False
 
 
 def _broken_links(document: dict[str, Any]) -> list[FieldError]:
     theme, now = active_theme(), datetime.now(UTC)
     found: dict[str, FieldError] = {}  # un avviso per campo
     checked = 0
-    for zone, blocks in (document.get("zones") or {}).items():
-        for index, block in enumerate(blocks or []):
-            base = join_path("zones", zone, index, "data")
-            for path, value in _strings(block.get("data") or {}, base):
-                for href in _hrefs(value):
-                    target = _site_path(href)
-                    if target is None or path in found:
-                        continue
-                    checked += 1
-                    if checked > MAX_LINKS:
-                        return list(found.values())
-                    if not _reachable(target, theme, now):
-                        found[path] = FieldError(path, "link_broken", LINK_BROKEN.format(href=href))
+    for path, value in _block_strings(document):
+        for href in _hrefs(value):
+            checked += 1  # ogni link conta, anche quelli esterni: il lavoro resta limitato
+            if checked > MAX_LINKS:
+                return list(found.values())
+            target = _site_path(href)
+            if target is None or path in found:
+                continue
+            if not _reachable(target, theme, now):
+                found[path] = FieldError(path, "link_broken", LINK_BROKEN.format(href=href))
     return list(found.values())
+
+
+def _block_strings(document: dict[str, Any]) -> Iterator[tuple[str, str]]:
+    """Testi dei blocchi; una bozza non valida può avere forme strane: si salta ciò che non va."""
+    zones = document.get("zones")
+    if not isinstance(zones, dict):
+        return
+    for zone, blocks in zones.items():
+        if not isinstance(blocks, list):
+            continue
+        for index, block in enumerate(blocks):
+            if isinstance(block, dict) and isinstance(block.get("data"), dict):
+                yield from _strings(block["data"], join_path("zones", zone, index, "data"))
 
 
 def _warnings(document: dict[str, Any]) -> list[FieldError]:
@@ -117,8 +137,8 @@ def _warnings(document: dict[str, Any]) -> list[FieldError]:
     seo = document.get("seo") or {}
     if not str(seo.get("description") or "").strip():
         warnings.append(SEO_EMPTY)
-    zones = document.get("zones") or {}
-    if not any(zones.values()):
+    zones = document.get("zones")
+    if isinstance(zones, dict) and not any(zones.values()):
         warnings.append(PAGE_EMPTY)
     return warnings + _broken_links(document)
 

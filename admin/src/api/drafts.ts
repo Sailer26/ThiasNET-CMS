@@ -43,7 +43,14 @@ export interface Checks {
 }
 
 function isItems(value: unknown): value is CheckItem[] {
-  return Array.isArray(value) && value.every((item) => item !== null && typeof item === "object" && typeof (item as CheckItem).path === "string");
+  return (
+    Array.isArray(value) &&
+    value.every((item) => {
+      if (item === null || typeof item !== "object") return false;
+      const { path, code, message } = item as CheckItem;
+      return typeof path === "string" && typeof code === "string" && typeof message === "string";
+    })
+  );
 }
 
 /** Controllo prima di pubblicare (D-135): bloccanti come la pubblicazione, avvisi che non bloccano. */

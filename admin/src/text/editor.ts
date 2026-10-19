@@ -207,6 +207,7 @@ export const ed = {
     anyway: "Pubblica comunque",
     warningsTitle: "Da controllare (puoi pubblicare lo stesso)",
     wholePage: "Pagina",
+    unlocated: "C'è un problema in una parte della pagina che ora non si trova: ricarica la pagina e riprova.",
     done: "Pagina pubblicata.",
     errorsTitle: "Prima di pubblicare correggi questi punti",
     goTo: "Vai al campo",

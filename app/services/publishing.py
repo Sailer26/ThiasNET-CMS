@@ -55,16 +55,15 @@ def _source(page: Page, draft_version: int) -> tuple[Any, PageDraft | None]:
     return drafts.published_document(page), None
 
 
-def problems(source: Any) -> tuple[Document | None, list[FieldError]]:
+def _problems(source: Any) -> tuple[Document | None, list[FieldError]]:
     """Validazione completa per andare online: contenuto e tema (D-46), poi i media usati
     esistono, sono del tipo giusto e le immagini hanno il testo alternativo (D-77, D-78).
-    Restituisce gli errori invece di sollevarli: la usa anche il controllo prima di
-    pubblicare (D-135), così i due non possono dire cose diverse."""
+    Gli errori dei campi tornano in una lista; gli altri (es. 413) si sollevano com'erano."""
     try:
         document = validate_document(active_theme(), source, Mode.PUBLISH)
     except ServiceError as error:
         if error.code != "invalid_content":
-            return None, [FieldError("", error.code, error.message)]
+            raise
         found = [FieldError(d["path"], d["code"], d["message"]) for d in error.details or []]
         # Anche i media del documento non valido: il cliente vede tutto in una volta sola.
         media = [e for e in media_refs.check_document(source) if e not in found]
@@ -72,8 +71,17 @@ def problems(source: Any) -> tuple[Document | None, list[FieldError]]:
     return document, media_refs.check_document(document)
 
 
+def problems(source: Any) -> tuple[Document | None, list[FieldError]]:
+    """Per il controllo prima di pubblicare (D-135): la stessa validazione di `publish`,
+    così i due non possono dire cose diverse; non solleva mai."""
+    try:
+        return _problems(source)
+    except ServiceError as error:
+        return None, [FieldError("", error.code, error.message)]
+
+
 def _validated(source: Any) -> Document:
-    document, found = problems(source)
+    document, found = _problems(source)
     if found or document is None:
         raise content_invalid(found)
     return document

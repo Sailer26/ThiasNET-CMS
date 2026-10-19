@@ -118,6 +118,15 @@ def test_without_support_email_it_is_saved_and_not_sent(app: Flask, login_as: Lo
     assert (saved.sent_at, saved.last_error) == (None, "no_recipient")
 
 
+def test_cli_without_support_email_warns_but_does_not_fail(app: Flask, login_as: LoginAs) -> None:
+    app.config["SUPPORT_EMAIL"] = None
+    client, _ = login_as("editor")
+    assert client.post(SUPPORT, json={"message": "Aiuto"}).status_code == 201
+    result = app.test_cli_runner().invoke(args=["send-support-requests"])
+    assert result.exit_code == 0
+    assert "SUPPORT_EMAIL" in result.output
+
+
 def test_failed_email_is_retried_by_the_cli(
     support_app: Flask, login_as: LoginAs, monkeypatch: pytest.MonkeyPatch
 ) -> None:

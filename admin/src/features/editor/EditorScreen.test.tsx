@@ -272,6 +272,17 @@ describe("editor della pagina", () => {
     expect(await screen.findByText("Pagina pubblicata.")).toBeInTheDocument();
   });
 
+  test("un bloccante che non si trova più nella pagina non lascia il pulsante muto", async () => {
+    const { api, user } = open();
+    api.on("GET", "/pages/7/checks", {
+      data: { blocking: [{ path: "zones/main/9/data/x", code: "required", message: "Campo obbligatorio" }], warnings: [] },
+    });
+    await ready();
+    await user.click(screen.getByRole("button", { name: "Pubblica" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("ricarica la pagina");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
   test("se il controllo non risponde si può pubblicare lo stesso (ricontrolla il server)", async () => {
     const { api, user } = open();
     api.on("GET", "/pages/7/checks", { status: 500, error: { code: "server_error", message: "Errore" } });

@@ -108,6 +108,7 @@ def test_internal_links(app: Flask, admin: FlaskClient) -> None:
         f"{app.config['SITE_URL']}/chi-siamo",
         media["url"],
     ]
+    good += ["/chi-siamo/", "/it/chi-siamo"]  # forme che il sito corregge con un redirect
     bad = ["/non-esiste", draft_only["path"], "/vecchia", "/media/" + "0" * 32 + "/x.webp"]
     body = "".join(f'<p><a href="{href}">link</a></p>' for href in good)
     blocks = [text(1, body), *(cta(n + 2, href) for n, href in enumerate(bad))]
@@ -121,6 +122,20 @@ def test_internal_links(app: Flask, admin: FlaskClient) -> None:
         ("zones/main/4/data/url", "link_broken"),
         ("zones/main/5/data/body", "link_broken"),
     }
+
+
+def test_redirect_forms_of_missing_pages_are_broken(admin: FlaskClient) -> None:
+    page = page_with(admin, cta(1, "/non-esiste/"), cta(2, "/it/non-esiste"))
+    assert codes(checks(admin, page["id"])["warnings"]) == {
+        ("zones/main/0/data/url", "link_broken"),
+        ("zones/main/1/data/url", "link_broken"),
+    }
+
+
+def test_plain_text_that_starts_with_a_slash_is_not_a_link(admin: FlaskClient) -> None:
+    heading = {"uid": uid(1), "type": "heading", "data": {"text": "/ aperti 24 ore"}}
+    page = page_with(admin, heading)
+    assert checks(admin, page["id"])["warnings"] == []
 
 
 def test_published_page_without_draft_checks_what_is_online(admin: FlaskClient) -> None:

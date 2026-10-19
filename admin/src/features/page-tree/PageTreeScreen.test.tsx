@@ -267,7 +267,7 @@ describe("albero delle pagine", () => {
     });
     await user.click(await screen.findByRole("button", { name: 'Pubblica le modifiche di "Orari"' }));
     const dialog = await screen.findByRole("dialog", { name: "Pubblicare le modifiche?" });
-    expect(await within(dialog).findByText(/Aggiungi il testo alternativo/)).toBeInTheDocument();
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(/Aggiungi il testo alternativo/);
     expect(dialog).toHaveTextContent("Correggi dal computer");
     expect(within(dialog).getByRole("button", { name: "Pubblica" })).toBeDisabled();
     expect(api.callsTo("POST", "/pages/4/publish")).toHaveLength(0);

@@ -20,7 +20,7 @@ export function AskThias({ pageId, onClose, onSent }: Props) {
       canSubmit={message.trim().length > 0}
       onClose={onClose}
       onSubmit={async () => {
-        await askThias({ message, page_id: pageId, screen: window.location.pathname });
+        await askThias({ message: message.trim(), page_id: pageId, screen: window.location.pathname });
         onSent(hp.sent);
       }}
     >

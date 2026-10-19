@@ -68,7 +68,7 @@ export function PhonePublish({ node, onClose, onDone }: Props) {
       {state.kind === "failed" && <p role="alert">{state.message}</p>}
       {ready && !blocked && <p>{it.tree.phoneQuestion(node.title)}</p>}
       {blocked && (
-        <section className="notice notice--error error-list">
+        <section className="notice notice--error error-list" role="alert">
           <p>{it.tree.phoneBlocked}</p>
           <ul>
             {listed(ready.blocking).map((item) => (
