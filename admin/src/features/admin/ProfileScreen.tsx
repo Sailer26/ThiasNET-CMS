@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from "react";
 import { changePassword, totpDisable, totpEnable, totpSetup } from "../../api/admin";
-import { fetchMe } from "../../api/auth";
 import { errorMessage } from "../../api/client";
 import { useSession } from "../../session/context";
 import { at } from "../../text/admin";
@@ -49,6 +48,7 @@ export function ProfileScreen() {
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [disabling, setDisabling] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const passwordForm = useAction();
   const totpForm = useAction();
@@ -69,9 +69,13 @@ export function ProfileScreen() {
   }
 
   function startTotp() {
+    if (starting) return; // un doppio clic creerebbe due chiavi diverse
+    setStarting(true);
     setCode("");
     setPassword("");
-    totpSetup().then(setSetup, (error: unknown) => setNotice({ kind: "error", text: errorMessage(error) }));
+    totpSetup()
+      .then(setSetup, (error: unknown) => setNotice({ kind: "error", text: errorMessage(error) }))
+      .finally(() => setStarting(false));
   }
 
   function enableTotp(event: FormEvent) {
@@ -81,7 +85,7 @@ export function ProfileScreen() {
       setSetup(null);
       setCode("");
       setPassword("");
-      setTotpOn((await fetchMe()).totp_enabled);
+      setTotpOn(true); // confermato dal server: niente seconda richiesta che potrebbe fallire
       setNotice({ kind: "success", text: at.profile.enabled });
     });
   }
@@ -140,7 +144,7 @@ export function ProfileScreen() {
         <h2 id="profile-totp">{at.profile.totp}</h2>
         <p>{totpOn ? at.profile.totpOn : at.profile.totpOff}</p>
         {!totpOn && !setup && (
-          <button type="button" className="button" onClick={startTotp}>
+          <button type="button" className="button" onClick={startTotp} disabled={starting}>
             {at.profile.enable}
           </button>
         )}
@@ -153,9 +157,11 @@ export function ProfileScreen() {
                 {at.users.copy}
               </button>
             </p>
-            <p>
-              <a href={setup.otpauth_uri}>{at.profile.openApp}</a>
-            </p>
+            {setup.otpauth_uri.startsWith("otpauth://") && (
+              <p>
+                <a href={setup.otpauth_uri}>{at.profile.openApp}</a>
+              </p>
+            )}
             <CodeFields code={code} password={password} onCode={setCode} onPassword={setPassword} />
             {totpForm.error && (
               <p className="form__error" role="alert">
@@ -203,7 +209,7 @@ export function ProfileScreen() {
             setDisabling(false);
             setCode("");
             setPassword("");
-            setTotpOn((await fetchMe()).totp_enabled);
+            setTotpOn(false);
             setNotice({ kind: "success", text: at.profile.disabled });
           }}
         >

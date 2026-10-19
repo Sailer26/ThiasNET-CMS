@@ -10,15 +10,18 @@ interface Props {
 /** Password scelta da chi crea l'utente (D-123): Genera, Mostra, Copia. */
 export function PasswordField({ value, onChange }: Props) {
   const [visible, setVisible] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"" | "ok" | "failed">("");
   const id = useId();
 
   function copy() {
     const clipboard = navigator.clipboard as Clipboard | undefined;
-    if (!clipboard) return;
+    if (!clipboard) {
+      setCopied("failed");
+      return;
+    }
     clipboard.writeText(value).then(
-      () => setCopied(true),
-      () => setCopied(false),
+      () => setCopied("ok"),
+      () => setCopied("failed"),
     );
   }
 
@@ -35,7 +38,7 @@ export function PasswordField({ value, onChange }: Props) {
           maxLength={128}
           aria-describedby={`${id}-help`}
           onChange={(event) => {
-            setCopied(false);
+            setCopied("");
             onChange(event.target.value);
           }}
         />
@@ -43,7 +46,7 @@ export function PasswordField({ value, onChange }: Props) {
           type="button"
           className="button button--small"
           onClick={() => {
-            setCopied(false);
+            setCopied("");
             onChange(generatePassword());
           }}
         >
@@ -56,8 +59,12 @@ export function PasswordField({ value, onChange }: Props) {
           {at.users.copy}
         </button>
       </div>
-      <span id={`${id}-help`} className="hint" aria-live="polite">
-        {at.users.passwordHelp} {copied ? at.users.copied : ""}
+      <span id={`${id}-help`} className="hint">
+        {at.users.passwordHelp}
+      </span>
+      <span className="hint" role="status">
+        {copied === "ok" && at.users.copied}
+        {copied === "failed" && at.users.copyFailed}
       </span>
     </div>
   );

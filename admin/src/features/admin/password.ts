@@ -4,7 +4,7 @@ export const GENERATED_LENGTH = 16;
 
 export function generatePassword(length = GENERATED_LENGTH): string {
   const bytes = crypto.getRandomValues(new Uint8Array(length));
-  // 256 non è multiplo di 58: si scarta la parte che sbilancerebbe le probabilità.
+  // 256 non è multiplo della lunghezza dell'alfabeto (59): si scarta la parte che sbilancerebbe le probabilità.
   const limit = 256 - (256 % ALPHABET.length);
   let out = "";
   for (const byte of bytes) {

@@ -55,11 +55,15 @@ export const CATEGORY_LABELS: Record<string, string> = {
   messages: "Messaggi",
 };
 
+function plain(value: unknown): string {
+  return typeof value === "object" && value !== null ? JSON.stringify(value) : String(value);
+}
+
 /** Dettagli come testo semplice ("chiave: prima → dopo"), mai HTML. */
 export function diffLines(diff: Record<string, unknown> | null): string[] {
   if (!diff) return [];
   return Object.entries(diff).map(([key, value]) => {
-    if (Array.isArray(value) && value.length === 2) return `${key}: ${String(value[0])} → ${String(value[1])}`;
-    return `${key}: ${typeof value === "object" ? JSON.stringify(value) : String(value)}`;
+    if (Array.isArray(value) && value.length === 2) return `${key}: ${plain(value[0])} → ${plain(value[1])}`;
+    return `${key}: ${plain(value)}`;
   });
 }

@@ -4,6 +4,7 @@ export const at = {
   back: "Torna alle pagine",
   loading: "Caricamento…",
   more: "Mostra altri",
+  retry: "Riprova",
   messages: {
     title: "Messaggi",
     all: "Tutti",
@@ -50,6 +51,7 @@ export const at = {
     hide: "Nascondi",
     copy: "Copia",
     copied: "Copiata.",
+    copyFailed: "Copia non riuscita: seleziona la password e copiala a mano.",
     create: "Crea",
     created: (email: string) => `Utente ${email} creato.`,
     emailTaken: "Se era disattivato, riattivalo dall'elenco.",

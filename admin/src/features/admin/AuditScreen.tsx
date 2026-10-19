@@ -11,7 +11,7 @@ import { actionLabel, CATEGORY_LABELS, diffLines } from "./actions";
 
 function objectName(entry: AuditEntry) {
   if (!entry.entity_label) return null;
-  if (entry.entity === "page" && entry.entity_id) {
+  if (entry.entity === "page" && entry.entity_id && /^\d{1,9}$/.test(entry.entity_id)) {
     return <Link to={paths.page(Number(entry.entity_id))}>{entry.entity_label}</Link>;
   }
   return <span>{entry.entity_label}</span>;
@@ -25,6 +25,7 @@ export function AuditScreen() {
   const [total, setTotal] = useState(0);
   const [people, setPeople] = useState<User[]>([]);
   const [notice, setNotice] = useState<NoticeState | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const latest = useRef(0);
 
   useEffect(() => {
@@ -34,12 +35,13 @@ export function AuditScreen() {
         if (request !== latest.current) return;
         setEntries(result.items);
         setTotal(result.total);
+        setNotice(null);
       },
       (error: unknown) => {
         if (request === latest.current) setNotice({ kind: "error", text: errorMessage(error) });
       },
     );
-  }, [filters, page]);
+  }, [filters, page, attempt]); // "attempt" cresce con "Riprova"
 
   useEffect(() => {
     // L'elenco delle persone è solo un aiuto per il filtro: senza, si filtra lo stesso.
@@ -103,7 +105,12 @@ export function AuditScreen() {
           </button>
         )}
       </div>
-      {entries === null && <p role="status">{at.loading}</p>}
+      {entries === null && !notice && <p role="status">{at.loading}</p>}
+      {entries === null && notice && (
+        <button type="button" className="button" onClick={() => setAttempt(attempt + 1)}>
+          {at.retry}
+        </button>
+      )}
       {entries?.length === 0 && <p className="empty">{at.audit.empty}</p>}
       {entries && entries.length > 0 && (
         <ul className="audit">

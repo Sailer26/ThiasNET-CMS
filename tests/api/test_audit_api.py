@@ -39,5 +39,39 @@ def test_filters_and_labels(app: Flask, login_as: LoginAs) -> None:
 
 def test_bad_filters_are_422(login_as: LoginAs) -> None:
     owner, _ = login_as("owner")
-    for query in ("since=ieri", "user_id=x", "category=tutto", "entity=page", "until=2026-13-40"):
+    for query in (
+        "since=ieri",
+        "user_id=x",
+        "user_id=%C2%B2",  # "²": isdigit() vero, int() no
+        "user_id=99999999999999999999",
+        "category=tutto",
+        "entity=page",
+        "until=2026-13-40",
+        "until=9999-12-31",  # il giorno dopo non esiste
+        "since=2026-10-19T00:00:00",  # un istante senza fuso è ambiguo
+    ):
         assert owner.get(f"{AUDIT}?{query}").status_code == 422, query
+
+
+def test_instants_with_offset_bound_the_swiss_day(app: Flask, login_as: LoginAs) -> None:
+    """Il pannello manda la mezzanotte di Zurigo (D-124): fine esclusa."""
+    from datetime import UTC, datetime
+
+    from app.extensions import db
+    from app.models.audit import AuditLog
+
+    owner, _ = login_as("owner")
+    with app.app_context():
+        # 19 ottobre 00:30 a Zurigo = 18 ottobre 22:30 UTC
+        db.session.add(
+            AuditLog(action="page.created", created_at=datetime(2026, 10, 18, 22, 30, tzinfo=UTC))
+        )
+        db.session.commit()
+
+    def count(query: str) -> int:
+        rows = owner.get(f"{AUDIT}?category=pages&{query}").get_json()["data"]
+        return len([r for r in rows if r["created_at"].startswith("2026-10-18T22:30")])
+
+    day = "since=2026-10-19T00:00:00%2B02:00&until=2026-10-20T00:00:00%2B02:00"
+    assert count(day) == 1
+    assert count("since=2026-10-18T00:00:00%2B02:00&until=2026-10-19T00:00:00%2B02:00") == 0

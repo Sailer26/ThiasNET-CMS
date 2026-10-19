@@ -32,7 +32,10 @@ export function UsersScreen() {
   const reload = useCallback(
     () =>
       listUsers().then(
-        (found) => setUsers(found.items),
+        (found) => {
+          setUsers(found.items);
+          setNotice((current) => (current?.kind === "error" ? null : current));
+        },
         (error: unknown) => setNotice({ kind: "error", text: errorMessage(error) }),
       ),
     [],
@@ -116,7 +119,12 @@ export function UsersScreen() {
         </button>
       </div>
       <NoticeArea notice={notice} onClose={() => setNotice(null)} />
-      {users === null && <p role="status">{at.loading}</p>}
+      {users === null && !notice && <p role="status">{at.loading}</p>}
+      {users === null && notice && (
+        <button type="button" className="button" onClick={() => void reload()}>
+          {at.retry}
+        </button>
+      )}
       {users && (
         <div className="table-wrap">
           <table className="table">

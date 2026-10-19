@@ -15,6 +15,12 @@ function telLink(phone: string): string {
   return `tel:${phone.replace(/[^\d+]/g, "")}`;
 }
 
+/** "Mostra altri" con un messaggio arrivato nel frattempo: la stessa riga non compare due volte. */
+function appendNew(current: MessageSummary[], more: MessageSummary[]): MessageSummary[] {
+  const seen = new Set(current.map((message) => message.id));
+  return [...current, ...more.filter((message) => !seen.has(message.id))];
+}
+
 function day(iso: string): string {
   return formatZurich(iso).replace(/ alle .*/, "");
 }
@@ -35,9 +41,10 @@ export function MessagesScreen() {
       listMessages({ q: query.trim() || undefined, unread, page: pageNo }).then(
         (result) => {
           if (request !== latest.current) return;
-          setItems((current) => (pageNo === 1 || !current ? result.items : [...current, ...result.items]));
+          setItems((current) => (pageNo === 1 || !current ? result.items : appendNew(current, result.items)));
           setTotal(result.total);
           setPage(pageNo);
+          setNotice(null);
         },
         (error: unknown) => {
           if (request === latest.current) setNotice({ kind: "error", text: errorMessage(error) });
@@ -78,7 +85,12 @@ export function MessagesScreen() {
           <input type="search" maxLength={100} value={query} onChange={(event) => setQuery(event.target.value)} />
         </label>
       </div>
-      {items === null && <p role="status">{at.loading}</p>}
+      {items === null && !notice && <p role="status">{at.loading}</p>}
+      {items === null && notice && (
+        <button type="button" className="button" onClick={() => load(1)}>
+          {at.retry}
+        </button>
+      )}
       {items?.length === 0 && <p className="empty">{at.messages.empty}</p>}
       {items && items.length > 0 && (
         <ul className="messages">
@@ -119,9 +131,16 @@ export function MessageScreen({ id }: { id: number }) {
     let active = true;
     getMessage(id)
       .then(async (found) => {
-        const read = found.read_at ? found : await markMessage(id, true);
-        if (active) setMessage(read);
-        void refreshUnread();
+        if (active) setMessage(found);
+        if (found.read_at) return;
+        try {
+          const read = await markMessage(id, true);
+          if (active) setMessage(read);
+          void refreshUnread();
+        } catch (failure) {
+          // Il messaggio si legge lo stesso; resta "da leggere" e lo si dice sopra il testo.
+          if (active) setError(errorMessage(failure));
+        }
       })
       .catch((failure: unknown) => {
         if (active) setError(errorMessage(failure));

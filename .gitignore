@@ -19,3 +19,4 @@ coverage.xml
 instance/
 *.egg-info/
 admin/coverage/
+admin/*.tsbuildinfo

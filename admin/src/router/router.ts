@@ -25,8 +25,8 @@ export const paths = {
   profile: "/admin/profilo",
 } as const;
 
-const PAGE_RE = /^\/admin\/pagine\/(\d+)$/;
-const MESSAGE_RE = /^\/admin\/messaggi\/(\d+)$/;
+const PAGE_RE = /^\/admin\/pagine\/(\d{1,9})$/;
+const MESSAGE_RE = /^\/admin\/messaggi\/(\d{1,9})$/;
 const SIMPLE: Record<string, Route> = {
   [paths.trash]: { name: "trash" },
   [paths.media]: { name: "media" },

@@ -1,7 +1,8 @@
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it as test } from "vitest";
 import { App } from "../../App";
+import { zurichMidnight } from "../../api/admin";
 import { setCsrfToken } from "../../api/client";
 import type { Me, User } from "../../api/types";
 import { fakeApi, ME, signedIn, type FakeApi } from "../../test/fakeApi";
@@ -377,4 +378,81 @@ test("navigazione: dal menu ai messaggi", async () => {
   expect(await screen.findByRole("heading", { name: "Messaggi" })).toHaveFocus();
   expect(document.title).toBe("Messaggi · Comune di Prova · ThiasNET CMS");
   go("/admin/");
+});
+
+describe("correzioni dalla review", () => {
+  beforeEach(() => {
+    setCsrfToken(null);
+    setUnread(0);
+  });
+
+  test("se segnarlo come letto non riesce, il messaggio si legge lo stesso", async () => {
+    const api = start(ADMIN, "/admin/messaggi/7");
+    api.on("GET", "/messages/7", { data: MESSAGE });
+    api.on("PATCH", "/messages/7", { status: 500, error: { code: "server_error", message: "Errore del server" } });
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Mario Rossi" })).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Errore del server");
+    expect(screen.getByText(/Vorrei sapere gli orari dello sportello/)).toBeInTheDocument();
+  });
+
+  test("Mostra altri non ripete un messaggio già in elenco", async () => {
+    const api = start(ADMIN, "/admin/messaggi");
+    const second = { ...MESSAGE, id: 8, name: "Lia Bassi" };
+    api.on(
+      "GET",
+      "/messages",
+      { data: [MESSAGE], meta: { total: 3 } },
+      { data: [MESSAGE, second], meta: { total: 3 } },
+    );
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(await screen.findByRole("button", { name: "Mostra altri" }));
+    expect(await screen.findByText(/Lia Bassi/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Mario Rossi/)).toHaveLength(1);
+  });
+
+  test("elenco non caricato: Riprova al posto del caricamento infinito", async () => {
+    const api = start(OWNER, "/admin/registro");
+    api.on("GET", "/users", { data: USERS, meta: { total: 3 } });
+    api.on(
+      "GET",
+      "/audit",
+      { status: 500, error: { code: "server_error", message: "Errore del server" } },
+      { data: [], meta: { total: 0 } },
+    );
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(await screen.findByRole("button", { name: "Riprova" }));
+    expect(await screen.findByText("Nessuna attività con questi filtri.")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  test("i giorni del registro sono svizzeri: mezzanotte di Zurigo, 'al' comprende il giorno", async () => {
+    expect(zurichMidnight("2026-10-19")).toBe("2026-10-19T00:00:00+02:00");
+    expect(zurichMidnight("2026-10-24", true)).toBe("2026-10-25T00:00:00+02:00");
+    expect(zurichMidnight("2026-12-31", true)).toBe("2027-01-01T00:00:00+01:00");
+    expect(zurichMidnight("ieri")).toBeUndefined();
+
+    const api = start(OWNER, "/admin/registro");
+    api.on("GET", "/users", { data: USERS, meta: { total: 3 } });
+    api.on("GET", "/audit", { data: [], meta: { total: 0 } });
+    render(<App />);
+    await screen.findByText("Nessuna attività con questi filtri.");
+    fireEvent.change(screen.getByLabelText("Dal"), { target: { value: "2026-10-19" } });
+    fireEvent.change(screen.getByLabelText("Al"), { target: { value: "2026-10-19" } });
+    await waitFor(() => {
+      const query = new URLSearchParams(api.callsTo("GET", "/audit").at(-1)?.path.split("?")[1]);
+      expect(query.get("since")).toBe("2026-10-19T00:00:00+02:00");
+      expect(query.get("until")).toBe("2026-10-20T00:00:00+02:00");
+    });
+  });
+
+  test("un elenco con una forma sbagliata è un errore, non un elenco vuoto", async () => {
+    const api = start(ADMIN, "/admin/utenti");
+    api.on("GET", "/users", { data: { non: "un elenco" } });
+    render(<App />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Si è verificato un errore");
+    expect(screen.getByRole("button", { name: "Riprova" })).toBeInTheDocument();
+  });
 });

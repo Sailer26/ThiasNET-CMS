@@ -1,4 +1,6 @@
 // Amministrazione (5c-2): messaggi, utenti, registro, profilo.
+import { zurichToIso } from "../features/editor/schedule/siteTime";
+import { it } from "../text/it";
 import { request, setCsrfToken } from "./client";
 import type { Role, User } from "./types";
 
@@ -33,12 +35,19 @@ export interface Listing<T> {
   total: number;
 }
 
+/** Elenco dalla busta del server: se la forma non è quella attesa è un errore, non un elenco vuoto. */
+function listing<T>(data: unknown, meta: Record<string, unknown>): Listing<T> {
+  if (!Array.isArray(data)) throw new Error(it.errors.generic);
+  const items = data as T[];
+  return { items, total: typeof meta.total === "number" ? meta.total : items.length };
+}
+
 export async function listMessages(options: { q?: string; unread?: boolean; page?: number }): Promise<Listing<MessageSummary>> {
   const params = new URLSearchParams({ page: String(options.page ?? 1), limit: String(ADMIN_PAGE_SIZE) });
   if (options.q) params.set("q", options.q);
   if (options.unread) params.set("unread", "1");
-  const { data, meta } = await request<MessageSummary[]>("GET", `/messages?${params.toString()}`);
-  return { items: data, total: typeof meta.total === "number" ? meta.total : data.length };
+  const { data, meta } = await request<unknown>("GET", `/messages?${params.toString()}`);
+  return listing(data, meta);
 }
 
 export async function messagesSummary(): Promise<{ unread: number; total: number }> {
@@ -58,9 +67,10 @@ export async function deleteMessage(id: number): Promise<void> {
 }
 
 // --- Utenti (D-123) -------------------------------------------------------------------------
+// Un sito ha pochi utenti: 100 bastano (il server non ne manda di più in una pagina).
 export async function listUsers(page = 1): Promise<Listing<User>> {
-  const { data, meta } = await request<User[]>("GET", `/users?page=${page}&limit=100`);
-  return { items: data, total: typeof meta.total === "number" ? meta.total : data.length };
+  const { data, meta } = await request<unknown>("GET", `/users?page=${page}&limit=100`);
+  return listing(data, meta);
 }
 
 export async function createUser(body: { email: string; password: string; role: Exclude<Role, "owner">; can_publish: boolean }): Promise<User> {
@@ -101,14 +111,28 @@ export interface AuditQuery {
   page?: number | undefined;
 }
 
+/** Mezzanotte di Zurigo del giorno indicato (o del giorno dopo) come istante con il fuso. */
+export function zurichMidnight(day: string, nextDay = false): string | undefined {
+  const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!d) return undefined;
+  const target = new Date(Date.UTC(Number(d[1]), Number(d[2]) - 1, Number(d[3]) + (nextDay ? 1 : 0)));
+  const converted = zurichToIso(target.toISOString().slice(0, 10), "00:00");
+  return "iso" in converted ? converted.iso : undefined;
+}
+
 export async function listAudit(query: AuditQuery): Promise<Listing<AuditEntry>> {
   const params = new URLSearchParams({ page: String(query.page ?? 1), limit: String(AUDIT_PAGE_SIZE) });
-  for (const key of ["user_id", "category", "entity", "entity_id", "since", "until"] as const) {
+  // I giorni scelti sono svizzeri, come le ore mostrate nel registro (D-124): "al" comprende il giorno.
+  const since = query.since ? zurichMidnight(query.since) : undefined;
+  const until = query.until ? zurichMidnight(query.until, true) : undefined;
+  if (since) params.set("since", since);
+  if (until) params.set("until", until);
+  for (const key of ["user_id", "category", "entity", "entity_id"] as const) {
     const value = query[key];
     if (value !== undefined && value !== "") params.set(key, String(value));
   }
-  const { data, meta } = await request<AuditEntry[]>("GET", `/audit?${params.toString()}`);
-  return { items: data, total: typeof meta.total === "number" ? meta.total : data.length };
+  const { data, meta } = await request<unknown>("GET", `/audit?${params.toString()}`);
+  return listing(data, meta);
 }
 
 // --- Profilo (D-125) ------------------------------------------------------------------------
