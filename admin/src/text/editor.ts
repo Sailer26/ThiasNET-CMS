@@ -91,6 +91,7 @@ export const ed = {
     },
   },
   media: {
+    openLibrary: "Apri nella libreria",
     titleImage: "Scegli un'immagine",
     titleDocument: "Scegli un documento",
     tabs: "Da dove",
@@ -164,7 +165,7 @@ export const ed = {
     title: "Programmare la pubblicazione",
     date: "Giorno",
     time: "Ora",
-    zone: "Ora svizzera.",
+    zone: "Ora svizzera. La pagina va online da sola a quell'ora, anche se il computer è spento.",
     confirm: "Programma",
     done: (when: string) => `Pagina programmata per ${when}.`,
     pending: (when: string) => `Programmata per ${when}.`,

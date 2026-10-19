@@ -5,6 +5,7 @@ Fino alla Fase 6 queste impostazioni le decide Thias al deploy, in `.env`.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,7 @@ from urllib.parse import urlsplit
 
 from app.config import PROJECT_ROOT, ConfigError
 
+log = logging.getLogger("thiasnet.config")
 SITE_DEFAULTS = {
     "development": "http://localhost:5000",
     "testing": "https://www.example.ch",
@@ -82,6 +84,9 @@ def _mail(name: str, environ: Mapping[str, str]) -> dict[str, Any]:
         raise ConfigError(
             "SMTP_SECURITY=none non è ammesso in produzione: le email viaggerebbero in chiaro"
         )
+    if name == "production" and not environ.get("SUPPORT_EMAIL"):
+        # D-134: le richieste "Chiedi a Thias" restano salvate ma non arrivano a nessuno.
+        log.warning("SUPPORT_EMAIL non impostato: le richieste di assistenza non partiranno")
     return {
         "MAIL_BACKEND": environ.get("MAIL_BACKEND") or MAIL_BACKENDS[name],
         "MAIL_FROM": environ.get("MAIL_FROM") or None,

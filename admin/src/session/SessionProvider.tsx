@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { fetchMe, fetchSite, logout, logoutEverywhere } from "../api/auth";
+import { setUnread } from "../features/admin/unread";
 import { ApiError, errorMessage, onSessionExpired, refreshCsrf } from "../api/client";
 import type { Me, Site } from "../api/types";
 import { browser } from "../router/router";
@@ -96,6 +97,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (!(error instanceof ApiError && error.status === 401)) throw error;
     }
     setExpired(false);
+    setUnread(0); // il prossimo utente non vede il numero di chi è uscito
     setState({ status: "anonymous" });
   }, []);
 

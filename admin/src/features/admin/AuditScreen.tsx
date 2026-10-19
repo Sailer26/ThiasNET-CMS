@@ -26,22 +26,29 @@ export function AuditScreen() {
   const [people, setPeople] = useState<User[]>([]);
   const [notice, setNotice] = useState<NoticeState | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [loadedFor, setLoadedFor] = useState("");
   const latest = useRef(0);
+  const badRange = Boolean(filters.since && filters.until && filters.since > filters.until);
+  const requestKey = JSON.stringify({ filters, page, attempt });
+  const loading = entries !== null && !badRange && loadedFor !== requestKey;
 
   useEffect(() => {
+    if (badRange) return; // si segnala sotto i filtri: il server non serve
     const request = ++latest.current;
+    const key = JSON.stringify({ filters, page, attempt });
     listAudit({ ...filters, page }).then(
       (result) => {
         if (request !== latest.current) return;
         setEntries(result.items);
         setTotal(result.total);
         setNotice(null);
+        setLoadedFor(key);
       },
       (error: unknown) => {
         if (request === latest.current) setNotice({ kind: "error", text: errorMessage(error) });
       },
     );
-  }, [filters, page, attempt]); // "attempt" cresce con "Riprova"
+  }, [filters, page, attempt, badRange]); // "attempt" cresce con "Riprova"
 
   useEffect(() => {
     // L'elenco delle persone è solo un aiuto per il filtro: senza, si filtra lo stesso.
@@ -105,6 +112,14 @@ export function AuditScreen() {
           </button>
         )}
       </div>
+      {badRange && (
+        <p className="form__error" role="alert">
+          {at.audit.badRange}
+        </p>
+      )}
+      <p role="status" className="hint">
+        {loading ? at.loading : ""}
+      </p>
       {entries === null && !notice && <p role="status">{at.loading}</p>}
       {entries === null && notice && (
         <button type="button" className="button" onClick={() => setAttempt(attempt + 1)}>
@@ -113,7 +128,7 @@ export function AuditScreen() {
       )}
       {entries?.length === 0 && <p className="empty">{at.audit.empty}</p>}
       {entries && entries.length > 0 && (
-        <ul className="audit">
+        <ul className="audit" aria-busy={loading}>
           {entries.map((entry) => (
             <AuditRow key={entry.id} entry={entry} onObject={(entity, entityId) => change({ entity, entity_id: entityId })} />
           ))}

@@ -99,6 +99,16 @@ PROD_ENV = {
 }
 
 
+def test_production_without_support_email_warns(caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level("WARNING"):
+        build_config("production", environ=PROD_ENV)
+    assert "SUPPORT_EMAIL" in caplog.text
+    caplog.clear()
+    with caplog.at_level("WARNING"):
+        build_config("production", environ={**PROD_ENV, "SUPPORT_EMAIL": "aiuto@example.ch"})
+    assert "SUPPORT_EMAIL" not in caplog.text
+
+
 def test_production_session_cookies_hardened() -> None:
     config = build_config("production", environ=PROD_ENV)
     assert config["SESSION_COOKIE_NAME"] == "__Host-session"

@@ -41,14 +41,16 @@ export function ScheduleDialog({ onSchedule, onClose }: Props) {
       <div className="schedule-fields">
         <div className="field">
           <label htmlFor={dateId}>{ed.schedule.date}</label>
-          <input id={dateId} type="date" min={today} max={last} value={date} onChange={(event) => setDate(event.target.value)} />
+          <input id={dateId} type="date" min={today} max={last} value={date} aria-describedby={`${dateId}-zone`} onChange={(event) => setDate(event.target.value)} />
         </div>
         <div className="field">
           <label htmlFor={timeId}>{ed.schedule.time}</label>
-          <input id={timeId} type="time" step={TIME_STEP_S} value={time} onChange={(event) => setTime(event.target.value)} />
+          <input id={timeId} type="time" step={TIME_STEP_S} value={time} aria-describedby={`${dateId}-zone`} onChange={(event) => setTime(event.target.value)} />
         </div>
       </div>
-      <p className="hint">{ed.schedule.zone}</p>
+      <p id={`${dateId}-zone`} className="hint">
+        {ed.schedule.zone}
+      </p>
     </FormDialog>
   );
 }

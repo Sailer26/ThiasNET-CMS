@@ -415,7 +415,7 @@ describe("editor della pagina", () => {
     const title = await ready();
     await user.click(screen.getByRole("button", { name: "Programma…" }));
     const dialog = screen.getByRole("dialog", { name: "Programmare la pubblicazione" });
-    expect(within(dialog).getByText("Ora svizzera.")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Ora")).toHaveAccessibleDescription(/^Ora svizzera\./);
     const day = within(dialog).getByLabelText("Giorno");
     await user.clear(day);
     await user.type(day, "2026-11-01");

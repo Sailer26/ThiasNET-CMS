@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it as test } from "vitest";
@@ -120,5 +120,24 @@ describe("varianti e stato del salvataggio", () => {
   ])("indicatore %#", (state, text) => {
     render(<SaveIndicator state={state} onRetry={() => undefined} />);
     expect(screen.getByRole("status")).toHaveTextContent(text);
+  });
+
+  test("barra del testo: un solo punto di tabulazione, frecce, Inizio e Fine", () => {
+    render(<Form type="text" initial={{ body: "<p>Ciao</p>" }} />);
+    const bar = screen.getByRole("toolbar", { name: "Formattazione" });
+    const buttons = within(bar).getAllByRole("button");
+    expect(buttons.filter((b) => b.tabIndex === 0)).toHaveLength(1);
+    act(() => buttons[0]!.focus());
+    fireEvent.keyDown(bar, { key: "ArrowRight" });
+    expect(screen.getByRole("button", { name: "Titolo 1" })).toHaveFocus();
+    fireEvent.keyDown(bar, { key: "End" });
+    expect(buttons.at(-1)).toHaveFocus();
+    fireEvent.keyDown(bar, { key: "ArrowRight" });
+    expect(buttons[0]).toHaveFocus(); // si ricomincia dal primo
+    fireEvent.keyDown(bar, { key: "ArrowLeft" });
+    expect(buttons.at(-1)).toHaveFocus();
+    fireEvent.keyDown(bar, { key: "Home" });
+    expect(buttons[0]).toHaveFocus();
+    expect(buttons[0]).toHaveAttribute("tabindex", "0");
   });
 });

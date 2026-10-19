@@ -34,6 +34,8 @@ export const at = {
     role: "Ruolo",
     roles: { owner: "ThiasNET (assistenza)", admin: "Amministratore", editor: "Editor" } as Record<string, string>,
     canPublish: "Può pubblicare",
+    roleHelp: "Amministratore: gestisce anche utenti e messaggi. Editor: modifica le pagine.",
+    canPublishHelp: "Senza questo permesso l'editor prepara le modifiche e qualcun altro le pubblica.",
     status: "Stato",
     active: "Attivo",
     inactive: "Disattivato",
@@ -83,6 +85,7 @@ export const at = {
     older: "Più vecchie",
     object: "Solo questo oggetto",
     clearObject: "Tutti gli oggetti",
+    badRange: "La data «Dal» viene dopo «Al»: correggi una delle due.",
   },
   profile: {
     title: "Il tuo profilo",

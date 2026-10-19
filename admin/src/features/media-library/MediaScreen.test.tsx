@@ -168,4 +168,11 @@ describe("pagina Media (D-117 … D-120)", () => {
     finish();
     await waitFor(() => expect(within(queue).getByText("Fatto")).toBeInTheDocument());
   });
+
+  test("con ?apri=1 il dettaglio del file si apre subito", async () => {
+    window.history.replaceState(null, "", "/admin/media?apri=1");
+    const { api } = setup();
+    api.on("GET", "/media/1", { data: { ...media(1), used_by: [] } });
+    await waitFor(() => expect(api.callsTo("GET", "/media/1")).toHaveLength(1));
+  });
 });

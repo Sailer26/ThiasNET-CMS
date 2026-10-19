@@ -1,3 +1,4 @@
+import { paths } from "../../router/router";
 import { useRef, useState } from "react";
 import type { MediaKind } from "../../api/media";
 import { ed } from "../../text/editor";
@@ -60,6 +61,11 @@ export function MediaChoice({ id, kind, value, onChange, describedBy, labelledBy
           >
             {ed.media.altButton}
           </button>
+        )}
+        {value !== undefined && (
+          <a className="button button--small" href={`${paths.media}?apri=${value}`} target="_blank" rel="noopener noreferrer">
+            {ed.media.openLibrary}
+          </a>
         )}
         {value !== undefined && (
           <button

@@ -82,6 +82,11 @@ function QueueList({ items, running, onStop }: { items: QueueItem[]; running: bo
 }
 
 /** Pagina Media (D-117 … D-120). */
+function openedFromLink(): number | null {
+  const raw = new URLSearchParams(window.location.search).get("apri");
+  return raw && /^\d{1,9}$/.test(raw) ? Number(raw) : null;
+}
+
 export function MediaScreen() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [folder, setFolder] = useState<FolderChoice>("all");
@@ -91,7 +96,8 @@ export function MediaScreen() {
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [usage, setUsage] = useState<Usage | null>(null);
-  const [detail, setDetail] = useState<number | null>(null);
+  // "Apri nella libreria" dal selettore (5d-2): /admin/media?apri=<id> apre il dettaglio.
+  const [detail, setDetail] = useState<number | null>(openedFromLink);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [running, setRunning] = useState(false);
   const [notice, setNotice] = useState<NoticeState | null>(null);

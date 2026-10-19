@@ -63,20 +63,36 @@ export function UsersScreen() {
   }
 
   const roleField = isOwner && (
-    <label className="field">
-      <span>{at.users.role}</span>
-      <select value={role} onChange={(event) => setRole(event.target.value === "admin" ? "admin" : "editor")}>
+    <div className="field">
+      <label htmlFor="user-role">{at.users.role}</label>
+      <select
+        id="user-role"
+        value={role}
+        aria-describedby="user-role-help"
+        onChange={(event) => setRole(event.target.value === "admin" ? "admin" : "editor")}
+      >
         <option value="editor">{at.users.roles.editor}</option>
         <option value="admin">{at.users.roles.admin}</option>
       </select>
-    </label>
+      <span id="user-role-help" className="hint">
+        {at.users.roleHelp}
+      </span>
+    </div>
   );
   const publishField = role === "editor" && (
     <div className="field field--check">
       <label>
-        <input type="checkbox" checked={canPublish} onChange={(event) => setCanPublish(event.target.checked)} />
+        <input
+          type="checkbox"
+          checked={canPublish}
+          aria-describedby="user-publish-help"
+          onChange={(event) => setCanPublish(event.target.checked)}
+        />
         {at.users.canPublish}
       </label>
+      <span id="user-publish-help" className="hint">
+        {at.users.canPublishHelp}
+      </span>
     </div>
   );
 

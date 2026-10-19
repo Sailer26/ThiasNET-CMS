@@ -455,4 +455,29 @@ describe("correzioni dalla review", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Si è verificato un errore");
     expect(screen.getByRole("button", { name: "Riprova" })).toBeInTheDocument();
   });
+
+  test("registro: 'Dal' dopo 'Al' si segnala senza chiedere al server", async () => {
+    const api = start(OWNER, "/admin/registro");
+    api.on("GET", "/users", { data: USERS, meta: { total: 3 } });
+    api.on("GET", "/audit", { data: [], meta: { total: 0 } });
+    render(<App />);
+    await screen.findByText("Nessuna attività con questi filtri.");
+    fireEvent.change(screen.getByLabelText("Dal"), { target: { value: "2026-10-20" } });
+    await waitFor(() => expect(api.callsTo("GET", "/audit").at(-1)?.path).toContain("since="));
+    const before = api.callsTo("GET", "/audit").length;
+    fireEvent.change(screen.getByLabelText("Al"), { target: { value: "2026-10-19" } });
+    expect(await screen.findByRole("alert")).toHaveTextContent("viene dopo");
+    expect(api.callsTo("GET", "/audit")).toHaveLength(before);
+  });
+
+  test("utenti: ruolo e permesso di pubblicare spiegati accanto ai campi", async () => {
+    const api = start(OWNER, "/admin/utenti");
+    api.on("GET", "/users", { data: USERS, meta: { total: 3 } });
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(await screen.findByRole("button", { name: "Nuovo utente" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("Ruolo")).toHaveAccessibleDescription(/gestisce anche utenti e messaggi/);
+    expect(within(dialog).getByLabelText("Può pubblicare")).toHaveAccessibleDescription(/qualcun altro le pubblica/);
+  });
 });

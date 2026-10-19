@@ -1,5 +1,5 @@
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ed } from "../../../text/editor";
 import { Dialog } from "../../../ui/Dialog";
 import { FieldFrame, type FieldProps } from "../schema/fields";
@@ -9,34 +9,70 @@ import { HEADING_LEVELS, RICH_TEXT_EXTENSIONS } from "./extensions";
 
 type Level = (typeof HEADING_LEVELS)[number];
 
+interface ToolbarItem {
+  label: string;
+  pressed: boolean;
+  run: () => void;
+}
+
+const MOVES: Record<string, (current: number, count: number) => number> = {
+  ArrowRight: (current) => current + 1,
+  ArrowLeft: (current) => current - 1,
+  Home: () => 0,
+  End: (_current, count) => count - 1,
+};
+
+/** Barra con un solo punto di tabulazione (roving tabindex): frecce, Inizio e Fine. */
 function Toolbar({ editor, onLink }: { editor: Editor; onLink: () => void }) {
-  const button = (label: string, active: boolean, run: () => void) => (
-    <button
-      key={label}
-      type="button"
-      className="toolbar__button"
-      aria-pressed={active}
-      onMouseDown={(event) => event.preventDefault()} // il cursore resta nel testo
-      onClick={run}
-    >
-      {label}
-    </button>
-  );
+  const [active, setActive] = useState(0);
   const chain = () => editor.chain().focus();
+  const items: ToolbarItem[] = [
+    { label: ed.rich.paragraph, pressed: editor.isActive("paragraph"), run: () => chain().setParagraph().run() },
+    ...HEADING_LEVELS.map((level: Level) => ({
+      label: ed.rich.heading(level),
+      pressed: editor.isActive("heading", { level }),
+      run: () => chain().toggleHeading({ level }).run(),
+    })),
+    { label: ed.rich.bold, pressed: editor.isActive("bold"), run: () => chain().toggleBold().run() },
+    { label: ed.rich.italic, pressed: editor.isActive("italic"), run: () => chain().toggleItalic().run() },
+    { label: ed.rich.bullet, pressed: editor.isActive("bulletList"), run: () => chain().toggleBulletList().run() },
+    { label: ed.rich.ordered, pressed: editor.isActive("orderedList"), run: () => chain().toggleOrderedList().run() },
+    { label: ed.rich.quote, pressed: editor.isActive("blockquote"), run: () => chain().toggleBlockquote().run() },
+  ];
+  // Il link si mette su un testo selezionato (o si modifica quello esistente).
+  if (!editor.state.selection.empty || editor.isActive("link")) {
+    items.push({ label: ed.rich.link, pressed: editor.isActive("link"), run: onLink });
+  }
+  if (editor.isActive("link")) {
+    items.push({ label: ed.rich.unlink, pressed: false, run: () => chain().extendMarkRange("link").unsetLink().run() });
+  }
+  const current = Math.min(active, items.length - 1);
+
+  function move(event: KeyboardEvent<HTMLDivElement>) {
+    const step = MOVES[event.key];
+    if (!step) return;
+    event.preventDefault();
+    const next = (step(current, items.length) + items.length) % items.length;
+    setActive(next);
+    event.currentTarget.querySelectorAll<HTMLButtonElement>("button")[next]?.focus();
+  }
+
   return (
-    <div className="toolbar" role="toolbar" aria-label={ed.rich.toolbar}>
-      {button(ed.rich.paragraph, editor.isActive("paragraph"), () => chain().setParagraph().run())}
-      {HEADING_LEVELS.map((level: Level) =>
-        button(ed.rich.heading(level), editor.isActive("heading", { level }), () => chain().toggleHeading({ level }).run()),
-      )}
-      {button(ed.rich.bold, editor.isActive("bold"), () => chain().toggleBold().run())}
-      {button(ed.rich.italic, editor.isActive("italic"), () => chain().toggleItalic().run())}
-      {button(ed.rich.bullet, editor.isActive("bulletList"), () => chain().toggleBulletList().run())}
-      {button(ed.rich.ordered, editor.isActive("orderedList"), () => chain().toggleOrderedList().run())}
-      {button(ed.rich.quote, editor.isActive("blockquote"), () => chain().toggleBlockquote().run())}
-      {/* Il link si mette su un testo selezionato (o si modifica quello esistente). */}
-      {(!editor.state.selection.empty || editor.isActive("link")) && button(ed.rich.link, editor.isActive("link"), onLink)}
-      {editor.isActive("link") && button(ed.rich.unlink, false, () => chain().extendMarkRange("link").unsetLink().run())}
+    <div className="toolbar" role="toolbar" aria-label={ed.rich.toolbar} onKeyDown={move}>
+      {items.map((item, index) => (
+        <button
+          key={item.label}
+          type="button"
+          className="toolbar__button"
+          aria-pressed={item.pressed}
+          tabIndex={index === current ? 0 : -1}
+          onFocus={() => setActive(index)}
+          onMouseDown={(event) => event.preventDefault()} // il cursore resta nel testo
+          onClick={item.run}
+        >
+          {item.label}
+        </button>
+      ))}
     </div>
   );
 }
