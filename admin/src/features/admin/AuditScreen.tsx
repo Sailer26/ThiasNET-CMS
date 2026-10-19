@@ -27,10 +27,12 @@ export function AuditScreen() {
   const [notice, setNotice] = useState<NoticeState | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [loadedFor, setLoadedFor] = useState("");
+  const [failedFor, setFailedFor] = useState("");
   const latest = useRef(0);
   const badRange = Boolean(filters.since && filters.until && filters.since > filters.until);
   const requestKey = JSON.stringify({ filters, page, attempt });
-  const loading = entries !== null && !badRange && loadedFor !== requestKey;
+  // In caricamento finché la richiesta di questi filtri non è finita, bene o male.
+  const loading = !badRange && loadedFor !== requestKey && failedFor !== requestKey;
 
   useEffect(() => {
     if (badRange) return; // si segnala sotto i filtri: il server non serve
@@ -45,7 +47,9 @@ export function AuditScreen() {
         setLoadedFor(key);
       },
       (error: unknown) => {
-        if (request === latest.current) setNotice({ kind: "error", text: errorMessage(error) });
+        if (request !== latest.current) return;
+        setNotice({ kind: "error", text: errorMessage(error) });
+        setFailedFor(key);
       },
     );
   }, [filters, page, attempt, badRange]); // "attempt" cresce con "Riprova"
@@ -120,14 +124,13 @@ export function AuditScreen() {
       <p role="status" className="hint">
         {loading ? at.loading : ""}
       </p>
-      {entries === null && !notice && <p role="status">{at.loading}</p>}
-      {entries === null && notice && (
+      {notice?.kind === "error" && !loading && (
         <button type="button" className="button" onClick={() => setAttempt(attempt + 1)}>
           {at.retry}
         </button>
       )}
-      {entries?.length === 0 && <p className="empty">{at.audit.empty}</p>}
-      {entries && entries.length > 0 && (
+      {!badRange && entries?.length === 0 && <p className="empty">{at.audit.empty}</p>}
+      {!badRange && entries && entries.length > 0 && (
         <ul className="audit" aria-busy={loading}>
           {entries.map((entry) => (
             <AuditRow key={entry.id} entry={entry} onObject={(entity, entityId) => change({ entity, entity_id: entityId })} />

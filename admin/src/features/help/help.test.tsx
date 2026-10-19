@@ -116,4 +116,34 @@ describe("tour al primo accesso (D-133)", () => {
     expect(screen.queryByRole("button", { name: "Rifai il tour" })).not.toBeInTheDocument();
     expect(toggle).toHaveFocus();
   });
+
+  test("non parte da solo fuori dall'elenco delle pagine; Rifai il tour ci porta", async () => {
+    const { user } = start("/admin/profilo", { ...ME, tour_completed_at: null });
+    expect(await screen.findByRole("heading", { name: "Il tuo profilo" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Aiuto" }));
+    await user.click(screen.getByRole("button", { name: "Rifai il tour" }));
+    expect(await screen.findByRole("dialog", { name: "Le pagine del sito" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/admin/pagine");
+  });
+
+  test("tra un passo e l'altro il focus resta nella finestra del tour", async () => {
+    const { user } = start("/admin/pagine");
+    await user.click(await screen.findByRole("button", { name: "Aiuto" }));
+    await user.click(screen.getByRole("button", { name: "Rifai il tour" }));
+    await screen.findByRole("dialog", { name: "Le pagine del sito" });
+    await user.click(screen.getByRole("button", { name: "Avanti" }));
+    await screen.findByRole("dialog", { name: "Apri una pagina" });
+    expect(screen.getByRole("button", { name: "Avanti" })).toHaveFocus();
+  });
+
+  test("chiusa la finestra aperta dal menu, il focus torna su Aiuto", async () => {
+    const { user } = start("/admin/pagine");
+    const toggle = await screen.findByRole("button", { name: "Aiuto" });
+    await user.click(toggle);
+    await user.click(screen.getByRole("button", { name: "Chiedi a Thias" }));
+    const dialog = await screen.findByRole("dialog", { name: "Chiedi a Thias" });
+    await user.click(within(dialog).getByRole("button", { name: "Annulla" }));
+    await waitFor(() => expect(toggle).toHaveFocus());
+  });
 });

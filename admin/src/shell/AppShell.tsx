@@ -6,7 +6,7 @@ import { AskThias } from "../features/help/AskThias";
 import { HelpMenu } from "../features/help/HelpMenu";
 import { Tour } from "../features/help/Tour";
 import { Link } from "../router/Link";
-import { paths, useRoute } from "../router/router";
+import { navigate, paths, useRoute } from "../router/router";
 import { Permission } from "../session/can";
 import { useSession } from "../session/context";
 import { it } from "../text/it";
@@ -53,8 +53,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [asking, setAsking] = useState(false);
-  // D-133: parte da solo una volta, solo su schermi da tablet in su.
-  const [touring, setTouring] = useState(() => user.tour_completed_at === null && wideScreen());
+  // D-133: parte da solo una volta, sull'elenco delle pagine (ne parla), da tablet in su.
+  const [touring, setTouring] = useState(
+    () => user.tour_completed_at === null && route.name === "pages" && wideScreen(),
+  );
   const [sent, setSent] = useState<string | null>(null);
   const firstRoute = useRef(true);
   const showMessages = can(Permission.messagesView);
@@ -122,7 +124,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
         </nav>
         <div className="shell__account">
-          <HelpMenu onAsk={() => setAsking(true)} onTour={() => setTouring(true)} />
+          <HelpMenu
+            onAsk={() => setAsking(true)}
+            onTour={() => {
+              // Il tour parla delle pagine: si parte da lì (l'editor può chiedere di salvare prima).
+              void navigate(paths.pages).then(() => {
+                if (window.location.pathname === paths.pages) setTouring(true);
+              });
+            }}
+          />
           <a className="button button--ghost" href={site.url} target="_blank" rel="noopener noreferrer">
             {it.shell.openSite}
           </a>

@@ -50,7 +50,7 @@ function Toolbar({ editor, onLink }: { editor: Editor; onLink: () => void }) {
 
   function move(event: KeyboardEvent<HTMLDivElement>) {
     const step = MOVES[event.key];
-    if (!step) return;
+    if (!step || event.altKey || event.ctrlKey || event.metaKey) return; // Alt+freccia: il browser
     event.preventDefault();
     const next = (step(current, items.length) + items.length) % items.length;
     setActive(next);

@@ -91,7 +91,7 @@ export const ed = {
     },
   },
   media: {
-    openLibrary: "Apri nella libreria",
+    openLibrary: "Apri nella libreria (nuova scheda)",
     titleImage: "Scegli un'immagine",
     titleDocument: "Scegli un documento",
     tabs: "Da dove",

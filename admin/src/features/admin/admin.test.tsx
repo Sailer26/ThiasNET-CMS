@@ -480,4 +480,24 @@ describe("correzioni dalla review", () => {
     expect(within(dialog).getByLabelText("Ruolo")).toHaveAccessibleDescription(/gestisce anche utenti e messaggi/);
     expect(within(dialog).getByLabelText("Può pubblicare")).toHaveAccessibleDescription(/qualcun altro le pubblica/);
   });
+
+  test("registro: errore dopo un elenco già caricato, niente caricamento infinito e Riprova", async () => {
+    const api = start(OWNER, "/admin/registro");
+    api.on("GET", "/users", { data: USERS, meta: { total: 3 } });
+    api.on(
+      "GET",
+      "/audit",
+      { data: [], meta: { total: 0 } },
+      { status: 500, error: { code: "server_error", message: "Errore del server" } },
+      { data: [], meta: { total: 0 } },
+    );
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText("Nessuna attività con questi filtri.");
+    await user.selectOptions(screen.getByLabelText("Tipo"), "pages");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Errore del server");
+    expect(screen.queryByText("Caricamento…")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Riprova" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+  });
 });

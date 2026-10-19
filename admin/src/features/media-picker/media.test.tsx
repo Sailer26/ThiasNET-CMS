@@ -193,7 +193,7 @@ describe("media nell'editor (D-111)", () => {
   test("Apri nella libreria: nuova scheda con il dettaglio del file", async () => {
     api.on("GET", "/media", { data: [media(5)] });
     render(<Choice initial={5} />);
-    const link = await screen.findByRole("link", { name: "Apri nella libreria" });
+    const link = await screen.findByRole("link", { name: /Apri nella libreria/ });
     expect(link).toHaveAttribute("href", "/admin/media?apri=5");
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");

@@ -98,6 +98,11 @@ export function MediaScreen() {
   const [usage, setUsage] = useState<Usage | null>(null);
   // "Apri nella libreria" dal selettore (5d-2): /admin/media?apri=<id> apre il dettaglio.
   const [detail, setDetail] = useState<number | null>(openedFromLink);
+  const closeDetail = () => {
+    setDetail(null);
+    // Chiuso il dettaglio, ricaricare la pagina non deve riaprirlo.
+    if (window.location.search) window.history.replaceState(null, "", window.location.pathname);
+  };
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [running, setRunning] = useState(false);
   const [notice, setNotice] = useState<NoticeState | null>(null);
@@ -319,13 +324,13 @@ export function MediaScreen() {
             key={detail}
             id={detail}
             folders={folders}
-            onClose={() => setDetail(null)}
+            onClose={closeDetail}
             onChanged={() => {
               load(1);
               refreshSide();
             }}
             onDeleted={(name) => {
-              setDetail(null);
+              closeDetail();
               setNotice({ kind: "success", text: mt.removed(name) });
               load(1);
               refreshSide();
