@@ -76,6 +76,13 @@ def test_messages_users_audit_profile(page: Page, live_app: Flask, live_server: 
     page.get_by_label("Email").fill(EDITOR_EMAIL)
     page.get_by_label("Password").fill(password)
     page.get_by_role("button", name="Accedi").click()
+    # Primo accesso: parte il tour (D-133); un passo avanti, poi si salta.
+    tour = page.get_by_role("dialog", name="Le pagine del sito")
+    expect(tour).to_be_visible(timeout=WAIT_MS)
+    tour.get_by_role("button", name="Avanti").click()
+    tour = page.get_by_role("dialog", name="Apri una pagina")
+    tour.get_by_role("button", name="Salta il tour").click()
+    expect(page.get_by_role("dialog")).to_have_count(0)
     # si resta sull'indirizzo di prima: ora è il profilo dell'editor
     expect(page.get_by_role("heading", name="Il tuo profilo")).to_be_visible()
     expect(page.get_by_text(EDITOR_EMAIL).first).to_be_visible()
@@ -83,3 +90,8 @@ def test_messages_users_audit_profile(page: Page, live_app: Flask, live_server: 
     expect(nav.get_by_role("link", name="Utenti")).to_have_count(0)
     page.goto(f"{live_server}/admin/registro")
     expect(page.get_by_role("heading", name="Non hai accesso a questa sezione.")).to_be_visible()
+    # Saltato una volta, il tour non riparte; dal menu Aiuto si può rifare.
+    expect(page.get_by_role("dialog")).to_have_count(0)
+    page.get_by_role("button", name="Aiuto").click()
+    page.get_by_role("button", name="Rifai il tour").click()
+    expect(page.get_by_role("dialog", name="Le pagine del sito")).to_be_visible()

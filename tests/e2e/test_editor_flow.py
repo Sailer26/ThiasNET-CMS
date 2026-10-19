@@ -57,7 +57,11 @@ def test_write_preview_undo_publish(page: Page, live_server: str) -> None:
 
     page.get_by_role("button", name="Pubblica", exact=True).click()
     dialog = page.get_by_role("dialog", name="Pubblicare la pagina?")
-    dialog.get_by_role("button", name="Pubblica").click()
+    # Controllo prima di pubblicare (D-135): manca la descrizione per Google, si può pubblicare lo stesso.
+    expect(dialog.get_by_text("Manca la descrizione per i motori di ricerca")).to_be_visible(
+        timeout=WAIT_MS
+    )
+    dialog.get_by_role("button", name="Pubblica comunque").click()
     expect(page.get_by_text("Pagina pubblicata.")).to_be_visible(timeout=WAIT_MS)
 
     assert TEXT in page.request.get(f"{live_server}/").text()

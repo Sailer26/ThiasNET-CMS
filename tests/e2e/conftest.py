@@ -13,6 +13,7 @@ from werkzeug.serving import make_server
 
 from app import create_app
 from app.extensions import db
+from app.models.types import utcnow
 from app.services import users
 from tests.helpers import PASSWORD
 
@@ -36,7 +37,10 @@ def live_app(tmp_path: Path) -> Iterator[Flask]:
     )
     with app.app_context():
         db.create_all()  # ammesso nei test (CLAUDE.md)
-        users.create_owner(OWNER_EMAIL, PASSWORD)
+        owner = users.create_owner(OWNER_EMAIL, PASSWORD)
+        # Il tour lo prova l'editor di test_admin_flow; qui non deve coprire il pannello (D-133).
+        owner.tour_completed_at = utcnow()
+        db.session.commit()
     try:
         yield app
     finally:
