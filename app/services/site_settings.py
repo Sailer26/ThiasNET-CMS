@@ -1,8 +1,7 @@
-"""Impostazioni del sito e del tema viste dal rendering (D-57).
+"""Impostazioni del sito e del tema viste dal rendering (D-57, D-143).
 
-Fino alla Fase 6 le impostazioni del sito vengono dalla configurazione (`.env`, impostate da
-Thias al deploy) e quelle del tema sono i `default` di `theme.json`. Dalla Fase 6 queste due
-funzioni leggeranno dal database: chi le usa non cambia.
+Dalla Fase 6 vengono dal pannello (tabella `settings`); la configurazione (`.env`) dà solo
+i valori iniziali di nome e destinatario, e resta l'unica fonte per SITE_URL e Matomo.
 """
 
 from __future__ import annotations
@@ -15,7 +14,7 @@ from typing import Any
 
 from flask import current_app
 
-from app.services.theme import Theme
+from app.services.theme import Theme, active_theme
 
 HEX_COLOR = frozenset("0123456789ABCDEF")
 
@@ -27,21 +26,37 @@ class SiteSettings:
     contact_recipient: str | None
     matomo_url: str | None
     matomo_site_id: str | None
+    logo: int | None = None
+    email: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    social: tuple[tuple[str, str], ...] = ()
 
 
 def current() -> SiteSettings:
+    from app.services import settings_store  # usa il database: import solo qui
+    from app.services.settings_fields import SOCIAL_KEYS
+
     config = current_app.config
+    values = settings_store.effective("site", active_theme())
     return SiteSettings(
-        name=str(config["SITE_NAME"]),
+        name=str(values.get("name") or config["SITE_NAME"]),
         base_url=str(config["SITE_URL"]),
-        contact_recipient=config.get("CONTACT_RECIPIENT") or None,
+        contact_recipient=values.get("contact_recipient") or None,
         matomo_url=config.get("MATOMO_URL") or None,
         matomo_site_id=config.get("MATOMO_SITE_ID") or None,
+        logo=values.get("logo"),
+        email=values.get("email"),
+        phone=values.get("phone"),
+        address=values.get("address"),
+        social=tuple((key, values[key]) for key in SOCIAL_KEYS if values.get(key)),
     )
 
 
 def theme_settings(theme: Theme) -> Mapping[str, Any]:
-    return MappingProxyType({key: spec.default for key, spec in theme.settings.items()})
+    from app.services import settings_store
+
+    return MappingProxyType(settings_store.effective("appearance", theme))
 
 
 def _is_hex_color(value: object) -> bool:

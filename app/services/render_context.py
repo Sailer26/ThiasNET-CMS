@@ -65,6 +65,11 @@ class SiteInfo:
     base_url: str  # SITE_URL, senza "/" finale: canonical e sitemap (D-62)
     locale: str  # lingua principale del sito
     year: int
+    logo: int | None = None  # media del logo (D-143): img(site.logo, ...)
+    email: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    social: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)

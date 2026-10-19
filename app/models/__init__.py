@@ -26,6 +26,8 @@ from app.models import (  # noqa: E402, F401
     login_attempt,
     media,
     page,
+    revision,
+    settings,
     site,
     support,
     user,

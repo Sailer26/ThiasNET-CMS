@@ -120,9 +120,20 @@ def _scheduled(media_id: int) -> Iterator[tuple[Page, str]]:
 SOURCES = (_published, _drafts, _scheduled)
 
 
+def _is_logo(media_id: int) -> bool:
+    from app.services import settings_store  # evita l'import circolare con le impostazioni
+
+    return settings_store.stored("site").get("logo") == media_id
+
+
 def pages_using(media_id: int) -> list[dict[str, Any]]:
+    """Pagine (e impostazioni del sito, D-143) che usano un media."""
     seen: set[tuple[int, str]] = set()
     usages: list[dict[str, Any]] = []
+    if _is_logo(media_id):
+        usages.append(
+            {"page_id": None, "title": "Impostazioni del sito", "path": "", "where": "settings"}
+        )
     for source in SOURCES:
         for page, where in source(media_id):
             if (page.id, where) in seen:
@@ -140,4 +151,6 @@ def used_by_online_pages(media_id: int) -> bool:
     """Usato da una pagina online o programmata (per non togliere l'alt, D-77): si guardano
     solo queste due fonti e ci si ferma al primo caso, senza il tetto di MAX_USAGES."""
     online = (where for _page, where in _published(media_id) if where == "published")
+    if _is_logo(media_id):  # il logo è sempre online
+        return True
     return next(online, None) is not None or next(_scheduled(media_id), None) is not None

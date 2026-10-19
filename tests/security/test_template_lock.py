@@ -195,7 +195,6 @@ def test_jinja_in_content_is_not_executed(owner_client):
     assert html.count(jinja) >= 5
 
 
-@SKIP_UNTIL_SETTINGS
 def test_unknown_theme_setting_rejected(owner_client):
     # Route su "appearance" e non "theme": vedi D-14 e test_no_admin_route_touches_theme_files.
     resp = owner_client.put(
@@ -205,6 +204,54 @@ def test_unknown_theme_setting_rejected(owner_client):
 
 
 def test_theme_files_unchanged_after_full_admin_session(owner_client):
-    pytest.skip(
-        "Attivare in Fase 6: eseguire CRUD completo su pagine/widget/menu/settings e confrontare _themes_hash()"
+    """Una sessione completa dal pannello non cambia un byte dei temi. Pagine, media e
+    impostazioni dalla Fase 6a; menu e widget si aggiungono in 6b e 6c."""
+    before = _themes_hash()
+    api = "/api/admin"
+    page = owner_client.post(f"{api}/pages", json={"title": "Prova", "layout": "page"}).get_json()[
+        "data"
+    ]
+    draft = owner_client.get(f"{api}/pages/{page['id']}/draft").get_json()["data"]
+    body = {
+        "version": draft["version"],
+        "title": "Prova {{ config }}",
+        "layout": "page",
+        "seo": {"description": "<script>x</script>"},
+        "zones": {"main": [], "sidebar": []},
+    }
+    assert owner_client.put(f"{api}/pages/{page['id']}/draft", json=body).status_code == 200
+    version = owner_client.get(f"{api}/pages/{page['id']}/draft").get_json()["data"]["version"]
+    published = owner_client.post(
+        f"{api}/pages/{page['id']}/publish", json={"draft_version": version}
     )
+    assert published.status_code == 200
+    upload = owner_client.post(
+        f"{api}/media",
+        data={"file": (io.BytesIO(_png_bytes()), "foto.png"), "alt": "Foto"},
+        content_type="multipart/form-data",
+    )
+    assert upload.status_code == 201, upload.get_json()
+    settings = owner_client.get(f"{api}/settings").get_json()["data"]
+    logo = upload.get_json()["data"]["id"]
+    site = {
+        "version": settings["site"]["version"],
+        "values": {"name": "Sito {{ 7*7 }}", "logo": logo},
+    }
+    assert owner_client.put(f"{api}/settings/site", json=site).status_code == 200
+    look = {
+        "version": settings["appearance"]["version"],
+        "values": {"footer_note": "{% include 'x' %}"},
+    }
+    assert owner_client.put(f"{api}/settings/appearance", json=look).status_code == 200
+    page_now = owner_client.get(f"{api}/pages/{page['id']}").get_json()["data"]
+    trashed = owner_client.delete(
+        f"{api}/pages/{page['id']}", json={"version": page_now["version"]}
+    )
+    assert trashed.status_code == 200
+    assert _themes_hash() == before
+
+
+def _png_bytes() -> bytes:
+    from tests.media_fixtures import image_bytes
+
+    return image_bytes(size=(64, 64))

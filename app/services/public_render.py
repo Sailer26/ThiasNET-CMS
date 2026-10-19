@@ -48,6 +48,11 @@ def site_info() -> SiteInfo:
         base_url=settings.base_url,
         locale=active_theme().locales[0],
         year=datetime.now(UTC).year,
+        logo=settings.logo,
+        email=settings.email,
+        phone=settings.phone,
+        address=settings.address,
+        social=settings.social,
     )
 
 
@@ -89,11 +94,14 @@ def _view_refs(view: PageView) -> list[int]:
     return [og, *ids] if isinstance(og, int) and not isinstance(og, bool) else ids
 
 
-def page_media(view: PageView) -> tuple[Mapping[int, MediaView], MediaView | None]:
+def page_media(
+    view: PageView, extra: tuple[int | None, ...] = ()
+) -> tuple[Mapping[int, MediaView], MediaView | None]:
     """Media usati dalla pagina (una query) e immagine per i social: quella della SEO,
-    altrimenti la prima immagine della pagina (D-81)."""
+    altrimenti la prima immagine della pagina (D-81). `extra`: il logo del sito."""
     refs = _view_refs(view)
-    found = {mid: media_library.to_view(m) for mid, m in media_refs.load(refs).items()}
+    wanted = [*refs, *(mid for mid in extra if mid is not None)]
+    found = {mid: media_library.to_view(m) for mid, m in media_refs.load(wanted).items()}
     og = next((found[mid] for mid in refs if mid in found and found[mid].kind == "image"), None)
     return MappingProxyType(found), og
 
@@ -110,12 +118,13 @@ def page_context(
     theme = active_theme()
     values, css_version = theme_values(theme)
     page_view_ = view if view is not None else page_view(page, document)
-    media, og_image = page_media(page_view_)
+    site = site_info()
+    media, og_image = page_media(page_view_, (site.logo,))
     return PageContext(
         page=page_view_,
         media=media,
         og_image=og_image,
-        site=site_info(),
+        site=site,
         mode=mode,
         menu=public_pages.auto_menu(page.locale, page, theme),
         breadcrumbs=public_pages.breadcrumbs(page, theme),
@@ -144,9 +153,12 @@ def not_found_context(locale: str, path: str) -> PageContext:
         zones=MappingProxyType({}),
         is_home=False,
     )
+    site = site_info()
+    media, _og = page_media(view, (site.logo,))
     return PageContext(
         page=view,
-        site=site_info(),
+        media=media,
+        site=site,
         menu=public_pages.auto_menu(locale, None, theme),
         settings=values,
         css_version=css_version,

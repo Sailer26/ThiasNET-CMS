@@ -19,6 +19,7 @@ class Permission(StrEnum):
     ROLES_MANAGE = "roles.manage"
     AUDIT_VIEW = "audit.view"
     MESSAGES_VIEW = "messages.view"  # D-126: dati personali dei visitatori
+    SETTINGS_EDIT = "settings.edit"  # D-143: dati del sito e aspetto
 
 
 ROLE_PERMISSIONS: Mapping[str, frozenset[Permission]] = MappingProxyType(
@@ -32,6 +33,7 @@ ROLE_PERMISSIONS: Mapping[str, frozenset[Permission]] = MappingProxyType(
                 Permission.USERS_VIEW,
                 Permission.USERS_MANAGE,
                 Permission.MESSAGES_VIEW,
+                Permission.SETTINGS_EDIT,
             }
         ),
         Role.EDITOR: frozenset({Permission.PROFILE, Permission.CONTENT_EDIT}),

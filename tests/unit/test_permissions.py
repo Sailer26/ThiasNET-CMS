@@ -18,6 +18,7 @@ MATRIX: dict[tuple[str, bool], set[Permission]] = {
         P.USERS_VIEW,
         P.USERS_MANAGE,
         P.MESSAGES_VIEW,
+        P.SETTINGS_EDIT,
     },
     ("editor", False): {P.PROFILE, P.CONTENT_EDIT},
     ("editor", True): {P.PROFILE, P.CONTENT_EDIT, P.PUBLISH},
@@ -29,6 +30,7 @@ MATRIX: dict[tuple[str, bool], set[Permission]] = {
         P.USERS_VIEW,
         P.USERS_MANAGE,
         P.MESSAGES_VIEW,
+        P.SETTINGS_EDIT,
     },
 }
 
@@ -55,4 +57,5 @@ def test_permission_values_are_stable() -> None:
         "roles.manage",
         "audit.view",
         "messages.view",
+        "settings.edit",
     }

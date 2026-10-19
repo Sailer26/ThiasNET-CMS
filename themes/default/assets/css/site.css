@@ -67,7 +67,19 @@ main:focus { outline: none; }
   gap: var(--space);
   padding-block: var(--space);
 }
-.site-name { font-weight: 700; font-size: 1.25rem; color: var(--text); text-decoration: none; }
+.site-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--text);
+  text-decoration: none;
+}
+.site-logo { height: 2.75rem; width: auto; }
+.site-header--dark { background: #202124; border-bottom-color: #202124; }
+.site-header--dark .site-name,
+.site-header--dark .site-nav a { color: #fff; }
 
 .nav-toggle {
   font: inherit;

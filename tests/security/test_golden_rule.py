@@ -148,9 +148,7 @@ def test_themes_unchanged_after_startup_and_theme_check() -> None:
     assert _themes_hash() == before
 
 
-SKIPPED_UNTIL_ROUTE = {
-    "test_unknown_theme_setting_rejected": ("/api/admin/settings/appearance", "PUT"),
-}
+SKIPPED_UNTIL_ROUTE: dict[str, tuple[str, str]] = {}  # attivati in Fase 6a
 
 
 def test_skipped_lock_tests_have_no_route_yet() -> None:

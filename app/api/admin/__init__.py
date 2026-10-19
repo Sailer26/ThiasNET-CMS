@@ -15,6 +15,7 @@ from app.api.admin import (  # noqa: E402, F401
     messages,
     page_drafts,
     pages,
+    settings,
     site,
     support,
     users,
