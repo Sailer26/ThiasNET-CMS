@@ -204,6 +204,14 @@ h1[tabindex="-1"]:focus { outline: none; }
 .message__meta dd { margin: 0; overflow-wrap: anywhere; }
 .message__text { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--tn-white); border: 1px solid var(--tn-border); border-radius: var(--radius); padding: 1rem; }
 .secret { font-size: 1.05rem; letter-spacing: 0.05em; user-select: all; }
+/* Menu (6b) */
+.menu-tree { list-style: none; margin: 0.5rem 0; padding: 0; display: grid; gap: 0.35rem; }
+.menu-tree .menu-tree { padding-left: 1.75rem; }
+.menu-item__row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+  background: var(--tn-white); border: 1px solid var(--tn-border); border-radius: var(--radius); padding: 0.35rem 0.5rem;
+}
+.menu-item__title { flex: 1 1 12rem; }
 /* Impostazioni (6a): campioni dei colori del tema */
 .swatch {
   display: inline-block; width: 1.5rem; height: 1.5rem; border-radius: 50%;

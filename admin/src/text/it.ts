@@ -14,6 +14,7 @@ export const it = {
     audit: "Registro attività",
     profile: "Il tuo profilo",
     settings: "Impostazioni",
+    menus: "Menu",
     notFound: "Schermata non trovata",
   },
   errors: {
@@ -49,6 +50,7 @@ export const it = {
     users: "Utenti",
     audit: "Registro",
     settings: "Impostazioni",
+    menus: "Menu",
     profile: "Il tuo profilo",
     openSite: "Apri il sito",
     account: "Il tuo account",

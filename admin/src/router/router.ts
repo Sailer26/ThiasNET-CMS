@@ -12,6 +12,7 @@ export type Route =
   | { name: "audit" }
   | { name: "profile" }
   | { name: "settings" }
+  | { name: "menus" }
   | { name: "not-found" };
 
 export const paths = {
@@ -25,6 +26,7 @@ export const paths = {
   audit: "/admin/registro",
   profile: "/admin/profilo",
   settings: "/admin/impostazioni",
+  menus: "/admin/menu",
 } as const;
 
 const PAGE_RE = /^\/admin\/pagine\/(\d{1,9})$/;
@@ -37,6 +39,7 @@ const SIMPLE: Record<string, Route> = {
   [paths.audit]: { name: "audit" },
   [paths.profile]: { name: "profile" },
   [paths.settings]: { name: "settings" },
+  [paths.menus]: { name: "menus" },
 };
 
 export function parseRoute(pathname: string): Route {
