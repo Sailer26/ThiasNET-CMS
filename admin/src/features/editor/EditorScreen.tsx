@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, errorMessage } from "../../api/client";
-import { discardDraft, fetchDraft, fetchPage, publishPage, saveDraft, unpublishPage, type Draft } from "../../api/drafts";
+import { discardDraft, fetchChecks, fetchDraft, fetchPage, publishPage, saveDraft, unpublishPage, type Draft } from "../../api/drafts";
 import { getRevision, restoreRevision, schedulePage, unschedulePage, type Revision } from "../../api/revisions";
 import { VersionsDialog } from "./history/VersionsDialog";
 import { ScheduleDialog } from "./schedule/ScheduleDialog";
@@ -14,7 +14,7 @@ import { ed } from "../../text/editor";
 import { FormDialog } from "../../ui/FormDialog";
 import { NoticeArea, type NoticeState } from "../../ui/Notice";
 import { MediaProvider, mediaIdsIn } from "../media-picker/MediaContext";
-import { ErrorList, type ListedError } from "./ErrorList";
+import { ErrorList, WarningList, type ListedError } from "./ErrorList";
 import { Autosave, type SaveState } from "./model/autosave";
 import {
   addBlock,
@@ -82,6 +82,7 @@ function Workspace({ data }: { data: Loaded }) {
   const [save, setSave] = useState<SaveState>({ kind: "saved", at: null });
   const [notice, setNotice] = useState<NoticeState | null>(null);
   const [serverErrors, setServerErrors] = useState<Map<string, string>>(new Map());
+  const [warnings, setWarnings] = useState<Map<string, string>>(new Map());
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [view, setView] = useState<"edit" | "preview">("edit");
   const [versionsOpen, setVersionsOpen] = useState(false);
@@ -304,6 +305,14 @@ function Workspace({ data }: { data: Loaded }) {
       setNotice({ kind: "error", text: ed.publish.notSaved });
       return;
     }
+    const sent = safe.doc;
+    // Controllo prima di pubblicare (D-135); se non risponde si conferma lo stesso: ricontrolla publish.
+    const checks = await fetchChecks(page.id).catch(() => null);
+    if (checks && checks.blocking.length > 0) {
+      setServerErrors(listErrors(checks.blocking, sent));
+      return;
+    }
+    setWarnings(checks ? listErrors(checks.warnings, sent) : new Map());
     setConfirm("publish");
   }
 
@@ -322,24 +331,32 @@ function Workspace({ data }: { data: Loaded }) {
     setNotice({ kind: "success", text: ed.discard.done });
   }
 
-  const listed: ListedError[] = [...serverErrors.entries()].map(([key, message]) => {
-    const at = key.indexOf(":");
-    const owner = key.slice(0, at);
-    const field = key.slice(at + 1);
-    const block = owner !== "page" && owner !== "zone" ? locate(doc, owner) : null;
-    const label = block ? `${catalog.types[block.block.type]?.label ?? ""} n. ${block.index + 1}` : owner === "zone" ? field.split(":")[0]! : ed.page.title;
-    return {
-      key,
-      where: label,
-      message,
-      focus: () => {
-        if (block) {
-          editor.select(owner);
-          focusField(fieldId(`f-${owner}`, field.split("/")));
-        } else if (owner === "page") focusField(field.startsWith("seo/") ? `seo-${field.slice(4)}` : field === "layout" ? "page-layout" : "page-title");
-      },
-    };
-  });
+  const toListed = (entries: Map<string, string>, before?: () => void): ListedError[] =>
+    [...entries.entries()].map(([key, message]) => {
+      const at = key.indexOf(":");
+      const owner = key.slice(0, at);
+      const field = key.slice(at + 1);
+      const block = owner !== "page" && owner !== "zone" ? locate(doc, owner) : null;
+      const zone = owner === "zone" ? field.split(":")[0]! : "";
+      const label = block ? `${catalog.types[block.block.type]?.label ?? ""} n. ${block.index + 1}` : owner === "zone" ? zone || ed.publish.wholePage : ed.page.title;
+      const reachable = block !== null || owner === "page";
+      return {
+        key,
+        where: label,
+        message,
+        focus: reachable
+          ? () => {
+              before?.();
+              if (block) {
+                editor.select(owner);
+                focusField(fieldId(`f-${owner}`, field.split("/")));
+              } else focusField(field.startsWith("seo/") ? `seo-${field.slice(4)}` : field === "layout" ? "page-layout" : "page-title");
+            }
+          : undefined,
+      };
+    });
+  const listed = toListed(serverErrors);
+  const listedWarnings = toListed(warnings, () => setConfirm(null));
 
   const online = page.status === "published";
   const changes = autosave.draftVersion > 0 || autosave.dirty;
@@ -466,8 +483,14 @@ function Workspace({ data }: { data: Loaded }) {
         <ConflictDialog error={save.error} onTheirs={loadTheirs} onMine={keepMine} />
       )}
       {confirm === "publish" && (
-        <FormDialog title={ed.publish.title} submitLabel={ed.publish.confirm} onClose={() => setConfirm(null)} onSubmit={publish}>
+        <FormDialog
+          title={ed.publish.title}
+          submitLabel={warnings.size > 0 ? ed.publish.anyway : ed.publish.confirm}
+          onClose={() => setConfirm(null)}
+          onSubmit={publish}
+        >
           <p>{ed.publish.question(site.url + page.path)}</p>
+          <WarningList warnings={listedWarnings} />
         </FormDialog>
       )}
       {confirm === "unpublish" && (

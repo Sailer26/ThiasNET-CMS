@@ -31,6 +31,29 @@ export async function discardDraft(id: number, version: number): Promise<void> {
   await request("DELETE", `/pages/${id}/draft`, { version });
 }
 
+export interface CheckItem {
+  path: string;
+  code: string;
+  message: string;
+}
+
+export interface Checks {
+  blocking: CheckItem[];
+  warnings: CheckItem[];
+}
+
+function isItems(value: unknown): value is CheckItem[] {
+  return Array.isArray(value) && value.every((item) => item !== null && typeof item === "object" && typeof (item as CheckItem).path === "string");
+}
+
+/** Controllo prima di pubblicare (D-135): bloccanti come la pubblicazione, avvisi che non bloccano. */
+export async function fetchChecks(id: number): Promise<Checks> {
+  const { data } = await request<unknown>("GET", `/pages/${id}/checks`);
+  const found = (data ?? {}) as Partial<Record<keyof Checks, unknown>>;
+  if (!isItems(found.blocking) || !isItems(found.warnings)) throw new Error("risposta del controllo non valida");
+  return { blocking: found.blocking, warnings: found.warnings };
+}
+
 export async function publishPage(id: number, draftVersion: number): Promise<Page> {
   return (await request<Page>("POST", `/pages/${id}/publish`, { draft_version: draftVersion })).data;
 }

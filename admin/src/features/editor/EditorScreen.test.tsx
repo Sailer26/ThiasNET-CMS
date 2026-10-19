@@ -37,6 +37,7 @@ function open(options: { status?: "draft" | "published"; me?: typeof ME; version
   api.on("GET", "/blocks", { data: catalog() });
   api.on("GET", "/pages/tree", { data: [node("Contatti", { path: "/contatti" })], meta: { truncated: false } });
   api.on("PUT", "/pages/7/draft", (call) => ({ data: { version: ((call.body as { version: number }).version ?? 0) + 1 } }));
+  api.on("GET", "/pages/7/checks", { data: { blocking: [], warnings: [] } });
   render(<App />);
   return { api, user: userEvent.setup({ advanceTimers: vi.advanceTimersByTime }) };
 }
@@ -223,6 +224,63 @@ describe("editor della pagina", () => {
     await user.click(within(list).getAllByRole("button", { name: "Vai al campo" })[0]!);
     await wait(20);
     expect(screen.getByLabelText(/Link del pulsante/)).toHaveFocus();
+  });
+
+  test("controllo prima di pubblicare: i bloccanti si elencano senza aprire la conferma", async () => {
+    const { api, user } = open();
+    api.on("GET", "/pages/7/checks", {
+      data: {
+        blocking: [{ path: "title", code: "required", message: "Campo obbligatorio" }],
+        warnings: [],
+      },
+    });
+    await ready();
+    await user.click(screen.getByRole("button", { name: "Pubblica" }));
+    const list = await screen.findByRole("alert");
+    expect(list).toHaveTextContent("Campo obbligatorio");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(api.callsTo("POST", "/pages/7/publish")).toHaveLength(0);
+  });
+
+  test("controllo prima di pubblicare: gli avvisi nella conferma, Pubblica comunque", async () => {
+    const { api, user } = open();
+    api.on("GET", "/pages/7/checks", {
+      data: {
+        blocking: [],
+        warnings: [
+          { path: "seo/description", code: "seo_empty", message: "Manca la descrizione per i motori di ricerca." },
+          { path: "zones/main/1/data/url", code: "link_broken", message: "Il link /vecchia porta a una pagina che non esiste." },
+        ],
+      },
+    });
+    api.on("POST", "/pages/7/publish", { data: node("Chi siamo", { id: 7, status: "published", path: "/chi-siamo" }) });
+    await ready();
+    await user.click(screen.getByRole("button", { name: "Pubblica" }));
+    let dialog = await screen.findByRole("dialog", { name: "Pubblicare la pagina?" });
+    expect(dialog).toHaveTextContent("Manca la descrizione per i motori di ricerca.");
+    expect(dialog).toHaveTextContent("Invito all'azione n. 2 · Il link /vecchia");
+
+    // "Vai al campo" chiude la conferma e porta al campo
+    await user.click(within(dialog).getAllByRole("button", { name: "Vai al campo" })[1]!);
+    await wait(20);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Link del pulsante/)).toHaveFocus();
+
+    await user.click(screen.getByRole("button", { name: "Pubblica" }));
+    dialog = await screen.findByRole("dialog", { name: "Pubblicare la pagina?" });
+    await user.click(within(dialog).getByRole("button", { name: "Pubblica comunque" }));
+    expect(await screen.findByText("Pagina pubblicata.")).toBeInTheDocument();
+  });
+
+  test("se il controllo non risponde si può pubblicare lo stesso (ricontrolla il server)", async () => {
+    const { api, user } = open();
+    api.on("GET", "/pages/7/checks", { status: 500, error: { code: "server_error", message: "Errore" } });
+    api.on("POST", "/pages/7/publish", { data: node("Chi siamo", { id: 7, status: "published", path: "/chi-siamo" }) });
+    await ready();
+    await user.click(screen.getByRole("button", { name: "Pubblica" }));
+    const dialog = await screen.findByRole("dialog", { name: "Pubblicare la pagina?" });
+    await user.click(within(dialog).getByRole("button", { name: "Pubblica" }));
+    expect(await screen.findByText("Pagina pubblicata.")).toBeInTheDocument();
   });
 
   test("senza permesso di pubblicare: niente Pubblica, una spiegazione", async () => {
