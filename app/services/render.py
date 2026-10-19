@@ -229,7 +229,7 @@ class _Helpers:
         return render_media.file_info(media) if media is not None else None
 
     def menu(self, location: str) -> tuple[Link, ...]:
-        return self.context.menu if location == "main" else ()
+        return self.context.menus.get(location, ())
 
     def contact_form(self, block: BlockView) -> ContactFormView | None:
         return self.context.forms.get(block.id)

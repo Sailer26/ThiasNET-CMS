@@ -1,6 +1,16 @@
 <footer class="site-footer">
 <div class="container site-footer__inner">
 <p>&copy; {{ site.year }} {{ site.name }}</p>
+{% set footer_items = menu("footer") %}
+{% if footer_items %}
+<nav class="footer-nav" aria-label="{{ cms_text('footer_menu_label') }}">
+<ul>
+{% for item in footer_items %}
+<li><a href="{{ item.url }}"{% if item.current %} aria-current="page"{% endif %}>{{ item.title }}</a></li>
+{% endfor %}
+</ul>
+</nav>
+{% endif %}
 {% if settings.footer_note %}<p>{{ settings.footer_note }}</p>{% endif %}
 <p><button type="button" class="link-button" data-cms-consent-open>{{ cms_text('consent_open') }}</button></p>
 </div>

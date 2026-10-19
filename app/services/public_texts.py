@@ -26,6 +26,12 @@ _TEXTS: dict[str, dict[str, str]] = {
         "en": "Main menu",
     },
     "menu_toggle": {"it": "Menu", "de": "Menü", "rm": "Menu", "en": "Menu"},
+    "footer_menu_label": {
+        "it": "Link utili",
+        "de": "Nützliche Links",
+        "rm": "Links utils",
+        "en": "Useful links",
+    },
     "breadcrumbs_label": {
         "it": "Percorso",
         "de": "Sie sind hier",

@@ -12,6 +12,7 @@ from app.api.admin import (  # noqa: E402, F401
     auth,
     blocks,
     media,
+    menus,
     messages,
     page_drafts,
     pages,

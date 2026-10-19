@@ -130,7 +130,7 @@ def _home(locale: str) -> Page | None:
     return page if _is_online(page) else None
 
 
-def auto_menu(locale: str, current: Page | None, theme: Theme) -> tuple[Link, ...]:
+def auto_pages(locale: str) -> list[Page]:
     """D-58: homepage + pagine di primo livello online, nell'ordine dell'albero."""
     query = (
         select(Page)
@@ -145,17 +145,22 @@ def auto_menu(locale: str, current: Page | None, theme: Theme) -> tuple[Link, ..
     )
     pages = list(db.session.execute(query).scalars())
     home = _home(locale)
-    items = ([home] if home is not None else []) + pages
-    current_path = current.path if current is not None else None
+    return ([home] if home is not None else []) + pages
 
-    def is_current(page: Page) -> bool:
-        if current_path is None:
-            return False
-        if page.path == HOME_PATH:
-            return current_path == HOME_PATH
-        return current_path == page.path or current_path.startswith(f"{page.path}/")
 
-    return tuple(Link(p.title, public_url(p, theme), is_current(p)) for p in items)
+def is_current(page: Page, current: Page | None) -> bool:
+    """La voce di una pagina è "corrente" anche per le sue sottopagine (tranne la home)."""
+    if current is None:
+        return False
+    if page.path == HOME_PATH:
+        return current.path == HOME_PATH
+    return current.path == page.path or current.path.startswith(f"{page.path}/")
+
+
+def auto_menu(locale: str, current: Page | None, theme: Theme) -> tuple[Link, ...]:
+    return tuple(
+        Link(p.title, public_url(p, theme), is_current(p, current)) for p in auto_pages(locale)
+    )
 
 
 def breadcrumbs(page: Page, theme: Theme) -> tuple[Link, ...]:

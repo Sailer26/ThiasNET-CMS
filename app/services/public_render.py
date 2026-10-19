@@ -10,7 +10,7 @@ from typing import Any
 from flask import current_app
 
 from app.models.page import Page
-from app.services import drafts, media_library, media_refs, public_pages, site_settings
+from app.services import drafts, media_library, media_refs, menus, public_pages, site_settings
 from app.services.blocks import get_registry
 from app.services.page_paths import HOME_PATH
 from app.services.public_texts import text
@@ -126,7 +126,7 @@ def page_context(
         og_image=og_image,
         site=site,
         mode=mode,
-        menu=public_pages.auto_menu(page.locale, page, theme),
+        menus=menus.site_menus(page.locale, page, theme),
         breadcrumbs=public_pages.breadcrumbs(page, theme),
         settings=values,
         css_version=css_version,
@@ -159,7 +159,7 @@ def not_found_context(locale: str, path: str) -> PageContext:
         page=view,
         media=media,
         site=site,
-        menu=public_pages.auto_menu(locale, None, theme),
+        menus=menus.site_menus(locale, None, theme),
         settings=values,
         css_version=css_version,
         analytics=_analytics(),

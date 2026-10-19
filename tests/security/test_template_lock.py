@@ -243,6 +243,11 @@ def test_theme_files_unchanged_after_full_admin_session(owner_client):
         "values": {"footer_note": "{% include 'x' %}"},
     }
     assert owner_client.put(f"{api}/settings/appearance", json=look).status_code == 200
+    menu_items = [
+        {"uid": "a" * 32, "url": "/pagina-{{7*7}}", "label": "{% include 'x' %}", "children": []}
+    ]
+    stored_menu = owner_client.put(f"{api}/menus/main", json={"version": 0, "items": menu_items})
+    assert stored_menu.status_code == 200, stored_menu.get_json()
     page_now = owner_client.get(f"{api}/pages/{page['id']}").get_json()["data"]
     trashed = owner_client.delete(
         f"{api}/pages/{page['id']}", json={"version": page_now["version"]}

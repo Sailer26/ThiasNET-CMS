@@ -57,6 +57,7 @@ class Link:
     title: str
     url: str
     current: bool = False
+    children: tuple[Link, ...] = ()  # sottovoci dei menu (D-145)
 
 
 @dataclass(frozen=True)
@@ -120,7 +121,7 @@ class PageContext:
     page: PageView
     site: SiteInfo
     mode: RenderMode = RenderMode.PUBLIC
-    menu: tuple[Link, ...] = ()
+    menus: Mapping[str, tuple[Link, ...]] = EMPTY  # per posizione del tema (D-145)
     breadcrumbs: tuple[Link, ...] = ()
     settings: Mapping[str, Any] = EMPTY
     css_version: str = ""

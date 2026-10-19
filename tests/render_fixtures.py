@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from html.parser import HTMLParser
+from types import MappingProxyType
 from typing import Any
 
 from app.services.render import Renderer
@@ -29,7 +30,7 @@ def render_doc(
     renderer: Renderer | None = None,
 ) -> str:
     view = normalize_document(theme, document, page_id=1, locale="it", path=path, is_home=is_home)
-    context = PageContext(page=view, site=SITE, mode=mode, menu=menu)
+    context = PageContext(page=view, site=SITE, mode=mode, menus=MappingProxyType({"main": menu}))
     return (renderer or Renderer(theme, strict=True)).render_page(context)
 
 
