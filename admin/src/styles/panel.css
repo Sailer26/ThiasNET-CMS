@@ -160,6 +160,7 @@ h1[tabindex="-1"]:focus { outline: none; }
 /* Telefono (D-10, D-97): l'albero si consulta soltanto */
 @media (max-width: 600px) {
   .phone-only { display: block; margin-bottom: 1rem; }
+  .row__phone { margin: 0.5rem 0 0; }
   .row__actions { display: none; }
   .screen__head .button { display: none; }
   .shell__user { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; line-height: var(--target); }

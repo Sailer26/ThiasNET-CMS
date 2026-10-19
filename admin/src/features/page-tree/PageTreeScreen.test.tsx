@@ -242,4 +242,40 @@ describe("albero delle pagine", () => {
     expect(window.location.pathname).toBe("/admin/pagine/2");
     expect(await screen.findByRole("alert")).toHaveTextContent("Pagina non trovata");
   });
+
+  test("dal telefono: Pubblica le modifiche con il controllo e Pubblica comunque (D-136)", async () => {
+    const { api, user } = setup();
+    api.on("GET", "/pages/4/draft", { data: { version: 3, data: {}, from_published: false, updated_at: null } });
+    api.on("GET", "/pages/4/checks", {
+      data: { blocking: [], warnings: [{ path: "seo/description", code: "seo_empty", message: "Manca la descrizione." }] },
+    });
+    api.on("POST", "/pages/4/publish", { data: node("Orari", { id: 4, status: "published" }) });
+    await user.click(await screen.findByRole("button", { name: 'Pubblica le modifiche di "Orari"' }));
+    expect(screen.queryByRole("button", { name: 'Pubblica le modifiche di "Servizi"' })).not.toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog", { name: "Pubblicare le modifiche?" });
+    expect(await within(dialog).findByText(/Manca la descrizione/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Pubblica comunque" }));
+    expect(await screen.findByText('"Orari" è online con le modifiche.')).toBeInTheDocument();
+    expect(api.callsTo("POST", "/pages/4/publish")[0]?.body).toEqual({ draft_version: 3 });
+  });
+
+  test("dal telefono: con un errore da correggere non si pubblica", async () => {
+    const { api, user } = setup();
+    api.on("GET", "/pages/4/draft", { data: { version: 3, data: {}, from_published: false, updated_at: null } });
+    api.on("GET", "/pages/4/checks", {
+      data: { blocking: [{ path: "zones/main/0/data/media_id", code: "alt_missing", message: "Aggiungi il testo alternativo all'immagine" }], warnings: [] },
+    });
+    await user.click(await screen.findByRole("button", { name: 'Pubblica le modifiche di "Orari"' }));
+    const dialog = await screen.findByRole("dialog", { name: "Pubblicare le modifiche?" });
+    expect(await within(dialog).findByText(/Aggiungi il testo alternativo/)).toBeInTheDocument();
+    expect(dialog).toHaveTextContent("Correggi dal computer");
+    expect(within(dialog).getByRole("button", { name: "Pubblica" })).toBeDisabled();
+    expect(api.callsTo("POST", "/pages/4/publish")).toHaveLength(0);
+  });
+
+  test("dal telefono: senza il permesso di pubblicare niente pulsante", async () => {
+    setup(site(), { ...ME, role: "editor", can_publish: false, permissions: ["content.edit", "profile"] });
+    expect(await screen.findByRole("link", { name: "Orari" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Pubblica le modifiche/ })).not.toBeInTheDocument();
+  });
 });

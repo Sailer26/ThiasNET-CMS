@@ -16,11 +16,12 @@ import { FormDialog } from "../../ui/FormDialog";
 import { NoticeArea, type NoticeState } from "../../ui/Notice";
 import { AddressDialog, CreatePageDialog, MoveDialog } from "./dialogs";
 import { PageRow, type RowAction } from "./PageRow";
+import { PhonePublish } from "./PhonePublish";
 import { hasHome, reordered } from "./tree";
 
 type DialogState =
   | { kind: "create"; home: boolean }
-  | { kind: "move" | "address" | "trash"; node: PageNode };
+  | { kind: "move" | "address" | "trash" | "publish"; node: PageNode };
 
 /** Errori che dicono: l'albero sullo schermo non è più quello vero. Si avvisa e si ricarica (D-92). */
 const STALE_CODES = new Set([
@@ -231,6 +232,17 @@ export function PageTreeScreen() {
               true,
             )
           }
+        />
+      )}
+      {dialog?.kind === "publish" && (
+        <PhonePublish
+          node={dialog.node}
+          onClose={() => setDialog(null)}
+          onDone={(text) => {
+            setDialog(null);
+            setNotice({ kind: "success", text });
+            void reload();
+          }}
         />
       )}
       {dialog?.kind === "trash" && (

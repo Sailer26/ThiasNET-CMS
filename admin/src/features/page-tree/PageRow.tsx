@@ -4,7 +4,7 @@ import { paths } from "../../router/router";
 import { it } from "../../text/it";
 import { needsPublishToTrash, statusLabels } from "./tree";
 
-export type RowAction = "up" | "down" | "move" | "address" | "trash" | "trash-blocked";
+export type RowAction = "up" | "down" | "move" | "address" | "trash" | "trash-blocked" | "publish";
 
 interface Props {
   node: PageNode;
@@ -19,16 +19,18 @@ interface Props {
 
 interface ActionProps {
   label: string;
+  ariaLabel?: string;
   enabled: boolean;
   danger?: boolean;
   onPress: () => void;
 }
 
 /** aria-disabled invece di disabled: il pulsante resta raggiungibile e non perde il focus. */
-function Action({ label, enabled, danger = false, onPress }: ActionProps) {
+function Action({ label, ariaLabel, enabled, danger = false, onPress }: ActionProps) {
   return (
     <button
       type="button"
+      aria-label={ariaLabel}
       className={`button button--small${danger ? " button--danger" : ""}`}
       aria-disabled={!enabled}
       onClick={() => {
@@ -59,6 +61,11 @@ export function PageRow({ node, siteUrl, canUp, canDown, canPublish, locked, onA
           ))}
         </span>
       </div>
+      {canPublish && node.has_draft && (
+        <div className="row__phone phone-only">
+          <Action label={it.tree.phonePublish} ariaLabel={it.tree.phonePublishOf(node.title)} enabled={!locked} onPress={act("publish")} />
+        </div>
+      )}
       <div className="row__actions" role="group" aria-label={it.tree.actions(node.title)}>
         {!node.is_home && (
           <>
