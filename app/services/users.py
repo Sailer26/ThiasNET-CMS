@@ -174,7 +174,10 @@ def update_user(actor: User, target: User, changes: Mapping[str, Any]) -> User:
     if "password" in changes:
         set_password(target, changes["password"])
         diff["credentials"] = "reset"
-    audit.record("user.updated", actor_id=actor.id, entity="user", entity_id=target.id, diff=diff)
+    if diff:  # niente righe vuote nel registro quando non cambia nulla
+        audit.record(
+            "user.updated", actor_id=actor.id, entity="user", entity_id=target.id, diff=diff
+        )
     with _unique_email_guard():
         db.session.commit()
     return target

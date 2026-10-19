@@ -57,6 +57,16 @@ def test_owner_sees_everyone(app: Flask, login_as: LoginAs) -> None:
     assert owner.get(USERS).get_json()["meta"]["total"] == 3
 
 
+def test_saving_without_changes_writes_no_audit_row(app: Flask, login_as: LoginAs) -> None:
+    from tests.pages_helpers import actions
+
+    admin, _ = login_as("admin")
+    _, editor = login_as("editor")
+    before = actions(app).count("user.updated")
+    assert admin.patch(f"{USERS}/{editor.id}", json={"active": True}).status_code == 200
+    assert actions(app).count("user.updated") == before
+
+
 def test_list_limit_is_bounded(login_as: LoginAs) -> None:
     owner, _ = login_as("owner")
     assert owner.get(f"{USERS}?limit=101").status_code == 422

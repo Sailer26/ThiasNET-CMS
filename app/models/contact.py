@@ -35,3 +35,5 @@ class ContactMessage(Base):
     sent_at: Mapped[datetime | None] = mapped_column(UtcDateTime(), default=None, index=True)
     send_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     last_error: Mapped[str | None] = mapped_column(String(64), default=None)  # solo un codice
+    # D-126: letto da qualcuno nel pannello (stato comune a tutti gli amministratori).
+    read_at: Mapped[datetime | None] = mapped_column(UtcDateTime(), default=None, index=True)

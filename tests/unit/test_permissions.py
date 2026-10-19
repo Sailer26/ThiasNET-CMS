@@ -10,11 +10,26 @@ from app.services.permissions import Permission, has_permission
 P = Permission
 MATRIX: dict[tuple[str, bool], set[Permission]] = {
     ("owner", False): set(Permission),
-    ("admin", False): {P.PROFILE, P.CONTENT_EDIT, P.PUBLISH, P.USERS_VIEW, P.USERS_MANAGE},
+    # D-126: i messaggi del modulo contatti li leggono amministratori e owner, mai gli editor.
+    ("admin", False): {
+        P.PROFILE,
+        P.CONTENT_EDIT,
+        P.PUBLISH,
+        P.USERS_VIEW,
+        P.USERS_MANAGE,
+        P.MESSAGES_VIEW,
+    },
     ("editor", False): {P.PROFILE, P.CONTENT_EDIT},
     ("editor", True): {P.PROFILE, P.CONTENT_EDIT, P.PUBLISH},
     # can_publish non dà nulla in più a chi pubblica già
-    ("admin", True): {P.PROFILE, P.CONTENT_EDIT, P.PUBLISH, P.USERS_VIEW, P.USERS_MANAGE},
+    ("admin", True): {
+        P.PROFILE,
+        P.CONTENT_EDIT,
+        P.PUBLISH,
+        P.USERS_VIEW,
+        P.USERS_MANAGE,
+        P.MESSAGES_VIEW,
+    },
 }
 
 
@@ -39,4 +54,5 @@ def test_permission_values_are_stable() -> None:
         "users.manage",
         "roles.manage",
         "audit.view",
+        "messages.view",
     }

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, ForeignKey, Integer, String
+from sqlalchemy import JSON, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models import Base
@@ -14,6 +14,11 @@ from app.models.types import UtcDateTime, utcnow
 
 class AuditLog(Base):
     __tablename__ = "audit_log"
+    # D-124: filtri del registro per tipo di azione e per oggetto.
+    __table_args__ = (
+        Index("ix_audit_log_action_created_at", "action", "created_at"),
+        Index("ix_audit_log_entity_entity_id", "entity", "entity_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int | None] = mapped_column(
