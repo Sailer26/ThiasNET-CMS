@@ -16,5 +16,6 @@ from app.api.admin import (  # noqa: E402, F401
     page_drafts,
     pages,
     site,
+    support,
     users,
 )

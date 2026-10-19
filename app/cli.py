@@ -16,6 +16,7 @@ from flask.cli import with_appcontext
 from app.cli_contact import CONTACT_COMMANDS
 from app.cli_media import MEDIA_COMMANDS
 from app.cli_pages import PAGE_COMMANDS
+from app.cli_support import SUPPORT_COMMANDS
 from app.cli_users import USER_COMMANDS
 from app.services.theme import ThemeValidationError, load_theme
 from app.services.theme_lint import lint_theme
@@ -60,5 +61,11 @@ def theme_check_command() -> None:
 
 def register_cli(app: Flask) -> None:
     app.cli.add_command(theme_check_command)
-    for command in (*USER_COMMANDS, *PAGE_COMMANDS, *CONTACT_COMMANDS, *MEDIA_COMMANDS):
+    for command in (
+        *USER_COMMANDS,
+        *PAGE_COMMANDS,
+        *CONTACT_COMMANDS,
+        *MEDIA_COMMANDS,
+        *SUPPORT_COMMANDS,
+    ):
         app.cli.add_command(command)

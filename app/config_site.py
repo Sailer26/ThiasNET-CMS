@@ -91,6 +91,8 @@ def _mail(name: str, environ: Mapping[str, str]) -> dict[str, Any]:
         "SMTP_PASSWORD": environ.get("SMTP_PASSWORD") or None,
         "SMTP_SECURITY": security,
         "CONTACT_RECIPIENT": environ.get("CONTACT_RECIPIENT") or None,
+        # D-134: dove arrivano le richieste "Chiedi a Thias"; mai modificabile dal pannello.
+        "SUPPORT_EMAIL": environ.get("SUPPORT_EMAIL") or None,
     }
 
 
