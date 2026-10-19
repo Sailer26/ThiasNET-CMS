@@ -122,4 +122,26 @@ describe("impostazioni (6a, D-143)", () => {
     expect(screen.queryByRole("link", { name: "Impostazioni" })).not.toBeInTheDocument();
     expect(api.callsTo("GET", "/settings")).toHaveLength(0);
   });
+
+  test("dopo il salvataggio il nome nuovo compare in alto; l'errore sparisce correggendo", async () => {
+    const api = start();
+    api.on("GET", "/settings", { data: sections() });
+    api.on(
+      "PUT",
+      "/settings/site",
+      { status: 422, error: { code: "invalid_content", message: "Campi non validi", details: [{ path: "name", code: "required", message: "Campo obbligatorio" }] } },
+      { data: { ...sections(1, "Comune di Locarno").site } },
+    );
+    const user = userEvent.setup();
+    render(<App />);
+    const site = await screen.findByRole("region", { name: "Dati del sito" });
+    await user.click(within(site).getByRole("button", { name: "Salva" }));
+    expect(await within(site).findByText("Campo obbligatorio")).toBeInTheDocument();
+    const name = within(site).getByLabelText(/Nome del sito/);
+    await user.clear(name);
+    await user.type(name, "Comune di Locarno");
+    expect(within(site).queryByText("Campo obbligatorio")).not.toBeInTheDocument();
+    await user.click(within(site).getByRole("button", { name: "Salva" }));
+    await waitFor(() => expect(document.querySelector(".shell__site")).toHaveTextContent("Comune di Locarno"));
+  });
 });

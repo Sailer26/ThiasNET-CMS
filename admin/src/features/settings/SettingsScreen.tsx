@@ -3,6 +3,7 @@ import { fetchSettings, storeSettings, type SettingsScope, type SettingsSection,
 import { ApiError, errorMessage, isConflict } from "../../api/client";
 import { st } from "../../text/settings";
 import { NoticeArea, type NoticeState } from "../../ui/Notice";
+import { useSession } from "../../session/context";
 import { useAction } from "../../ui/useAction";
 import { setPath, type Data, type Path } from "../editor/model/document";
 import { isFieldErrors } from "../editor/model/errorPaths";
@@ -26,7 +27,9 @@ function SettingsForm({ scope, title, help, initial, onReload }: FormProps) {
   const [errors, setErrors] = useState<ReadonlyMap<string, string>>(NONE);
   const [notice, setNotice] = useState<NoticeState | null>(null);
   const action = useAction();
+  const { renameSite } = useSession();
   const titleId = `settings-${scope}`;
+  const logo = values.logo;
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -38,11 +41,13 @@ function SettingsForm({ scope, title, help, initial, onReload }: FormProps) {
         setVersion(saved.version);
         setErrors(NONE);
         setNotice({ kind: "success", text: st.saved });
+        if (scope === "site" && typeof saved.values.name === "string") renameSite(saved.values.name);
       } catch (error) {
         if (error instanceof ApiError && error.code === "invalid_content" && isFieldErrors(error.details)) {
           setErrors(new Map(error.details.map((detail) => [detail.path, detail.message])));
         }
         if (isConflict(error)) {
+          setErrors(NONE);
           setNotice({ kind: "error", text: errorMessage(error), action: { label: st.reload, run: onReload } });
           return;
         }
@@ -57,15 +62,23 @@ function SettingsForm({ scope, title, help, initial, onReload }: FormProps) {
       <p className="hint">{help}</p>
       <NoticeArea notice={notice} onClose={() => setNotice(null)} />
       <form className="form" onSubmit={submit} noValidate>
-        <SchemaForm
-          schema={initial.schema}
-          data={values as Data}
-          idPrefix={titleId}
-          errors={errors}
-          unsaved={NONE}
-          pages={[]}
-          onChange={(path: Path, value: unknown) => setValues((current) => setPath(current, path, value) as SettingsValues)}
-        />
+        {/* Il logo scelto si vede subito: i media si leggono dai valori del modulo. */}
+        <MediaProvider ids={typeof logo === "number" ? [logo] : []}>
+          <SchemaForm
+            schema={initial.schema}
+            data={values as Data}
+            idPrefix={titleId}
+            errors={errors}
+            unsaved={NONE}
+            pages={[]}
+            onChange={(path: Path, value: unknown) => {
+              setValues((current) => setPath(current, path, value) as SettingsValues);
+              const key = path.join("/");
+              // L'errore di un campo sparisce appena lo si corregge.
+              setErrors((current) => (current.has(key) ? new Map([...current].filter(([k]) => k !== key)) : current));
+            }}
+          />
+        </MediaProvider>
         {action.error && (
           <p className="form__error" role="alert">
             {action.error}
@@ -100,7 +113,6 @@ export function SettingsScreen() {
     load();
   }, [load]);
 
-  const logo = sections?.site.values.logo;
   return (
     <section className="screen" aria-labelledby="settings-title">
       <div className="screen__head">
@@ -115,7 +127,7 @@ export function SettingsScreen() {
       )}
       {!sections && !error && <p role="status">{st.loading}</p>}
       {sections && (
-        <MediaProvider ids={typeof logo === "number" ? [logo] : []}>
+        <>
           {/* key con la versione: dopo "Ricarica" il modulo riparte dai valori del server */}
           <SettingsForm key={`site-${sections.site.version}`} scope="site" title={st.site} help={st.siteHelp} initial={sections.site} onReload={load} />
           <SettingsForm
@@ -126,7 +138,7 @@ export function SettingsScreen() {
             initial={sections.appearance}
             onReload={load}
           />
-        </MediaProvider>
+        </>
       )}
     </section>
   );

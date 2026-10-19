@@ -111,6 +111,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       can: (permission: PermissionName) => permissions.has(permission),
       logout: () => leave(logout),
       logoutEverywhere: () => leave(logoutEverywhere),
+      renameSite: (name: string) =>
+        setState((current) => (current.status === "ready" ? { ...current, site: { ...current.site, name } } : current)),
     };
   }, [state, reloadKey, leave]);
 

@@ -35,7 +35,10 @@ def not_found(message: str = "Risorsa non trovata") -> ServiceError:
 
 
 def version_conflict(
-    current_version: int, updated_by: int | None, updated_at: datetime | None
+    current_version: int,
+    updated_by: int | None,
+    updated_at: datetime | None,
+    subject: str = "questa pagina",
 ) -> ServiceError:
     """Blocco ottimistico (D-44): qualcun altro ha salvato nel frattempo. Il nome di chi
     ha salvato serve al pannello anche per chi non può leggere gli utenti (D-92)."""
@@ -43,7 +46,7 @@ def version_conflict(
 
     return ServiceError(
         "version_conflict",
-        "Qualcun altro ha modificato questa pagina: ricarica per vedere le ultime modifiche",
+        f"Qualcun altro ha modificato {subject}: ricarica per vedere le ultime modifiche",
         409,
         details={
             "current_version": current_version,

@@ -114,6 +114,7 @@ def test_version_conflict_says_who_saved(admin: FlaskClient) -> None:
         ({"name": "Ok", "facebook": "javascript:alert(1)"}, ("facebook", "invalid_url")),
         ({"name": "Ok", "logo": 999999}, ("logo", "media_missing")),
         ({"name": "Ok", "logo": "1"}, ("logo", "invalid_type")),
+        ({"name": "Ok", "logo": 10**20}, ("logo", "invalid_type")),  # SQLite non lo confronta
         ({"name": "Ok", "matomo_url": "https://stat.example.ch"}, ("matomo_url", "unknown")),
         ({"name": "Ok", "site_url": "https://altro.ch"}, ("site_url", "unknown")),
     ],
@@ -228,3 +229,73 @@ def test_logo_usage_survives_page_usage(admin: FlaskClient) -> None:
     assert put(admin, "site", {"name": "Ok", "logo": logo["id"]}).status_code == 200
     used = admin.get(f"{API}/media/{logo['id']}").get_json()["data"]["used_by"]
     assert {u["where"] for u in used} == {"draft", "settings"}
+
+
+def test_logo_needs_alt_text(admin: FlaskClient) -> None:
+    bare = uploaded(admin)  # senza testo alternativo
+    assert ("logo", "alt_missing") in details(
+        put(admin, "site", {"name": "Ok", "logo": bare["id"]})
+    )
+
+
+def test_saved_by_someone_else_meanwhile_is_409(app: Flask, admin: FlaskClient) -> None:
+    from app.models.settings import SettingsRow
+
+    assert read(admin)["site"]["version"] == 0
+    with app.app_context():  # un altro salva per primo
+        db.session.add(SettingsRow(scope="site", values_json={"name": "Altro"}, version=1))
+        db.session.commit()
+    response = put(admin, "site", {"name": "Mio"}, version=0)
+    assert (response.status_code, error_code(response)) == (409, "version_conflict")
+    assert "queste impostazioni" in response.get_json()["error"]["message"]
+
+
+def test_defaults_are_not_stored_and_a_cleared_field_goes_back(
+    app: Flask, admin: FlaskClient
+) -> None:
+    """D-144: si salva solo ciò che differisce dal predefinito."""
+    from app.models.settings import SettingsRow
+
+    look = put(admin, "appearance", {"accent_color": "#0B5FFF", "header_style": "dark"})
+    assert look.status_code == 200
+    with app.app_context():
+        row = db.session.get(SettingsRow, "appearance")
+        assert row is not None and row.values_json == {"header_style": "dark"}
+    assert put(admin, "site", {"name": "Ok", "contact_recipient": "a@prova.ch"}).status_code == 200
+    cleared = put(admin, "site", {"name": "Ok"})
+    assert cleared.get_json()["data"]["values"].get("contact_recipient") == app.config.get(
+        "CONTACT_RECIPIENT"
+    )
+
+
+def test_old_recipient_is_told_when_the_address_changes(app: Flask, admin: FlaskClient) -> None:
+    from app.services import mailer
+
+    assert (
+        put(admin, "site", {"name": "Ok", "contact_recipient": "vecchio@prova.ch"}).status_code
+        == 200
+    )
+    before = len(app.extensions.get(mailer.OUTBOX_KEY, []))
+    assert (
+        put(admin, "site", {"name": "Ok", "contact_recipient": "nuovo@prova.ch"}).status_code == 200
+    )
+    sent = app.extensions.get(mailer.OUTBOX_KEY, [])[before:]
+    assert [m["To"] for m in sent] == ["vecchio@prova.ch"]
+    assert "nuovo@prova.ch" in sent[0].get_content()
+
+
+def test_audit_does_not_keep_contact_details(app: Flask, admin: FlaskClient) -> None:
+    from app.models.audit import AuditLog
+
+    assert put(admin, "site", {"name": "Ok", "phone": "091 111 11 11"}).status_code == 200
+    with app.app_context():
+        last = (
+            db.session.execute(
+                select(AuditLog)
+                .where(AuditLog.action == "settings.site_updated")
+                .order_by(AuditLog.id.desc())
+            )
+            .scalars()
+            .first()
+        )
+        assert last is not None and (last.diff_json or {})["phone"] == "(modificato)"

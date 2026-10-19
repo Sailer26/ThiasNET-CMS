@@ -14,6 +14,8 @@ from typing import Any
 
 from flask import current_app
 
+from app.services import settings_store
+from app.services.settings_fields import SOCIAL_KEYS
 from app.services.theme import Theme, active_theme
 
 HEX_COLOR = frozenset("0123456789ABCDEF")
@@ -34,9 +36,6 @@ class SiteSettings:
 
 
 def current() -> SiteSettings:
-    from app.services import settings_store  # usa il database: import solo qui
-    from app.services.settings_fields import SOCIAL_KEYS
-
     config = current_app.config
     values = settings_store.effective("site", active_theme())
     return SiteSettings(
@@ -54,8 +53,6 @@ def current() -> SiteSettings:
 
 
 def theme_settings(theme: Theme) -> Mapping[str, Any]:
-    from app.services import settings_store
-
     return MappingProxyType(settings_store.effective("appearance", theme))
 
 

@@ -10,6 +10,8 @@ export interface Session {
   can: (permission: PermissionName) => boolean;
   logout: () => Promise<void>;
   logoutEverywhere: () => Promise<void>;
+  /** Dopo "Dati del sito" (6a): il nome nella testata cambia senza ricaricare. */
+  renameSite: (name: string) => void;
 }
 
 export const SessionContext = createContext<Session | null>(null);

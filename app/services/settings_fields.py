@@ -28,6 +28,8 @@ EMAIL_RE = re.compile(
 )
 EMAIL_MAX_LENGTH = 254
 URL_MAX_LENGTH = 2048
+MAX_ID = 2**31 - 1  # oltre, SQLite non lo sa nemmeno confrontare (errore 500)
+TEXT_MAX_LENGTH = 2000  # testi del tema senza "max"
 
 
 @dataclass(frozen=True)
@@ -79,7 +81,10 @@ SITE_FIELDS: tuple[Field, ...] = (
         "email",
         "Email che riceve i messaggi del sito",
         max=EMAIL_MAX_LENGTH,
-        help="Qui arrivano i messaggi del modulo contatti.",
+        help=(
+            "Qui arrivano i messaggi del modulo contatti. "
+            "Se la lasci vuota, vanno all'indirizzo impostato da ThiasNET."
+        ),
     ),
 )
 SOCIAL_KEYS = ("facebook", "instagram", "linkedin", "youtube")
@@ -104,24 +109,24 @@ def theme_fields(theme: Theme) -> tuple[Field, ...]:
 
 
 def _field_schema(field: Field) -> dict[str, Any]:
-    schema: dict[str, Any] = {"title": field.label}
+    result: dict[str, Any] = {"title": field.label}
     if field.help:
-        schema["description"] = field.help
+        result["description"] = field.help
     if field.type in {"text", "textarea", "email"}:
-        schema.update(type="string", maxLength=field.max or URL_MAX_LENGTH)
+        result.update(type="string", maxLength=field.max or TEXT_MAX_LENGTH)
     elif field.type == "boolean":
-        schema["type"] = "boolean"
+        result["type"] = "boolean"
     elif field.type == "select":
-        schema.update(type="string", enum=list(field.options))
+        result.update(type="string", enum=list(field.options))
     elif field.type == "color" and field.palette:
-        schema.update({"type": "string", "enum": list(field.palette), "x-color": True})
+        result.update({"type": "string", "enum": list(field.palette), "x-color": True})
     elif field.type == "color":
-        schema.update(type="string", pattern=HEX_COLOR_RE.pattern, maxLength=7)
+        result.update(type="string", pattern=HEX_COLOR_RE.pattern, maxLength=7)
     elif field.type == "url":
-        schema.update(type="string", format="safe-url", maxLength=URL_MAX_LENGTH)
+        result.update(type="string", format="safe-url", maxLength=URL_MAX_LENGTH)
     elif field.type == "media":
-        schema.update({"type": "integer", "minimum": 1, "x-media": "image"})
-    return schema
+        result.update({"type": "integer", "minimum": 1, "maximum": MAX_ID, "x-media": "image"})
+    return result
 
 
 def schema(fields: Iterable[Field]) -> dict[str, Any]:
@@ -141,7 +146,7 @@ def _text(field: Field, value: Any) -> tuple[Any, str | None]:
     if not isinstance(value, str):
         return None, "invalid_type"
     cleaned = clean_plain(value) if field.type == "textarea" else clean_line(value)
-    if field.max is not None and len(cleaned) > field.max:
+    if len(cleaned) > (field.max or TEXT_MAX_LENGTH):
         return None, "max_length"
     bad_email = len(cleaned) > EMAIL_MAX_LENGTH or not EMAIL_RE.fullmatch(cleaned)
     if field.type == "email" and cleaned and bad_email:
@@ -190,7 +195,7 @@ def check(field: Field, value: Any) -> tuple[Any, str | None]:
             return None, "invalid_type"
         return (value, None) if value in field.options else (None, "not_in_options")
     if field.type == "media":
-        valid = isinstance(value, int) and not isinstance(value, bool) and value >= 1
+        valid = isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= MAX_ID
         return (value, None) if valid else (None, "invalid_type")
     return None, "invalid_type"
 
@@ -207,14 +212,19 @@ MESSAGES = {
     "not_in_options": "Scelta non prevista dal tema",
     "media_missing": "Il file non c'è più nella libreria",
     "media_not_image": "Qui serve un'immagine",
+    "alt_missing": "Aggiungi il testo alternativo all'immagine (nella libreria)",
 }
 
 
 def _media_problem(media_id: int) -> str | None:
-    kind = db.session.execute(select(Media.kind).where(Media.id == media_id)).scalar_one_or_none()
-    if kind is None:
+    """Come per le pagine (D-77): un'immagine sul sito ha sempre il testo alternativo."""
+    found = db.session.execute(select(Media.kind, Media.alt).where(Media.id == media_id)).first()
+    if found is None:
         return "media_missing"
-    return None if kind == MediaKind.IMAGE else "media_not_image"
+    kind, alt = found
+    if kind != MediaKind.IMAGE:
+        return "media_not_image"
+    return None if alt.strip() else "alt_missing"
 
 
 def validate(

@@ -28,7 +28,7 @@ def record(
     old = (
         select(EntityRevision.id)
         .where(EntityRevision.entity_type == entity_type, EntityRevision.entity_key == entity_key)
-        .order_by(EntityRevision.id.desc())
+        .order_by(EntityRevision.created_at.desc(), EntityRevision.id.desc())
         .offset(KEPT)
     )
     stale = list(db.session.execute(old).scalars())

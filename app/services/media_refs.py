@@ -16,6 +16,7 @@ from sqlalchemy import select
 from app.extensions import db
 from app.models.media import Media, MediaKind
 from app.models.page import Block, Page, PageDraft, PageRevision, PageStatus, RevisionKind
+from app.services import settings_store
 from app.services.blocks import FieldError, MediaRef, get_registry
 from app.services.page_paths import live
 
@@ -121,8 +122,6 @@ SOURCES = (_published, _drafts, _scheduled)
 
 
 def _is_logo(media_id: int) -> bool:
-    from app.services import settings_store  # evita l'import circolare con le impostazioni
-
     return settings_store.stored("site").get("logo") == media_id
 
 
