@@ -132,11 +132,19 @@ SPA ──fetch──► /api/admin/* (cookie di sessione SameSite=Strict + head
 ```
 - `app/panel.py` (route) e `app/services/panel_assets.py` (percorsi, CSP); nessun Jinja, solo GET.
 - `admin/src/api/client.ts` è l'unico punto delle chiamate: busta `{success, data, error, meta}`, token CSRF
-  solo in memoria, un nuovo tentativo dopo un 403 `csrf`, evento di sessione scaduta sui 401 (D-90).
+  solo in memoria, un nuovo tentativo dopo un 403 `csrf`, evento di sessione scaduta solo sui 401
+  `unauthorized` (D-90, D-127): password o codice sbagliati restano errori del modulo.
 - `admin/src/session/` apre una finestra di nuovo accesso sopra lo schermo; se entra un altro utente il
   pannello si ricarica da capo. Nessun timer verso l'API.
 - `admin/src/features/page-tree/tree.ts` contiene le regole dell'albero (profondità, destinazioni, ordine)
   come funzioni pure; il server ricontrolla tutto.
+- `admin/src/features/admin/` (5c-2): Messaggi, Utenti, Registro, Profilo. Il menu e le rotte seguono i
+  permessi della sessione (`session/can.ts`); un indirizzo senza permesso mostra "Non hai accesso" e non chiama
+  l'API (D-130). Il numero dei messaggi da leggere è un piccolo store (`unread.ts`) letto all'avvio, quando la
+  finestra torna visibile e dopo ogni azione, mai con un timer. Gli elenchi controllano la forma della risposta.
+- API dell'amministrazione: `GET/PATCH/DELETE /messages[/<id>]`, `GET /messages/summary` (`messages.view`,
+  admin e owner), `GET /audit` con filtri controllati (`audit.view`, solo owner), `/users`, `/auth/password`,
+  `/auth/totp/*`. L'eliminazione di un messaggio scrive nel registro solo l'id.
 - In sviluppo: `tasks.py dev` (Flask, 5000) + `tasks.py admin-dev` (Vite, 127.0.0.1:5173/admin/, proxy verso Flask).
 - `admin/scripts/check-dist.mjs` fa fallire la build con script o stili inline, `data:` o indirizzi esterni;
   `tests/security/test_admin_source.py` controlla il sorgente anche senza Node (D-98).

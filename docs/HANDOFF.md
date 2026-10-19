@@ -1,6 +1,6 @@
 # Passaggio di consegne — ThiasNET CMS (per una nuova sessione / nuovo account Claude)
 
-Aggiornato: 2026-10-18. Leggi questo file **dopo** `CLAUDE.md` e prima di qualsiasi altra cosa.
+Aggiornato: 2026-10-19. Leggi questo file **dopo** `CLAUDE.md` e prima di qualsiasi altra cosa.
 
 ## 1. Dove siamo
 - Repository: https://github.com/Sailer26/ThiasNET-CMS (branch di default `main`)
@@ -14,8 +14,9 @@ Aggiornato: 2026-10-18. Leggi questo file **dopo** `CLAUDE.md` e prima di qualsi
 - **Fase 5a — Pannello: telaio, accesso, pagine:** completata sul branch `phase-5-admin`, partito da `phase-4-media`.
 - **Fase 5b-1 — Editor della pagina:** completata sul branch `phase-5b-editor`, partito da `phase-5-admin` (1036 test Python, 170 del pannello, review ECC fatta). **Nessuna delle PR 4/5a/5b-1 risulta unita in `main`**: la PR da `phase-5b-editor` verso `main` le contiene tutte. Prossima: **5b-2**.
 - **Fase 5b-2 — Media nell'editor, trascinamento, aiuti, primo e2e:** completata sul branch `phase-5b2-editor`, partito da `phase-5b-editor` (1059 test Python, 205 del pannello, 1 e2e, review ECC fatta). La PR da `phase-5b2-editor` verso `main` contiene anche le Fasi 4, 5a e 5b-1 se non sono ancora unite. Prossima: **5c**.
-- **Fase 5c-1 — Libreria e pagine:** completata sul branch `phase-5c-admin`, partito da `phase-5b2-editor` (1076 test Python, 227 del pannello, 3 e2e, review ECC fatta). Prossima: **5c-2 — Amministrazione** (messaggi, utenti, registro, profilo) sul branch `phase-5c2-admin`.
-- Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-115). Prevalgono sugli altri documenti.
+- **Fase 5c-1 — Libreria e pagine:** completata sul branch `phase-5c-admin`, partito da `phase-5b2-editor` (1076 test Python, 227 del pannello, 3 e2e, review ECC fatta). Prossima: **5c-2**.
+- **Fase 5c-2 — Amministrazione:** completata sul branch `phase-5c2-admin`, partito da `phase-5c-admin` (1103 test Python, 249 del pannello, 4 e2e, review ECC fatta). `origin/main` è ancora alla PR #3: la PR da `phase-5c2-admin` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **5d — Aiuto e prova sul campo**.
+- Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-131). Prevalgono sugli altri documenti.
 
 ## 2. Preparare l'ambiente (se la `.venv` non c'è)
 ```bash
@@ -86,9 +87,16 @@ nuovo blocco, testo, salvataggio, anteprima, pubblicazione (il testo compare sul
   Gli e2e sono esclusi dalla suite normale (`-m 'not e2e'` in `pyproject.toml`); in CI c'è un job Linux con Chromium.
 - I media nell'editor passano da `MediaProvider` (`admin/src/features/media-picker/`): un'unica lettura `?ids=` a gruppi di 100.
 
-## 9. Prossimo passo: Fase 5c — Libreria e amministrazione
-1. Branch `phase-5c-admin` dall'ultimo branch (o da `main` se le PR sono unite).
-2. Piano con `ecc:planner` (sezione 5c di `docs/PIANO-FASE-5.md`), al massimo 4 domande per Thias.
-3. Pagina Media completa (cartelle, punto focale, Sostituisci file, pagine che usano un media), revisioni e
-   programmazione nell'editor, utenti, registro attività, profilo (password, TOTP), messaggi del modulo contatti (API nuova).
+## 9. Fase 5c — fatta
+- 5c-1: pagina Media, versioni e programmazione nell'editor (ora svizzera con `Intl`, `siteTime.ts`).
+- 5c-2: `admin/src/features/admin/` (Messaggi, Utenti, Registro, Profilo), migrazione `0008` (`read_at` dei
+  messaggi, indici del registro), permesso `messages.view`. Gli e2e hanno anche la fixture `live_app` (l'app del
+  server e2e) per preparare dati che il pannello non crea, come i messaggi.
+- Dopo un nuovo accesso il pannello resta sull'indirizzo di prima (anche il profilo): negli e2e controllare quello.
+
+## 10. Prossimo passo: Fase 5d — Aiuto e prova sul campo
+1. Branch `phase-5d-help` da `phase-5c2-admin` (o da `main` se le PR sono unite).
+2. Piano con `ecc:planner` (sezione 5d di `docs/PIANO-FASE-5.md`), al massimo 4 domande per Thias.
+3. Tour al primo accesso, suggerimenti accanto ai campi, controllo prima di pubblicare, "Chiedi a Thias",
+   azioni rapide da telefono, rimandi della 5c-2 (vedi ROADMAP), preparazione del test d'uso con un cliente vero.
 4. Test prima, codice, review ECC in parallelo, docs, push, link della PR.

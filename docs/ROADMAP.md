@@ -101,16 +101,26 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - [x] Versioni nell'editor (Guarda, Ripristina nella bozza) e programmazione nell'ora svizzera
 - [x] Chiavi stabili negli elenchi, Vimeo privato, link brevi spiegati; e2e per media e trascinamento
 
-**5c-2 — Amministrazione** · **5d — Aiuto e prova sul campo** (criteri qui sotto)
+**5c-2 — Amministrazione** (D-123 … D-127, D-130, D-131)
+- [x] Messaggi del modulo contatti: elenco con ricerca e "Da leggere", letto all'apertura, Rispondi, elimina con conferma, numero nel menu
+- [x] Utenti: crea con password generata, modifica, disattiva, nuova password, azzera il codice a 6 cifre
+- [x] Registro (owner): filtri per persona, tipo, giorni svizzeri e oggetto, etichette italiane, dettagli come testo
+- [x] Profilo: password, codice a 6 cifre, esci da tutti i dispositivi; menu secondo i permessi; regola del 401; e2e
+
+**5d — Aiuto e prova sul campo** (criteri qui sotto)
 - [ ] Shell Vite+TS, login, layout, gestione errori/sessione scaduta
 - [ ] Albero pagine, editor pagina con zone e blocchi drag&drop (dnd-kit), TipTap
 - [ ] Anteprima live affiancata (iframe), click sul blocco → apre il form (D-02)
 - [ ] Scelta varianti blocco da miniature (D-03)
 - [ ] Autosave + annulla/ripristina (D-07)
-- [ ] Media picker, gestione utenti (admin/owner), audit log (owner), messaggi del modulo contatti
+- [x] Media picker, gestione utenti (admin/owner), audit log (owner), messaggi del modulo contatti
 - [ ] Tour guidato al primo accesso, suggerimenti accanto ai campi, controllo prima di pubblicare, "Chiedi a Thias" (D-08, D-09)
 - [ ] UI tutta in italiano, PC + tablet, azioni rapide da telefono (D-10)
 - [ ] Test d'uso con un cliente vero (PREMORTEM #6)
+
+**Rimandati dalla 5c-2:**
+- 5d: indicatore di caricamento quando si cambiano i filtri del registro; avviso se "dal" viene dopo "al"; numero dei messaggi azzerato all'uscita (oggi si aggiorna al nuovo accesso).
+- Fase 8: limite di richieste per utente su tutta `/api/admin` (oggi solo accesso e codice a 6 cifre); pagine nell'elenco utenti oltre 100.
 
 **Rimandati dalla 5b-1:**
 - 5c: chiavi stabili per gli elementi degli elenchi (oggi per posizione); link brevi (maps.app.goo.gl) e video Vimeo privati negli aiuti; e2e anche per media e trascinamento.

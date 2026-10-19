@@ -15,4 +15,5 @@ Ogni idea nuova finisce qui, non nel codice (PREMORTEM #1). Si rivaluta dopo la 
 - **Pannello in tedesco** per i clienti dei Grigioni e della Svizzera tedesca; **tema scuro** del pannello.
 - **Trascinamento nell'albero delle pagine** (D-95: oggi pulsanti Su/Giù/Sposta in…).
 - **QR code per attivare il TOTP**, altre scorciatoie da tastiera, notifiche "nuovo messaggio dal sito".
+- **Chi ha letto un messaggio** nel registro (oggi lo stato letto è comune e non registrato, D-126); esportazione dei messaggi.
 - **Lightbox** per la galleria (ingrandimento al clic), nel tema e compatibile con la CSP.
