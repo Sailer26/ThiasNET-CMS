@@ -83,6 +83,13 @@ def me() -> Response:
     return ok(users.serialize_me(current()))
 
 
+@bp.post("/auth/me/tour")
+@require_permission(Permission.PROFILE)
+def finish_tour() -> Response:
+    """Tour visto o saltato (D-133): riparte da solo solo finché non c'è la data."""
+    return ok(users.serialize_me(users.finish_tour(current())))
+
+
 @bp.post("/auth/password")
 @require_permission(Permission.PROFILE)
 def change_password() -> Response:

@@ -11,6 +11,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
+from app.models.types import utcnow
 from app.models.user import EMAIL_MAX_LENGTH, Role, User
 from app.services import audit
 from app.services.errors import ServiceError, forbidden, not_found
@@ -227,6 +228,14 @@ def serialize(user: User) -> dict[str, Any]:
         ),
         "created_at": user.created_at.isoformat(),
     }
+
+
+def finish_tour(user: User) -> User:
+    """Segna il tour come visto la prima volta; "Rifai il tour" non cambia la data (D-133)."""
+    if user.tour_completed_at is None:
+        user.tour_completed_at = utcnow()
+        db.session.commit()
+    return user
 
 
 def serialize_me(user: User) -> dict[str, Any]:
