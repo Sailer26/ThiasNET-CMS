@@ -119,7 +119,8 @@ export async function request<T>(
   if (response.ok && payload?.success) {
     return { data: payload.data, meta: payload.meta ?? {} };
   }
-  if (response.status === 401 && options.session !== false) {
+  // D-127: solo "unauthorized" è una sessione scaduta; password o codice sbagliati no.
+  if (response.status === 401 && options.session !== false && payload?.error?.code === "unauthorized") {
     expiredListeners.forEach((listener) => listener());
   }
   const error = payload?.error;

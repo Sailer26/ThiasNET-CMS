@@ -8,6 +8,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from flask import Flask
 from werkzeug.serving import make_server
 
 from app import create_app
@@ -21,7 +22,8 @@ OWNER_EMAIL = "e2e@thiasnet.test"
 
 
 @pytest.fixture
-def live_server(tmp_path: Path) -> Iterator[str]:
+def live_app(tmp_path: Path) -> Iterator[Flask]:
+    """L'app del server e2e: serve anche a preparare dati che il pannello non crea (messaggi)."""
     if not (ADMIN_DIST / "index.html").is_file():
         pytest.fail("Manca la build del pannello: esegui python scripts/tasks.py admin-build")
     app = create_app(
@@ -35,7 +37,16 @@ def live_server(tmp_path: Path) -> Iterator[str]:
     with app.app_context():
         db.create_all()  # ammesso nei test (CLAUDE.md)
         users.create_owner(OWNER_EMAIL, PASSWORD)
-    server = make_server("127.0.0.1", 0, app, threaded=True)
+    try:
+        yield app
+    finally:
+        with app.app_context():
+            db.engine.dispose()
+
+
+@pytest.fixture
+def live_server(live_app: Flask) -> Iterator[str]:
+    server = make_server("127.0.0.1", 0, live_app, threaded=True)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
@@ -43,5 +54,3 @@ def live_server(tmp_path: Path) -> Iterator[str]:
     finally:
         server.shutdown()
         thread.join(timeout=5)
-        with app.app_context():
-            db.engine.dispose()

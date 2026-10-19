@@ -6,6 +6,11 @@ export type Route =
   | { name: "page"; id: number }
   | { name: "trash" }
   | { name: "media" }
+  | { name: "messages" }
+  | { name: "message"; id: number }
+  | { name: "users" }
+  | { name: "audit" }
+  | { name: "profile" }
   | { name: "not-found" };
 
 export const paths = {
@@ -13,17 +18,33 @@ export const paths = {
   trash: "/admin/cestino",
   media: "/admin/media",
   page: (id: number) => `/admin/pagine/${id}`,
+  messages: "/admin/messaggi",
+  message: (id: number) => `/admin/messaggi/${id}`,
+  users: "/admin/utenti",
+  audit: "/admin/registro",
+  profile: "/admin/profilo",
 } as const;
 
 const PAGE_RE = /^\/admin\/pagine\/(\d+)$/;
+const MESSAGE_RE = /^\/admin\/messaggi\/(\d+)$/;
+const SIMPLE: Record<string, Route> = {
+  [paths.trash]: { name: "trash" },
+  [paths.media]: { name: "media" },
+  [paths.messages]: { name: "messages" },
+  [paths.users]: { name: "users" },
+  [paths.audit]: { name: "audit" },
+  [paths.profile]: { name: "profile" },
+};
 
 export function parseRoute(pathname: string): Route {
   const path = pathname.replace(/\/+$/, "");
   if (path === "/admin" || path === paths.pages) return { name: "pages" };
-  if (path === paths.trash) return { name: "trash" };
-  if (path === paths.media) return { name: "media" };
+  const simple = SIMPLE[path];
+  if (simple) return simple;
   const page = PAGE_RE.exec(path);
   if (page) return { name: "page", id: Number(page[1]) };
+  const message = MESSAGE_RE.exec(path);
+  if (message) return { name: "message", id: Number(message[1]) };
   return { name: "not-found" };
 }
 

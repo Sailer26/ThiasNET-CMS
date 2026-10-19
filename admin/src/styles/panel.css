@@ -94,7 +94,15 @@ code { font-family: ui-monospace, Consolas, monospace; font-size: 0.85em; }
 }
 .shell__nav a[aria-current="page"], .shell__nav a:hover { background: var(--tn-blue); }
 .shell__account { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; }
-.shell__user { opacity: 0.8; font-size: 0.9rem; padding: 0 0.5rem; }
+.shell__user {
+  display: inline-flex; align-items: center; min-height: var(--target); padding: 0 0.5rem;
+  color: var(--tn-white); font-size: 0.9rem; border-radius: var(--radius);
+}
+.shell__user[aria-current="page"], .shell__user:hover { background: var(--tn-blue); }
+.shell__count {
+  margin-left: 0.4rem; min-width: 1.4rem; padding: 0 0.4rem; border-radius: 999px;
+  background: var(--tn-white); color: var(--tn-navy); font-size: 0.8rem; font-weight: 700; text-align: center;
+}
 .shell__header .button--ghost { color: var(--tn-white); }
 .shell__main { padding: 1.5rem 1.25rem; max-width: 1100px; margin: 0 auto; }
 .shell > .notice { margin: 1rem 1.25rem 0; }
@@ -154,6 +162,34 @@ h1[tabindex="-1"]:focus { outline: none; }
   .phone-only { display: block; margin-bottom: 1rem; }
   .row__actions { display: none; }
   .screen__head .button { display: none; }
-  .shell__user { display: none; }
+  .shell__user { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; line-height: var(--target); }
   .tree .tree { padding-left: 0.85rem; }
 }
+
+/* Amministrazione (5c-2) */
+.card { background: var(--tn-white); border: 1px solid var(--tn-border); border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1rem; }
+.card h2 { margin-top: 0; font-size: 1.1rem; }
+.table-wrap { overflow-x: auto; background: var(--tn-white); border: 1px solid var(--tn-border); border-radius: var(--radius); }
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { text-align: left; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--tn-border); vertical-align: top; }
+.table tbody tr:last-child td { border-bottom: 0; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.password-field { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.password-field input { flex: 1 1 12rem; font-family: ui-monospace, monospace; }
+.filters__tabs { display: flex; gap: 0.25rem; }
+.filters__tabs .button[aria-pressed="true"] { background: var(--tn-navy); color: var(--tn-white); }
+.messages, .audit { list-style: none; margin: 1rem 0; padding: 0; display: grid; gap: 0.5rem; }
+.messages__item, .audit__item {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem;
+  background: var(--tn-white); border: 1px solid var(--tn-border); border-radius: var(--radius); padding: 0.75rem 1rem;
+}
+.messages__item--unread { border-left: 4px solid var(--tn-accent); }
+.messages__item--unread .messages__from { font-weight: 700; }
+.messages__link { display: grid; gap: 0.15rem; flex: 1 1 20rem; color: inherit; text-decoration: none; }
+.messages__link:hover .messages__from { text-decoration: underline; }
+.audit__item details { flex-basis: 100%; }
+.message__meta { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; }
+.message__meta dt { font-weight: 600; }
+.message__meta dd { margin: 0; overflow-wrap: anywhere; }
+.message__text { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--tn-white); border: 1px solid var(--tn-border); border-radius: var(--radius); padding: 1rem; }
+.secret { font-size: 1.05rem; letter-spacing: 0.05em; user-select: all; }

@@ -169,6 +169,8 @@ describe("accesso e sessione", () => {
     api.on("POST", "/auth/logout", { data: { csrf_token: "t3" } });
     const user = userEvent.setup();
     const { unmount } = render(<App />);
+    // dal 5c-2 (D-130) si trova nel profilo, che si apre dall'email in alto
+    await user.click(await screen.findByRole("link", { name: "anna@example.ch" }));
     await user.click(await screen.findByRole("button", { name: "Esci da tutti i dispositivi" }));
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("Verrai disconnesso da tutti");
