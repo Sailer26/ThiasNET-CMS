@@ -31,13 +31,16 @@ export function MediaDetailPanel({ id, folders, onChanged, onDeleted, onClose }:
   const nameId = useId();
   const replaceId = useId();
 
+  /** `keepText`: nome e testo alternativo scritti e non ancora salvati restano com'erano. */
   const load = useCallback(
-    () =>
+    (keepText = false) =>
       getMedia(id).then(
         (found) => {
           setMedia(found);
-          setName(found.name);
-          setAlt(found.alt); // gli errori restano: li toglie solo l'azione successiva
+          if (!keepText) {
+            setName(found.name);
+            setAlt(found.alt); // gli errori restano: li toglie solo l'azione successiva
+          }
         },
         (failure: unknown) => setError(errorMessage(failure)),
       ),
@@ -48,19 +51,19 @@ export function MediaDetailPanel({ id, folders, onChanged, onDeleted, onClose }:
     void load();
   }, [load]);
 
-  async function run(action: () => Promise<void>, done: string) {
+  async function run(action: () => Promise<void>, done: string, keepText = true) {
     if (!media) return;
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
       await action();
+      await load(keepText);
       setNotice(done);
-      await load();
       onChanged();
     } catch (failure) {
       setError(errorMessage(failure));
-      if (failure instanceof ApiError && failure.code === "version_conflict") await load();
+      if (failure instanceof ApiError && failure.code === "version_conflict") await load(true);
     } finally {
       setBusy(false);
     }
@@ -118,7 +121,9 @@ export function MediaDetailPanel({ id, folders, onChanged, onDeleted, onClose }:
           type="button"
           className="button button--primary"
           disabled={!changedText || busy}
-          onClick={() => void run(async () => void (await updateMedia(media.id, media.version, { name: name.trim(), alt: alt.trim() })), mt.saved)}
+          onClick={() =>
+            void run(async () => void (await updateMedia(media.id, media.version, { name: name.trim(), alt: alt.trim() })), mt.saved, false)
+          }
         >
           {mt.save}
         </button>
@@ -204,7 +209,7 @@ export function MediaDetailPanel({ id, folders, onChanged, onDeleted, onClose }:
               if (failure instanceof ApiError && failure.code === "media_in_use") {
                 setConfirming(false);
                 setError(mt.inUse);
-                await load();
+                await load(true);
                 return;
               }
               throw failure;

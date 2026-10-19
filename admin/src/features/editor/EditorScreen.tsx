@@ -225,9 +225,9 @@ function Workspace({ data }: { data: Loaded }) {
   }
 
   async function look(revision: Revision) {
+    setVersionsOpen(false); // l'eventuale errore si legge nella pagina, non dietro la finestra
     try {
       setViewing({ revision, doc: await getRevision(page.id, revision.id) });
-      setVersionsOpen(false);
       setView("preview");
     } catch (error) {
       setNotice({ kind: "error", text: errorMessage(error) });
@@ -238,6 +238,7 @@ function Workspace({ data }: { data: Loaded }) {
     if (!(await autosave.flush())) throw new ApiError(0, "not_saved", ed.publish.notSaved);
     await restoreRevision(page.id, revision.id, autosave.draftVersion);
     await loadTheirs();
+    if (page.schedule) setPage(await fetchPage(page.id)); // la bozza ora è diversa da quella programmata
     setRestoring(null);
     setViewing(null);
     setNotice({ kind: "success", text: ed.versions.done });

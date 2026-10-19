@@ -27,6 +27,10 @@ export const mt = {
   upload: "Carica file",
   dropHere: "Oppure trascina qui i file",
   queueTitle: "Caricamento",
+  badType: "Tipo di file non ammesso: solo immagini (JPG, PNG, WebP, GIF) e PDF.",
+  tooBig: (limit: string) => `File troppo grande: al massimo ${limit}.`,
+  stopped: "Interrotto",
+  full: "Spazio esaurito",
   stop: "Interrompi",
   states: {
     waiting: "In coda",

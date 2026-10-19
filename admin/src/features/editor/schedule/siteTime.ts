@@ -29,6 +29,16 @@ export function zurichToIso(date: string, time: string): Converted {
   const t = /^(\d{2}):(\d{2})$/.exec(time);
   if (!d || !t) return { error: "invalid" };
   const wall = Date.UTC(Number(d[1]), Number(d[2]) - 1, Number(d[3]), Number(t[1]), Number(t[2]));
+  const check = new Date(wall);
+  // Date impossibili (31 febbraio, 25:00) non si "spostano" al giorno dopo: sono errori.
+  if (
+    check.getUTCFullYear() !== Number(d[1]) ||
+    check.getUTCMonth() + 1 !== Number(d[2]) ||
+    check.getUTCDate() !== Number(d[3]) ||
+    check.getUTCHours() !== Number(t[1])
+  ) {
+    return { error: "invalid" };
+  }
   for (const offset of OFFSETS) {
     const utcMs = wall - offset * MINUTE;
     if (zurichOffset(utcMs) === offset) {

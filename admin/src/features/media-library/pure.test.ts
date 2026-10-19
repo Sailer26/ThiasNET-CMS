@@ -40,7 +40,7 @@ describe("coda di caricamento (D-118)", () => {
     expect(extensionOf("Foto.JPG")).toBe("jpg");
     expect(extensionOf("senza")).toBe("");
     expect(precheck(file("a.svg"), 100)).toMatch(/Tipo di file non ammesso/);
-    expect(precheck(file("a.png", 200), 100)).toMatch(/troppo grande/);
+    expect(precheck(file("a.png", 200), 100)).toBe("File troppo grande: al massimo 100 byte.");
     expect(precheck(file("a.pdf"), 100)).toBeNull();
     const items = enqueue([file("a.png"), file("b.exe")], 100, 1);
     expect(items.map((i) => i.state)).toEqual(["waiting", "error"]);

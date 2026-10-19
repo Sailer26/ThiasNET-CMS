@@ -8,6 +8,10 @@ import { unexpectedCalls } from "./fakeApi";
 // L'editor (TipTap) si carica la prima volta in qualche secondo quando i file girano in parallelo.
 configure({ asyncUtilTimeout: 5000 });
 
+// jsdom non ha gli indirizzi locali dei file: bastano finti.
+URL.createObjectURL ??= () => "blob:test";
+URL.revokeObjectURL ??= () => undefined;
+
 // jsdom non implementa <dialog>: basta aprirlo e chiuderlo con i suoi attributi.
 if (!HTMLDialogElement.prototype.showModal) {
   HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {

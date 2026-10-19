@@ -34,6 +34,7 @@ export function ScheduleDialog({ onSchedule, onClose }: Props) {
           throw new ApiError(422, converted.error, converted.error === "missing_hour" ? ed.schedule.missingHour : ed.schedule.invalid);
         }
         if (converted.utcMs <= Date.now()) throw new ApiError(422, "past", ed.schedule.past);
+        if (converted.utcMs > opened + YEAR_DAYS * DAY_MS) throw new ApiError(422, "too_far", ed.schedule.tooFar);
         await onSchedule(converted.iso);
       }}
     >

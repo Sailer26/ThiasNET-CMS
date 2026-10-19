@@ -1,6 +1,8 @@
 // Coda di caricamento (D-118): un file alla volta, stato per riga, stop con spazio esaurito.
 import { ApiError, errorMessage } from "../../api/client";
 import type { Media, Uploaded } from "../../api/media";
+import { mt } from "../../text/media";
+import { formatBytes } from "./format";
 
 export type ItemState = "waiting" | "uploading" | "done" | "duplicate" | "error" | "skipped";
 
@@ -21,12 +23,12 @@ export function extensionOf(name: string): string {
 
 /** Controllo indicativo prima dell'invio; decide sempre il server. */
 export function precheck(file: File, maxBytes: number): string | null {
-  if (!ALLOWED_EXT.has(extensionOf(file.name))) return "Tipo di file non ammesso: solo immagini (JPG, PNG, WebP, GIF) e PDF.";
-  if (maxBytes > 0 && file.size > maxBytes) return "File troppo grande: al massimo 15 MB.";
+  if (!ALLOWED_EXT.has(extensionOf(file.name))) return mt.badType;
+  if (maxBytes > 0 && file.size > maxBytes) return mt.tooBig(formatBytes(maxBytes));
   return null;
 }
 
-export function enqueue(files: File[], maxBytes: number, prefix = Date.now()): QueueItem[] {
+export function enqueue(files: File[], maxBytes: number, prefix: number): QueueItem[] {
   return files.map((file, index) => {
     const problem = precheck(file, maxBytes);
     return problem
@@ -48,7 +50,7 @@ export async function runQueue(items: QueueItem[], upload: Upload, update: Updat
   for (const item of items) {
     if (item.state !== "waiting") continue;
     if (stopped()) {
-      set(item.key, { state: "skipped", message: "Interrotto" });
+      set(item.key, { state: "skipped", message: mt.stopped });
       continue;
     }
     set(item.key, { state: "uploading" });
@@ -59,7 +61,7 @@ export async function runQueue(items: QueueItem[], upload: Upload, update: Updat
       set(item.key, { state: "error", message: errorMessage(error) });
       if (error instanceof ApiError && error.status === 507) {
         // Spazio esaurito: gli altri non entrerebbero comunque.
-        for (const rest of current.filter((i) => i.state === "waiting")) set(rest.key, { state: "skipped", message: "Spazio esaurito" });
+        for (const rest of current.filter((i) => i.state === "waiting")) set(rest.key, { state: "skipped", message: mt.full });
         break;
       }
     }

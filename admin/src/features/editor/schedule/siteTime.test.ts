@@ -18,6 +18,8 @@ describe("ora svizzera (D-122)", () => {
   test("valori non validi", () => {
     expect(zurichToIso("1.11.2026", "08:00")).toEqual({ error: "invalid" });
     expect(zurichToIso("2026-11-01", "8")).toEqual({ error: "invalid" });
+    expect(zurichToIso("2026-02-31", "08:00")).toEqual({ error: "invalid" });
+    expect(zurichToIso("2026-11-01", "25:00")).toEqual({ error: "invalid" });
   });
 
   test("date leggibili nell'ora svizzera", () => {

@@ -53,7 +53,7 @@ def _video(data: Mapping[str, Any]) -> dict[str, str] | None:
         private = f"h={secret}&" if isinstance(secret, str) and VIMEO_HASH.fullmatch(secret) else ""
         return {
             "src": f"https://player.vimeo.com/video/{video_id}?{private}dnt=1",
-            "link": f"https://vimeo.com/{video_id}",
+            "link": f"https://vimeo.com/{video_id}" + (f"/{secret}" if private else ""),
             "provider": "Vimeo",
         }
     return None

@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it as test } from "vitest";
+import { beforeEach, describe, expect, it as test, vi } from "vitest";
 import { App } from "../../App";
 import { setCsrfToken } from "../../api/client";
 import type { Folder, Media, MediaDetail } from "../../api/media";
@@ -141,5 +141,31 @@ describe("pagina Media (D-117 … D-120)", () => {
     expect(await within(panel).findByText("File sostituito.")).toBeInTheDocument();
     const sent = api.callsTo("POST", "/media/2/file")[0]!.body as FormData;
     expect(sent.get("version")).toBe("1");
+  });
+
+  test("un secondo rilascio durante un caricamento è ignorato; anteprima locale dei file", async () => {
+    const { api } = setup();
+    let finish: () => void = () => undefined;
+    api.on("POST", "/media", { status: 201, data: media(20) });
+    const original = globalThis.fetch;
+    vi.stubGlobal("fetch", (input: string, init?: RequestInit) =>
+      String(input).endsWith("/api/admin/media") && init?.method === "POST"
+        ? new Promise<Response>((resolve) => {
+            finish = () => void original(input, init).then(resolve);
+          })
+        : original(input, init),
+    );
+    await screen.findByText("foto-1.jpg");
+    const section = screen.getByRole("heading", { name: "Media" }).closest("section")!;
+    const drop = (name: string) =>
+      fireEvent.drop(section, { dataTransfer: { files: [new File(["x"], name, { type: "image/png" })] } });
+    drop("primo.png");
+    const queue = await screen.findByRole("region", { name: "Caricamento" });
+    expect(within(queue).getByText("primo.png")).toBeInTheDocument();
+    expect(queue.querySelector("img.queue__thumb")?.getAttribute("src")).toMatch(/^blob:/);
+    drop("secondo.png");
+    expect(within(queue).queryByText("secondo.png")).not.toBeInTheDocument();
+    finish();
+    await waitFor(() => expect(within(queue).getByText("Fatto")).toBeInTheDocument());
   });
 });

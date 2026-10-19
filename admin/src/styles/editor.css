@@ -185,7 +185,7 @@ fieldset.field legend { font-weight: 600; padding: 0; margin-bottom: 0.35rem; }
 .focal__frame { position: relative; cursor: crosshair; line-height: 0; }
 .focal__frame img { width: 100%; height: auto; border-radius: 6px; user-select: none; }
 .focal__marker {
-  position: absolute; width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: 50%;
+  position: absolute; width: 32px; height: 32px; margin: -16px 0 0 -16px; border-radius: 50%;
   border: 3px solid var(--tn-white); background: rgb(31 122 140 / 0.7); box-shadow: 0 0 0 2px var(--tn-navy); cursor: grab;
 }
 .focal__examples { display: flex; gap: 0.75rem; }
@@ -203,3 +203,7 @@ fieldset.field legend { font-weight: 600; padding: 0; margin-bottom: 0.35rem; }
 .schedule-fields { display: flex; flex-wrap: wrap; gap: 0.75rem; }
 .schedule-fields input { min-height: var(--target); padding: 0 0.75rem; border: 1px solid var(--tn-border); border-radius: var(--radius); font: inherit; }
 .schedule-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.queue__thumb { width: 48px; height: 36px; object-fit: cover; border-radius: 4px; }
+@media (max-width: 1024px) {
+  .focal__marker { width: 44px; height: 44px; margin: -22px 0 0 -22px; }
+}

@@ -330,6 +330,7 @@ describe("editor della pagina", () => {
   });
 
   test("programma nell'ora svizzera; avviso se si modifica dopo; annulla", async () => {
+    vi.setSystemTime(new Date("2026-10-18T10:00:00+02:00")); // la data scelta resta nel futuro
     const { api, user } = open({ status: "draft" });
     const scheduled = node("Chi siamo", {
       id: 7,

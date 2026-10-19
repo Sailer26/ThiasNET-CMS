@@ -177,6 +177,7 @@ export const ed = {
     missingHour: "Quest'ora non esiste per il cambio dell'ora: scegline un'altra.",
     invalid: "Indica giorno e ora.",
     past: "Scegli un momento nel futuro.",
+    tooFar: "Si può programmare al massimo un anno in avanti.",
   },
   rich: {
     toolbar: "Formattazione",

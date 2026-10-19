@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { errorMessage } from "../../api/client";
 import {
   createFolder,
@@ -6,6 +6,7 @@ import {
   fetchFolders,
   fetchUsage,
   listMedia,
+  PICKER_PAGE_SIZE,
   updateFolder,
   uploadMedia,
   type Folder,
@@ -41,6 +42,21 @@ function QuotaBar({ usage }: { usage: Usage }) {
   );
 }
 
+/** Anteprima locale prima del caricamento (D-118): unico uso di blob: nella CSP. */
+function QueueThumb({ file }: { file: File }) {
+  const url = useMemo(
+    () => (file.type.startsWith("image/") && file.type !== "image/svg+xml" ? URL.createObjectURL(file) : null),
+    [file],
+  );
+  useEffect(
+    () => () => {
+      if (url) URL.revokeObjectURL(url);
+    },
+    [url],
+  );
+  return url ? <img className="queue__thumb" src={url} alt="" width={48} height={36} /> : null;
+}
+
 function QueueList({ items, running, onStop }: { items: QueueItem[]; running: boolean; onStop: () => void }) {
   if (items.length === 0) return null;
   return (
@@ -49,6 +65,7 @@ function QueueList({ items, running, onStop }: { items: QueueItem[]; running: bo
       <ul>
         {items.map((item) => (
           <li key={item.key} className={`queue__item queue__item--${item.state}`}>
+            <QueueThumb file={item.file} />
             <span className="queue__name">{item.file.name}</span>
             <span>{mt.states[item.state]}</span>
             {item.message && <span className="hint">{item.message}</span>}
@@ -80,6 +97,9 @@ export function MediaScreen() {
   const [notice, setNotice] = useState<NoticeState | null>(null);
   const latest = useRef(0);
   const stopRef = useRef(false);
+  const runningRef = useRef(false);
+  const batch = useRef(0);
+  const [reloadTick, setReloadTick] = useState(0);
 
   const refreshSide = useCallback(() => {
     fetchFolders().then(setFolders, (e: unknown) => setNotice({ kind: "error", text: errorMessage(e) }));
@@ -119,7 +139,15 @@ export function MediaScreen() {
   useEffect(() => {
     const timer = setTimeout(() => load(1), query ? SEARCH_PAUSE_MS : 0);
     return () => clearTimeout(timer);
-  }, [load, query]);
+  }, [load, query, reloadTick]);
+
+  // Uscendo dalla pagina la coda si ferma dopo il file in corso.
+  useEffect(
+    () => () => {
+      stopRef.current = true;
+    },
+    [],
+  );
 
   useEffect(() => {
     refreshSide();
@@ -129,17 +157,27 @@ export function MediaScreen() {
   useEffect(() => {
     if (!running) return;
     setNavigationGuard(async () => window.confirm(mt.leaveQueue));
-    return () => setNavigationGuard(null);
+    function beforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = ""; // chiudere o ricaricare la scheda chiede conferma
+    }
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => {
+      setNavigationGuard(null);
+      window.removeEventListener("beforeunload", beforeUnload);
+    };
   }, [running]);
 
   async function startUpload(files: File[]) {
-    if (files.length === 0) return;
-    const items = enqueue(files, usage?.max_upload_bytes ?? 0);
+    if (files.length === 0 || runningRef.current) return; // una coda alla volta
+    runningRef.current = true;
+    const items = enqueue(files, usage?.max_upload_bytes ?? 0, ++batch.current);
     setQueue(items);
     setRunning(true);
     stopRef.current = false;
     const target = typeof folder === "number" ? folder : null;
     const done = await runQueue(items, (file) => uploadMedia(file, "", target), setQueue, () => stopRef.current);
+    runningRef.current = false;
     setRunning(false);
     const withoutAlt = done.filter((item) => item.state === "done" && item.media?.kind === "image" && !item.media.alt.trim()).length;
     if (withoutAlt > 0) {
@@ -155,7 +193,7 @@ export function MediaScreen() {
         },
       });
     }
-    load(1);
+    setReloadTick((tick) => tick + 1); // ricarica con i filtri di adesso, non di quando è partita
     refreshSide();
   }
 
@@ -266,7 +304,7 @@ export function MediaScreen() {
           </ul>
           {!loading && listing && items.length < listing.total && (
             <button type="button" className="button" onClick={() => load(listing.page + 1)}>
-              {mt.more(Math.min(24, listing.total - items.length))}
+              {mt.more(Math.min(PICKER_PAGE_SIZE, listing.total - items.length))}
             </button>
           )}
         </div>

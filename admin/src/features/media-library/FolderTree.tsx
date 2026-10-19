@@ -48,7 +48,13 @@ export function FolderTree({ folders, selected, onSelect, onCreate, onRename, on
 
   function open(next: Dialog) {
     setName(next.kind === "rename" ? next.folder.name : "");
-    setParent(next.kind === "create" && current ? String(current.id) : "");
+    setParent(
+      next.kind === "create" && current
+        ? String(current.id)
+        : next.kind === "move"
+          ? String(next.folder.parent_id ?? "")
+          : "",
+    );
     setDialog(next);
   }
 
@@ -158,6 +164,7 @@ export function FolderTree({ folders, selected, onSelect, onCreate, onRename, on
         <FormDialog
           title={mt.moveFolder}
           submitLabel={mt.save}
+          canSubmit={parent !== String(dialog.folder.parent_id ?? "")}
           onClose={() => setDialog(null)}
           onSubmit={async () => {
             await onMove(dialog.folder, parent ? Number(parent) : null);

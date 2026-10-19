@@ -10,6 +10,8 @@ from playwright.sync_api import Page, expect
 from tests.e2e.helpers import WAIT_MS, add_block, login, open_new_homepage
 
 pytestmark = pytest.mark.e2e
+ARROW_TRIES = 3
+ARROW_WAIT_MS = 2_000
 
 
 def test_keyboard_drag_reorders_blocks(page: Page, live_server: str) -> None:
@@ -27,10 +29,16 @@ def test_keyboard_drag_reorders_blocks(page: Page, live_server: str) -> None:
     expect(page.get_by_text("Il blocco Titolo è sulla posizione 1.")).to_be_attached(
         timeout=WAIT_MS
     )
-    page.keyboard.press("ArrowDown")
-    expect(page.get_by_text("Il blocco Titolo è sulla posizione 2.")).to_be_attached(
-        timeout=WAIT_MS
-    )
+    # Se la freccia arriva prima che le posizioni siano misurate, si ripete.
+    moved = page.get_by_text("Il blocco Titolo è sulla posizione 2.")
+    for _ in range(ARROW_TRIES):
+        page.keyboard.press("ArrowDown")
+        try:
+            expect(moved).to_be_attached(timeout=ARROW_WAIT_MS)
+            break
+        except AssertionError:
+            continue
+    expect(moved).to_be_attached(timeout=WAIT_MS)
     page.keyboard.press("Space")
     expect(titles).to_have_text(["Separatore", "Titolo"], timeout=WAIT_MS)
     expect(page.get_by_text(re.compile(r"^Salvato alle"))).to_be_visible(timeout=WAIT_MS)

@@ -191,6 +191,7 @@ def test_private_vimeo_videos_keep_their_hash(theme: Theme) -> None:
     data = {"provider": "vimeo", "video_id": "76979871", "video_hash": "a1b2c3d4e5", "title": "V"}
     html = render_doc(theme, _page(_block(1, "video", data)))
     assert "https://player.vimeo.com/video/76979871?h=a1b2c3d4e5&amp;dnt=1" in html
+    assert 'href="https://vimeo.com/76979871/a1b2c3d4e5"' in html
 
 
 def test_menu_marks_the_current_page(theme: Theme) -> None:
