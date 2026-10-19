@@ -6,6 +6,8 @@ interface Props {
   children: ReactNode;
   /** Sfondo coprente: quello che c'è dietro non si legge (sessione scaduta). */
   opaque?: boolean;
+  /** Tour: sfondo trasparente e finestra in un angolo, per vedere cosa si indica. */
+  corner?: boolean;
 }
 
 /** Elemento che riceve il focus all'apertura (es. "Annulla" nelle conferme distruttive). */
@@ -21,7 +23,7 @@ function restoreFocus(previous: Element | null) {
 }
 
 /** Finestra modale nativa: focus intrappolato dal browser, ritorno del focus da qui. */
-export function Dialog({ title, onClose, children, opaque = false }: Props) {
+export function Dialog({ title, onClose, children, opaque = false, corner = false }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -39,7 +41,7 @@ export function Dialog({ title, onClose, children, opaque = false }: Props) {
   return (
     <dialog
       ref={ref}
-      className={opaque ? "dialog dialog--opaque" : "dialog"}
+      className={`dialog${opaque ? " dialog--opaque" : ""}${corner ? " dialog--corner" : ""}`}
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault(); // Esc: decide chi ha aperto la finestra

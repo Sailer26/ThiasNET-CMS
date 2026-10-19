@@ -137,7 +137,7 @@ export function PageTreeScreen() {
   }
 
   return (
-    <section className="screen" aria-labelledby="pages-title">
+    <section className="screen" aria-labelledby="pages-title" data-tour="pages">
       <div className="screen__head">
         <h1 id="pages-title" tabIndex={-1}>
           {it.tree.title}

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { errorMessage } from "../api/client";
 import { refreshUnread, useUnread } from "../features/admin/unread";
+import { finishTour } from "../api/auth";
 import { AskThias } from "../features/help/AskThias";
-import { hp } from "../text/help";
+import { HelpMenu } from "../features/help/HelpMenu";
+import { Tour } from "../features/help/Tour";
 import { Link } from "../router/Link";
 import { paths, useRoute } from "../router/router";
 import { Permission } from "../session/can";
@@ -23,6 +25,12 @@ const TITLES: Record<string, string> = {
   profile: it.titles.profile,
   "not-found": it.titles.notFound,
 };
+
+const MIN_TOUR_WIDTH = "(min-width: 600px)";
+
+function wideScreen(): boolean {
+  return typeof window.matchMedia !== "function" || window.matchMedia(MIN_TOUR_WIDTH).matches;
+}
 
 /** Numero dei messaggi da leggere: all'avvio e quando la finestra torna visibile (D-126). */
 function useUnreadCount(enabled: boolean): number {
@@ -45,6 +53,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [asking, setAsking] = useState(false);
+  // D-133: parte da solo una volta, solo su schermi da tablet in su.
+  const [touring, setTouring] = useState(() => user.tour_completed_at === null && wideScreen());
   const [sent, setSent] = useState<string | null>(null);
   const firstRoute = useRef(true);
   const showMessages = can(Permission.messagesView);
@@ -112,9 +122,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
         </nav>
         <div className="shell__account">
-          <button type="button" className="button button--ghost" onClick={() => setAsking(true)}>
-            {hp.ask}
-          </button>
+          <HelpMenu onAsk={() => setAsking(true)} onTour={() => setTouring(true)} />
           <a className="button button--ghost" href={site.url} target="_blank" rel="noopener noreferrer">
             {it.shell.openSite}
           </a>
@@ -134,6 +142,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         }}
       />
       <main className="shell__main">{children}</main>
+      {touring && (
+        <Tour
+          onDone={() => {
+            setTouring(false);
+            // Il server tiene la prima data; se non risponde il tour ripartirà al prossimo accesso.
+            finishTour().catch(() => undefined);
+          }}
+        />
+      )}
       {asking && (
         <AskThias
           pageId={route.name === "page" ? route.id : null}

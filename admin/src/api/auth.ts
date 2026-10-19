@@ -43,6 +43,11 @@ export async function fetchMe(options: { session?: boolean } = {}): Promise<Me> 
   return (await request<Me>("GET", "/auth/me", undefined, options)).data;
 }
 
+/** Tour visto o saltato (D-133): il server tiene la prima data. */
+export async function finishTour(): Promise<Me> {
+  return (await request<Me>("POST", "/auth/me/tour")).data;
+}
+
 export async function fetchSite(): Promise<Site> {
   return (await request<Site>("GET", "/site")).data;
 }

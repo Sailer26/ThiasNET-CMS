@@ -82,7 +82,7 @@ export const ME: Me = {
   can_publish: true,
   totp_enabled: false,
   last_login_at: null,
-  tour_completed_at: null,
+  tour_completed_at: "2026-10-01T08:00:00+00:00", // il tour parte da solo solo se è null
   created_at: "2026-10-01T08:00:00+00:00",
   permissions: ["content.edit", "content.publish", "profile", "users.view"],
 };
