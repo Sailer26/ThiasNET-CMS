@@ -72,7 +72,9 @@ def test_messages_users_audit_profile(page: Page, live_app: Flask, live_server: 
     expect(page.get_by_role("heading", name="Il tuo profilo")).to_be_visible()
     page.get_by_role("button", name="Esci", exact=True).click()
 
-    # L'editor appena creato entra e non vede le sezioni riservate
+    # L'editor appena creato entra (dall'indirizzo del pannello, come farà davvero)
+    # e non vede le sezioni riservate
+    page.goto(f"{live_server}/admin/")
     page.get_by_label("Email").fill(EDITOR_EMAIL)
     page.get_by_label("Password").fill(password)
     page.get_by_role("button", name="Accedi").click()
@@ -83,9 +85,8 @@ def test_messages_users_audit_profile(page: Page, live_app: Flask, live_server: 
     tour = page.get_by_role("dialog", name="Apri una pagina")
     tour.get_by_role("button", name="Salta il tour").click()
     expect(page.get_by_role("dialog")).to_have_count(0)
-    # si resta sull'indirizzo di prima: ora è il profilo dell'editor
-    expect(page.get_by_role("heading", name="Il tuo profilo")).to_be_visible()
-    expect(page.get_by_text(EDITOR_EMAIL).first).to_be_visible()
+    expect(page.get_by_role("heading", name="Pagine")).to_be_visible()
+    expect(page.get_by_role("link", name=EDITOR_EMAIL)).to_be_visible()
     expect(nav.get_by_role("link", name=re.compile("Messaggi"))).to_have_count(0)
     expect(nav.get_by_role("link", name="Utenti")).to_have_count(0)
     page.goto(f"{live_server}/admin/registro")
