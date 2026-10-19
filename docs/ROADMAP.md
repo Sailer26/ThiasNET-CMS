@@ -107,16 +107,25 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - [x] Registro (owner): filtri per persona, tipo, giorni svizzeri e oggetto, etichette italiane, dettagli come testo
 - [x] Profilo: password, codice a 6 cifre, esci da tutti i dispositivi; menu secondo i permessi; regola del 401; e2e
 
-**5d — Aiuto e prova sul campo** (criteri qui sotto)
-- [ ] Shell Vite+TS, login, layout, gestione errori/sessione scaduta
-- [ ] Albero pagine, editor pagina con zone e blocchi drag&drop (dnd-kit), TipTap
-- [ ] Anteprima live affiancata (iframe), click sul blocco → apre il form (D-02)
-- [ ] Scelta varianti blocco da miniature (D-03)
-- [ ] Autosave + annulla/ripristina (D-07)
+**5d-1 — Controlli e assistenza** (D-132, D-134 … D-137)
+- [x] Controllo prima di pubblicare sul server (`GET /pages/<id>/checks`): bloccanti come la pubblicazione, avvisi (SEO, pagina vuota, link interni rotti) con "Pubblica comunque"
+- [x] "Pubblica le modifiche" dal telefono con lo stesso controllo
+- [x] "Chiedi a Thias": richieste salvate (migrazione `0009`), email a `SUPPORT_EMAIL`, limite per persona, nuovo invio e cancellazione dopo 12 mesi da CLI
+
+**5d-2 — Guida e rifiniture** (criteri qui sotto)
+- [x] Shell Vite+TS, login, layout, gestione errori/sessione scaduta
+- [x] Albero pagine, editor pagina con zone e blocchi drag&drop (dnd-kit), TipTap
+- [x] Anteprima live affiancata (iframe), click sul blocco → apre il form (D-02)
+- [x] Scelta varianti blocco da miniature (D-03)
+- [x] Autosave + annulla/ripristina (D-07)
 - [x] Media picker, gestione utenti (admin/owner), audit log (owner), messaggi del modulo contatti
 - [ ] Tour guidato al primo accesso, suggerimenti accanto ai campi, controllo prima di pubblicare, "Chiedi a Thias" (D-08, D-09)
 - [ ] UI tutta in italiano, PC + tablet, azioni rapide da telefono (D-10)
 - [ ] Test d'uso con un cliente vero (PREMORTEM #6)
+
+**Rimandati dalla 5d-1:**
+- 5d-2: menu Aiuto con "Chiedi a Thias" e "Rifai il tour" (oggi un pulsante nella testata); avviso nel log all'avvio in produzione se `SUPPORT_EMAIL` manca.
+- Fase 8: invio delle email di assistenza fuori dalla richiesta, se il server di posta è lento (oggi come i messaggi del modulo contatti, con limite di 5 all'ora per persona); limite di richieste anche su `/checks`.
 
 **Rimandati dalla 5c-2:**
 - 5d: indicatore di caricamento quando si cambiano i filtri del registro; avviso se "dal" viene dopo "al"; numero dei messaggi azzerato all'uscita (oggi si aggiorna al nuovo accesso).

@@ -58,7 +58,7 @@ redirects(id, from_path, to_path, code)
 audit_log(id, user_id, action, entity, entity_id, diff_json, ip_hash, created_at)   -- D-30
 page_drafts(page_id, data_json, version, author_id, created_at, updated_at)   -- autosave (D-07, D-44)
 contact_messages(id, form_page_id, name, email, message, ip_hash, created_at)   -- D-05
-support_requests(id, user_id, page_id, message, created_at, sent_at)           -- "Chiedi a Thias" (D-09)
+support_requests(id, user_id, page_id, screen, message, created_at, sent_at, send_attempts, last_error)  -- "Chiedi a Thias" (D-09, D-134)
 -- users ha in più: can_publish (D-15), tour_completed_at (D-08)
 ```
 
@@ -142,6 +142,11 @@ SPA ──fetch──► /api/admin/* (cookie di sessione SameSite=Strict + head
   permessi della sessione (`session/can.ts`); un indirizzo senza permesso mostra "Non hai accesso" e non chiama
   l'API (D-130). Il numero dei messaggi da leggere è un piccolo store (`unread.ts`) letto all'avvio, quando la
   finestra torna visibile e dopo ogni azione, mai con un timer. Gli elenchi controllano la forma della risposta.
+- 5d-1: `GET /pages/<id>/checks` (`app/services/prepublish.py`) usa la stessa validazione di `publish`
+  (`publishing.problems`) e controlla i link con `public_pages.resolve(..., publish_due=False)`, che non scrive
+  nulla; la conferma di pubblicazione mostra gli avvisi (`WarningList`) e sul telefono `PhonePublish`.
+  `POST /support-requests` (`app/services/support.py`): salva, poi email a `SUPPORT_EMAIL` della configurazione;
+  `flask send-support-requests` / `purge-support-requests` da cron come per i messaggi.
 - API dell'amministrazione: `GET/PATCH/DELETE /messages[/<id>]`, `GET /messages/summary` (`messages.view`,
   admin e owner), `GET /audit` con filtri controllati (`audit.view`, solo owner), `/users`, `/auth/password`,
   `/auth/totp/*`. L'eliminazione di un messaggio scrive nel registro solo l'id.
