@@ -21,6 +21,8 @@ export interface FieldSchema {
   dependentRequired?: Record<string, string[]>;
   "x-media"?: "image" | "file";
   "x-richtext"?: boolean;
+  /** Impostazioni d'aspetto (D-143): le scelte sono colori della palette del tema. */
+  "x-color"?: boolean;
   not?: { enum?: unknown[] };
   const?: unknown;
   allOf?: { if?: FieldSchema; then?: FieldSchema }[];

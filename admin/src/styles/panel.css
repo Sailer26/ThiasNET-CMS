@@ -204,3 +204,8 @@ h1[tabindex="-1"]:focus { outline: none; }
 .message__meta dd { margin: 0; overflow-wrap: anywhere; }
 .message__text { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--tn-white); border: 1px solid var(--tn-border); border-radius: var(--radius); padding: 1rem; }
 .secret { font-size: 1.05rem; letter-spacing: 0.05em; user-select: all; }
+/* Impostazioni (6a): campioni dei colori del tema */
+.swatch {
+  display: inline-block; width: 1.5rem; height: 1.5rem; border-radius: 50%;
+  border: 1px solid var(--tn-border); vertical-align: middle; margin-right: 0.35rem;
+}

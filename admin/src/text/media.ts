@@ -64,7 +64,7 @@ export const mt = {
   open: "Apri",
   usedBy: "Usato in",
   notUsed: "Non è usato in nessuna pagina.",
-  where_: { published: "online", unpublished: "ritirata", draft: "bozza", scheduled: "programmata" } as Record<string, string>,
+  where_: { published: "online", unpublished: "ritirata", draft: "bozza", scheduled: "programmata", settings: "logo" } as Record<string, string>,
   remove: "Elimina",
   removeConfirm: (name: string) => `Eliminare "${name}" per sempre?`,
   inUse: "Non si può eliminare: è usato in queste pagine.",

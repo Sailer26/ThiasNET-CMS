@@ -23,6 +23,7 @@ const TITLES: Record<string, string> = {
   users: it.titles.users,
   audit: it.titles.audit,
   profile: it.titles.profile,
+  settings: it.titles.settings,
   "not-found": it.titles.notFound,
 };
 
@@ -115,6 +116,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           {can(Permission.usersManage) && (
             <Link to={paths.users} aria-current={current("users")}>
               {it.shell.users}
+            </Link>
+          )}
+          {can(Permission.settingsEdit) && (
+            <Link to={paths.settings} aria-current={current("settings")}>
+              {it.shell.settings}
             </Link>
           )}
           {can(Permission.auditView) && (

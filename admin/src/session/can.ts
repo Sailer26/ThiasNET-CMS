@@ -7,6 +7,7 @@ export const Permission = {
   auditView: "audit.view",
   usersManage: "users.manage",
   messagesView: "messages.view",
+  settingsEdit: "settings.edit",
 } as const;
 
 export type PermissionName = (typeof Permission)[keyof typeof Permission];

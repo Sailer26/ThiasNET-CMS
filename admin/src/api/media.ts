@@ -22,7 +22,7 @@ export interface Media {
 }
 
 export interface MediaUse {
-  page_id: number;
+  page_id: number | null; // null: impostazioni del sito (logo, D-143)
   title: string;
   path: string;
   where: string;

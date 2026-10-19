@@ -187,7 +187,7 @@ export function MediaDetailPanel({ id, folders, onChanged, onDeleted, onClose }:
           <ul className="media-detail__uses">
             {media.used_by.map((use) => (
               <li key={`${use.page_id}-${use.where}`}>
-                <Link to={paths.page(use.page_id)}>{use.title}</Link> <span className="hint">({mt.where_[use.where] ?? use.where})</span>
+                <Link to={use.page_id === null ? paths.settings : paths.page(use.page_id)}>{use.title}</Link> <span className="hint">({mt.where_[use.where] ?? use.where})</span>
               </li>
             ))}
           </ul>

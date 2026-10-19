@@ -186,6 +186,7 @@ export function ChoiceField({ id, spec, value, onChange, required, error, unsave
               checked={value === option}
               onChange={() => onChange(option)}
             />
+            {spec["x-color"] && <span className="swatch" style={{ backgroundColor: String(option) }} aria-hidden="true" />}
             {titles[index]}
           </label>
         ))}

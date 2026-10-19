@@ -7,6 +7,7 @@ import { MessageScreen, MessagesScreen } from "./features/admin/MessagesScreen";
 import { NoAccess } from "./features/admin/NoAccess";
 import { ProfileScreen } from "./features/admin/ProfileScreen";
 import { UsersScreen } from "./features/admin/UsersScreen";
+import { SettingsScreen } from "./features/settings/SettingsScreen";
 import { Link } from "./router/Link";
 import { paths, useRoute, type Route } from "./router/router";
 import { Permission } from "./session/can";
@@ -45,6 +46,8 @@ function Screen({ route }: { route: Route }) {
       return can(Permission.auditView) ? <AuditScreen /> : <NoAccess />;
     case "profile":
       return <ProfileScreen />;
+    case "settings":
+      return can(Permission.settingsEdit) ? <SettingsScreen /> : <NoAccess />;
     case "not-found":
       return (
         <section className="screen">
