@@ -60,7 +60,7 @@ describe("menu del sito (6b, D-140, D-141)", () => {
     await user.type(within(dialog).getByLabelText(/Testo/), "Orari");
     await user.type(within(dialog).getByLabelText(/Indirizzo/), "https://www.esterno.ch/orari");
     await user.click(within(dialog).getByRole("button", { name: "Aggiungi" }));
-    await user.click(within(main).getByRole("button", { name: 'Rientra "Orari"' }));
+    await user.click(within(main).getByRole("button", { name: 'Rientra "Orari" (voce 3)' }));
     await user.click(within(main).getByRole("button", { name: "Salva" }));
     const confirm = await screen.findByRole("dialog", { name: "Salvare il menu?" });
     expect(confirm).toHaveTextContent("subito");
@@ -97,5 +97,33 @@ describe("menu del sito (6b, D-140, D-141)", () => {
     expect(await screen.findByRole("heading", { name: "Non hai accesso a questa sezione." })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Menu" })).not.toBeInTheDocument();
     expect(api.callsTo("GET", "/menus")).toHaveLength(0);
+  });
+
+  test("dopo Giù il focus resta sulla voce e un messaggio dice dove è finita", async () => {
+    const api = start();
+    api.on("GET", "/menus", { data: menus() });
+    const user = userEvent.setup();
+    render(<App />);
+    const main = await screen.findByRole("region", { name: "Menu principale" });
+    await user.click(within(main).getByRole("button", { name: 'Giù "Home" (voce 1)' }));
+    expect(within(main).getByRole("button", { name: 'Su "Home" (voce 2)' })).toBeInTheDocument();
+    // in fondo "Giù" non si può più usare: il focus va su "Modifica" della stessa voce
+    await waitFor(() => expect(within(main).getByRole("button", { name: 'Modifica "Home" (voce 2)' })).toHaveFocus());
+    expect(within(main).getByText('"Home" ora è in posizione 2 di 2.')).toBeInTheDocument();
+  });
+
+  test("togliere una voce con sottovoci chiede conferma", async () => {
+    const api = start();
+    const withChild = menus(true, 1);
+    withChild[0]!.items = [{ uid: "1".repeat(32), page_id: 1, children: [{ uid: "3".repeat(32), url: "/x", label: "Sotto", children: [] }] }] as never;
+    api.on("GET", "/menus", { data: withChild });
+    const user = userEvent.setup();
+    render(<App />);
+    const main = await screen.findByRole("region", { name: "Menu principale" });
+    await user.click(within(main).getByRole("button", { name: 'Togli "Home" (voce 1)' }));
+    const dialog = await screen.findByRole("dialog", { name: "Togliere la voce e le sue sottovoci?" });
+    await user.click(within(dialog).getByRole("button", { name: "Togli" }));
+    expect(within(main).queryByText("Sotto")).not.toBeInTheDocument();
+    expect(within(main).getByText("Il menu è vuoto.")).toBeInTheDocument();
   });
 });

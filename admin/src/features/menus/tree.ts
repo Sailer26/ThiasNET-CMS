@@ -98,6 +98,34 @@ export function outdent(items: MenuItem[], uid: string): MenuItem[] {
   return replaceList(items, outer.list, next);
 }
 
+export function parentUid(items: MenuItem[], uid: string, parent: string | null = null): string | null {
+  for (const item of items) {
+    if (item.uid === uid) return parent;
+    const found = parentUid(item.children, uid, item.uid);
+    if (found !== null) return found;
+  }
+  return null;
+}
+
+/** Dove va il focus dopo "Togli": la voce dopo, quella prima o il genitore. */
+export function neighbourAfterRemoval(items: MenuItem[], uid: string): string | null {
+  const found = siblings(items, uid);
+  if (!found) return null;
+  const next = found.list[found.index + 1] ?? found.list[found.index - 1];
+  return next ? next.uid : parentUid(items, uid);
+}
+
+/** Posizione tra le sorelle (da 1) e quante sono. */
+export function positionOf(items: MenuItem[], uid: string): { position: number; count: number } {
+  const found = siblings(items, uid);
+  return found ? { position: found.index + 1, count: found.list.length } : { position: 0, count: 0 };
+}
+
+export function findItem(items: MenuItem[], uid: string): MenuItem | null {
+  const found = siblings(items, uid);
+  return found ? found.list[found.index]! : null;
+}
+
 export function removeItem(items: MenuItem[], uid: string): MenuItem[] {
   return items
     .filter((item) => item.uid !== uid)

@@ -8,8 +8,8 @@ sue sottovoci. Il menu "main" resta automatico (D-58) finché qualcuno non lo sa
 
 from __future__ import annotations
 
+import hashlib
 import re
-import uuid
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
@@ -36,6 +36,7 @@ from app.services.theme import Theme
 
 AUTOMATIC = "main"  # D-141: l'unico menu che si fa da solo
 MAX_ITEMS = 60
+MAX_NESTING = 10  # i temi arrivano al massimo a 3 livelli (theme.schema.json)
 LABEL_MAX_LENGTH = 80
 URL_MAX_LENGTH = 2048
 MAX_ID = 2**31 - 1
@@ -86,10 +87,26 @@ class _Check:
     pages: dict[int, list[str]] = field(default_factory=dict)  # id -> percorsi che lo usano
 
 
+def _measure(items: Any) -> tuple[int, int]:
+    """Voci e livelli senza ricorsione: un albero annidato a dismisura dà 422, non un 500.
+    Si ferma appena supera i limiti."""
+    count = depth = 0
+    stack: list[tuple[Any, int]] = [(items, 1)]
+    while stack:
+        current, level = stack.pop()
+        if not isinstance(current, list):
+            continue
+        for item in current:
+            count, depth = count + 1, max(depth, level)
+            if count > MAX_ITEMS or depth > MAX_NESTING:
+                return count, depth
+            if isinstance(item, dict):
+                stack.append((item.get("children"), level + 1))
+    return count, depth
+
+
 def _count(items: Any) -> int:
-    if not isinstance(items, list):
-        return 0
-    return sum(1 + _count(i.get("children") if isinstance(i, dict) else None) for i in items)
+    return _measure(items)[0]
 
 
 def _target(raw: dict[str, Any], path: str, check: _Check) -> dict[str, Any] | None:
@@ -166,8 +183,11 @@ def _check_pages(check: _Check, locale: str) -> None:
 def validate(
     items: Any, max_depth: int, locale: str
 ) -> tuple[list[dict[str, Any]], list[FieldError]]:
-    if _count(items) > MAX_ITEMS:
+    count, depth = _measure(items)
+    if count > MAX_ITEMS:
         return [], [_problem("items", "too_many")]
+    if depth > MAX_NESTING:
+        return [], [_problem("items", "too_deep")]
     check = _Check(max_depth=max_depth)
     clean = _items(items, "items", 1, check)
     _check_pages(check, locale)
@@ -181,7 +201,12 @@ def _automatic_items(location: str, locale: str) -> list[dict[str, Any]]:
     if location != AUTOMATIC:
         return []
     return [
-        {"uid": uuid.uuid4().hex, "page_id": page.id, "children": []}
+        # uid stabile: lo stesso menu automatico letto due volte è identico
+        {
+            "uid": hashlib.sha256(f"{location}:{page.id}".encode()).hexdigest()[:32],
+            "page_id": page.id,
+            "children": [],
+        }
         for page in public_pages.auto_pages(locale)
     ]
 

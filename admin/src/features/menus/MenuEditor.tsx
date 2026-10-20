@@ -10,7 +10,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { resetMenu, storeMenu, type MenuInfo } from "../../api/menus";
 import { ApiError, errorMessage, isConflict } from "../../api/client";
 import { mn } from "../../text/menus";
@@ -19,7 +19,22 @@ import { NoticeArea, type NoticeState } from "../../ui/Notice";
 import { isFieldErrors } from "../editor/model/errorPaths";
 import { isSafeUrl, normalizeUrl } from "../editor/schema/safeUrl";
 import { announcements, instructions } from "../editor/zones/sortable";
-import { canIndent, depthOf, indent, moveBy, newUid, outdent, removeItem, reorder, replaceItem, type MenuItem } from "./tree";
+import {
+  canIndent,
+  depthOf,
+  findItem,
+  indent,
+  moveBy,
+  neighbourAfterRemoval,
+  newUid,
+  outdent,
+  parentUid,
+  positionOf,
+  removeItem,
+  reorder,
+  replaceItem,
+  type MenuItem,
+} from "./tree";
 
 export interface PageOption {
   id: number;
@@ -32,7 +47,9 @@ const POINTER_DISTANCE = 6;
 const TOUCH_DELAY_MS = 250;
 const TOUCH_TOLERANCE = 5;
 
-type Editing = { kind: "page" } | { kind: "link" } | { kind: "edit"; item: MenuItem } | null;
+type Editing = { kind: "page" } | { kind: "link" } | { kind: "edit"; uid: string } | null;
+type Action = "up" | "down" | "indent" | "outdent" | "remove";
+type ItemFields = Pick<MenuItem, "label" | "page_id" | "url">;
 
 interface ItemProps {
   item: MenuItem;
@@ -41,45 +58,49 @@ interface ItemProps {
   items: MenuItem[];
   maxDepth: number;
   titleOf: (item: MenuItem) => string;
-  onChange: (next: MenuItem[]) => void;
+  onAction: (action: Action, item: MenuItem) => void;
+  onDrop: (next: MenuItem[]) => void;
   onEdit: (item: MenuItem) => void;
 }
 
-function ItemRow({ item, index, count, items, maxDepth, titleOf, onChange, onEdit }: ItemProps) {
+function ItemRow({ item, index, count, items, maxDepth, titleOf, onAction, onDrop, onEdit }: ItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.uid });
   const title = titleOf(item);
+  const n = index + 1;
   const nested = depthOf(items, item.uid) > 1;
+  const button = (action: Action, label: string, text: string, disabled = false, danger = false) => (
+    <button
+      type="button"
+      className={`button button--small${danger ? " button--danger" : ""}`}
+      aria-label={label}
+      data-action={action}
+      disabled={disabled}
+      onClick={() => onAction(action, item)}
+    >
+      {text}
+    </button>
+  );
   return (
-    <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className="menu-item">
+    <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className="menu-item" data-uid={item.uid}>
       <div className="menu-item__row">
-        <button type="button" className="block-row__handle" aria-label={mn.drag(title)} {...attributes} {...listeners}>
+        <button type="button" className="block-row__handle" aria-label={mn.drag(title, n)} data-action="drag" {...attributes} {...listeners}>
           ⠿
         </button>
         <span className="menu-item__title">
           <strong>{title}</strong> <span className="hint">{item.url ?? mn.page}</span>
         </span>
         <span className="row-actions">
-          <button type="button" className="button button--small" aria-label={mn.up(title)} disabled={index === 0} onClick={() => onChange(moveBy(items, item.uid, -1))}>
-            ↑
-          </button>
-          <button type="button" className="button button--small" aria-label={mn.down(title)} disabled={index === count - 1} onClick={() => onChange(moveBy(items, item.uid, 1))}>
-            ↓
-          </button>
-          <button type="button" className="button button--small" aria-label={mn.indent(title)} disabled={!canIndent(items, item.uid, maxDepth)} onClick={() => onChange(indent(items, item.uid, maxDepth))}>
-            →
-          </button>
-          <button type="button" className="button button--small" aria-label={mn.outdent(title)} disabled={!nested} onClick={() => onChange(outdent(items, item.uid))}>
-            ←
-          </button>
-          <button type="button" className="button button--small" aria-label={mn.editOf(title)} onClick={() => onEdit(item)}>
+          {button("up", mn.up(title, n), "↑", index === 0)}
+          {button("down", mn.down(title, n), "↓", index === count - 1)}
+          {button("indent", mn.indent(title, n), "→", !canIndent(items, item.uid, maxDepth))}
+          {button("outdent", mn.outdent(title, n), "←", !nested)}
+          <button type="button" className="button button--small" aria-label={mn.editOf(title, n)} data-action="edit" onClick={() => onEdit(item)}>
             {mn.edit}
           </button>
-          <button type="button" className="button button--small button--danger" aria-label={mn.remove(title)} onClick={() => onChange(removeItem(items, item.uid))}>
-            ✕
-          </button>
+          {button("remove", mn.remove(title, n), "✕", false, true)}
         </span>
       </div>
-      {item.children.length > 0 && <ItemList list={item.children} {...{ items, maxDepth, titleOf, onChange, onEdit }} />}
+      {item.children.length > 0 && <ItemList list={item.children} {...{ items, maxDepth, titleOf, onAction, onDrop, onEdit }} />}
     </li>
   );
 }
@@ -88,7 +109,7 @@ interface ListProps extends Omit<ItemProps, "item" | "index" | "count"> {
   list: MenuItem[];
 }
 
-function ItemList({ list, items, maxDepth, titleOf, onChange, onEdit }: ListProps) {
+function ItemList({ list, items, maxDepth, titleOf, onAction, onDrop, onEdit }: ListProps) {
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: POINTER_DISTANCE } }),
     useSensor(TouchSensor, { activationConstraint: { delay: TOUCH_DELAY_MS, tolerance: TOUCH_TOLERANCE } }),
@@ -100,7 +121,7 @@ function ItemList({ list, items, maxDepth, titleOf, onChange, onEdit }: ListProp
     return found ? titleOf(found) : "";
   };
   const end = ({ active, over }: DragEndEvent) => {
-    if (over) onChange(reorder(items, String(active.id), String(over.id)));
+    if (over) onDrop(reorder(items, String(active.id), String(over.id)));
   };
   return (
     <DndContext
@@ -112,7 +133,7 @@ function ItemList({ list, items, maxDepth, titleOf, onChange, onEdit }: ListProp
       <SortableContext items={order} strategy={verticalListSortingStrategy}>
         <ul className="menu-tree">
           {list.map((item, index) => (
-            <ItemRow key={item.uid} item={item} index={index} count={list.length} {...{ items, maxDepth, titleOf, onChange, onEdit }} />
+            <ItemRow key={item.uid} item={item} index={index} count={list.length} {...{ items, maxDepth, titleOf, onAction, onDrop, onEdit }} />
           ))}
         </ul>
       </SortableContext>
@@ -122,17 +143,19 @@ function ItemList({ list, items, maxDepth, titleOf, onChange, onEdit }: ListProp
 
 interface EditProps {
   editing: Exclude<Editing, null>;
+  current: MenuItem | null;
   pages: PageOption[];
   onClose: () => void;
-  onDone: (item: MenuItem) => void;
+  onDone: (uid: string, fields: ItemFields) => void;
 }
 
-function ItemDialog({ editing, pages, onClose, onDone }: EditProps) {
-  const current = editing.kind === "edit" ? editing.item : null;
+function ItemDialog({ editing, current, pages, onClose, onDone }: EditProps) {
   const isPage = editing.kind === "page" || (current !== null && current.page_id !== undefined);
+  const known = (id: number | undefined) => id !== undefined && pages.some((page) => page.id === id);
   const [label, setLabel] = useState(current?.label ?? "");
   const [url, setUrl] = useState(current?.url ?? "");
-  const [pageId, setPageId] = useState<number>(current?.page_id ?? pages[0]?.id ?? 0);
+  // Una pagina che non c'è più non si sostituisce in silenzio: si chiede di sceglierne una.
+  const [pageId, setPageId] = useState<number>(known(current?.page_id) ? current!.page_id! : editing.kind === "page" ? (pages[0]?.id ?? 0) : 0);
   const id = useId();
   const clean = normalizeUrl(url.trim());
   const validUrl = isSafeUrl(clean);
@@ -141,18 +164,23 @@ function ItemDialog({ editing, pages, onClose, onDone }: EditProps) {
     <FormDialog
       title={title}
       submitLabel={editing.kind === "edit" ? mn.save : mn.add}
-      canSubmit={isPage ? pageId > 0 : validUrl && label.trim().length > 0}
+      canSubmit={isPage ? known(pageId) : validUrl && label.trim().length > 0}
       onClose={onClose}
       onSubmit={async () => {
-        const base = { uid: current?.uid ?? newUid(), children: current?.children ?? [] };
         const text = label.trim();
-        onDone(isPage ? { ...base, page_id: pageId, ...(text ? { label: text } : {}) } : { ...base, url: clean, label: text });
+        const fields: ItemFields = isPage ? { page_id: pageId, ...(text ? { label: text } : {}) } : { url: clean, label: text };
+        onDone(current?.uid ?? newUid(), fields);
       }}
     >
       {isPage && (
         <label className="field">
           <span>{mn.page}</span>
           <select value={pageId} onChange={(event) => setPageId(Number(event.target.value))}>
+            {!known(pageId) && (
+              <option value={0} disabled>
+                {mn.choosePage}
+              </option>
+            )}
             {pages.map((page) => (
               <option key={page.id} value={page.id}>
                 {"\u00a0\u00a0".repeat(page.depth) + page.title}
@@ -192,18 +220,64 @@ interface Props {
   onReload: () => void;
 }
 
-/** Un menu del tema (D-140, D-141): si modifica qui e si salva intero, con conferma. */
+/** Un menu del tema (D-140, D-141): si modifica qui e si salva intero, con conferma.
+ * Dopo ogni pulsante il focus resta sulla voce (o va alla vicina) e un messaggio dice cosa è
+ * cambiato, per chi usa la tastiera o un lettore di schermo (WCAG 2.4.3, 4.1.3). */
 export function MenuEditor({ menu, pages, onReload }: Props) {
   const [items, setItems] = useState<MenuItem[]>(menu.items);
   const [info, setInfo] = useState(menu);
   const [editing, setEditing] = useState<Editing>(null);
   const [confirm, setConfirm] = useState<"save" | "reset" | null>(null);
+  const [removing, setRemoving] = useState<MenuItem | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
   const [notice, setNotice] = useState<NoticeState | null>(null);
+  const [said, setSaid] = useState("");
+  const pending = useRef<{ uid: string | null; action: string } | null>(null);
+  const box = useRef<HTMLElement>(null);
   const titleId = `menu-${menu.location}`;
   const titles = new Map(pages.map((page) => [page.id, page.title]));
   const titleOf = (item: MenuItem) =>
     item.label || (item.page_id !== undefined ? (titles.get(item.page_id) ?? mn.pageMissing) : (item.url ?? ""));
+
+  useEffect(() => {
+    const target = pending.current;
+    if (!target) return;
+    pending.current = null;
+    const row = target.uid ? box.current?.querySelector(`[data-uid="${target.uid}"]`) : null;
+    const wanted = row?.querySelector<HTMLButtonElement>(`[data-action="${target.action}"]`);
+    const fallback = row?.querySelector<HTMLButtonElement>('[data-action="edit"]') ?? box.current?.querySelector<HTMLButtonElement>('[data-action="add-page"]');
+    (wanted && !wanted.disabled ? wanted : fallback)?.focus();
+  }, [items]);
+
+  function change(next: MenuItem[], focus: { uid: string | null; action: string }, message: string) {
+    pending.current = focus;
+    setItems(next);
+    setSaid(message);
+  }
+
+  function remove(item: MenuItem) {
+    change(removeItem(items, item.uid), { uid: neighbourAfterRemoval(items, item.uid), action: "edit" }, mn.removed(titleOf(item)));
+  }
+
+  function act(action: Action, item: MenuItem) {
+    const title = titleOf(item);
+    if (action === "remove") {
+      if (item.children.length > 0) setRemoving(item);
+      else remove(item);
+      return;
+    }
+    if (action === "up" || action === "down") {
+      const next = moveBy(items, item.uid, action === "up" ? -1 : 1);
+      const { position, count } = positionOf(next, item.uid);
+      change(next, { uid: item.uid, action }, mn.moved(title, position, count));
+    } else if (action === "indent") {
+      const next = indent(items, item.uid, menu.max_depth);
+      const parent = findItem(next, parentUid(next, item.uid) ?? "");
+      change(next, { uid: item.uid, action }, mn.indented(title, parent ? titleOf(parent) : ""));
+    } else {
+      change(outdent(items, item.uid), { uid: item.uid, action }, mn.outdented(title));
+    }
+  }
 
   function failed(error: unknown) {
     if (error instanceof ApiError && error.code === "invalid_content" && isFieldErrors(error.details)) {
@@ -245,12 +319,16 @@ export function MenuEditor({ menu, pages, onReload }: Props) {
     }
   }
 
+  const editingItem = editing?.kind === "edit" ? findItem(items, editing.uid) : null;
   return (
-    <section className="card" aria-labelledby={titleId}>
+    <section className="card" aria-labelledby={titleId} ref={box}>
       <h2 id={titleId}>{menu.label}</h2>
       <p className="hint">{mn.depth(menu.max_depth)}</p>
       {info.automatic && !info.manual && <p className="notice notice--info">{mn.automatic}</p>}
       <NoticeArea notice={notice} onClose={() => setNotice(null)} />
+      <p className="visually-hidden" role="status">
+        {said}
+      </p>
       {problems.length > 0 && (
         <section className="notice notice--error error-list" role="alert">
           <p>{mn.errorsTitle}</p>
@@ -264,10 +342,18 @@ export function MenuEditor({ menu, pages, onReload }: Props) {
       {items.length === 0 ? (
         <p className="hint">{mn.empty}</p>
       ) : (
-        <ItemList list={items} items={items} maxDepth={menu.max_depth} titleOf={titleOf} onChange={setItems} onEdit={(item) => setEditing({ kind: "edit", item })} />
+        <ItemList
+          list={items}
+          items={items}
+          maxDepth={menu.max_depth}
+          titleOf={titleOf}
+          onAction={act}
+          onDrop={setItems}
+          onEdit={(item) => setEditing({ kind: "edit", uid: item.uid })}
+        />
       )}
       <div className="form__actions">
-        <button type="button" className="button" disabled={pages.length === 0} onClick={() => setEditing({ kind: "page" })}>
+        <button type="button" className="button" data-action="add-page" disabled={pages.length === 0} onClick={() => setEditing({ kind: "page" })}>
           {mn.addPage}
         </button>
         <button type="button" className="button" onClick={() => setEditing({ kind: "link" })}>
@@ -282,16 +368,36 @@ export function MenuEditor({ menu, pages, onReload }: Props) {
           </button>
         )}
       </div>
-      {editing && (
+      {editing && (editing.kind !== "edit" || editingItem) && (
         <ItemDialog
           editing={editing}
+          current={editingItem}
           pages={pages}
           onClose={() => setEditing(null)}
-          onDone={(item) => {
-            setItems((current) => (editing.kind === "edit" ? replaceItem(current, item.uid, () => item) : [...current, item]));
+          onDone={(uid, fields) => {
+            // Si cambiano solo i campi del modulo: le sottovoci restano quelle di adesso.
+            setItems((current) =>
+              editing.kind === "edit"
+                ? replaceItem(current, uid, (live) => ({ uid: live.uid, children: live.children, ...fields }))
+                : [...current, { uid, children: [], ...fields }],
+            );
             setEditing(null);
           }}
         />
+      )}
+      {removing && (
+        <FormDialog
+          title={mn.removeTitle}
+          submitLabel={mn.removeConfirm}
+          danger
+          onClose={() => setRemoving(null)}
+          onSubmit={async () => {
+            setRemoving(null);
+            remove(removing);
+          }}
+        >
+          <p>{mn.removeText(titleOf(removing), removing.children.length)}</p>
+        </FormDialog>
       )}
       {confirm === "save" && (
         <FormDialog title={mn.saveTitle} submitLabel={mn.save} onClose={() => setConfirm(null)} onSubmit={save}>

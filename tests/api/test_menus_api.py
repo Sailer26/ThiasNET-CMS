@@ -173,3 +173,59 @@ def test_footer_menu_is_rendered(admin: FlaskClient) -> None:
     assert put(admin, "footer", [item(1, url="/privacy", label="Privacy")]).status_code == 200
     html = admin.get("/").get_data(as_text=True)
     assert 'class="footer-nav"' in html and ">Privacy</a>" in html
+
+
+def test_absurdly_nested_tree_is_422_not_500(admin: FlaskClient) -> None:
+    tree: dict[str, Any] = {"uid": uid(1), "url": "/a", "label": "A", "children": []}
+    for n in range(2, 700):
+        tree = {"uid": uid(n), "url": "/a", "label": "A", "children": [tree]}
+    response = put(admin, "main", [tree])
+    assert response.status_code == 422
+
+
+def test_child_page_is_marked_current(admin: FlaskClient) -> None:
+    services = online(admin, "Servizi")
+    hours = online(admin, "Orari", parent_id=services["id"])
+    items = [item(1, page_id=services["id"], children=[item(2, page_id=hours["id"])])]
+    assert put(admin, "main", items).status_code == 200
+    html = admin.get("/servizi/orari").get_data(as_text=True)
+    assert '<a href="/servizi/orari" aria-current="page">Orari</a>' in html
+
+
+def test_menu_follows_a_new_address(admin: FlaskClient) -> None:
+    from tests.pages_helpers import PAGES, page_version
+
+    page = online(admin, "Chi siamo")
+    assert put(admin, "main", [item(1, page_id=page["id"])]).status_code == 200
+    moved = admin.patch(
+        f"{PAGES}/{page['id']}", json={"version": page_version(admin, page["id"]), "slug": "noi"}
+    )
+    assert moved.status_code == 200, moved.get_json()
+    assert 'href="/noi"' in admin.get("/noi").get_data(as_text=True)
+
+
+def test_levels_beyond_the_theme_are_cut_when_shown(app: Flask, admin: FlaskClient) -> None:
+    """Un tema che riduce i livelli: le sottovoci salvate prima non si vedono (D-53)."""
+    from app.extensions import db
+    from app.models.menu import MenuRow
+
+    online(admin, "Home")
+    deep = [item(1, url="/a", label="Sopra", children=[item(2, url="/b", label="Sotto")])]
+    with app.app_context():
+        db.session.add(MenuRow(location="footer", locale="it", items_json=deep, version=1))
+        db.session.commit()
+    html = admin.get("/").get_data(as_text=True)
+    assert ">Sopra</a>" in html and "Sotto" not in html
+
+
+def test_reset_with_old_version_is_409_and_without_menu_is_harmless(admin: FlaskClient) -> None:
+    assert admin.delete(f"{MENUS}/footer", json={"version": 0}).status_code == 200
+    assert put(admin, "footer", [item(1, url="/a", label="A")]).status_code == 200
+    stale = admin.delete(f"{MENUS}/footer", json={"version": 0})
+    assert (stale.status_code, error_code(stale)) == (409, "version_conflict")
+
+
+def test_automatic_menu_has_stable_uids(admin: FlaskClient) -> None:
+    online(admin, "Home")
+    first = [i["uid"] for i in menus(admin)["main"]["items"]]
+    assert first == [i["uid"] for i in menus(admin)["main"]["items"]]

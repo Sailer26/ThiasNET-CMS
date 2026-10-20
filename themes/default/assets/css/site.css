@@ -120,6 +120,17 @@ main:focus { outline: none; }
   .site-nav__parent:hover > .site-nav__sub,
   .site-nav__parent:focus-within > .site-nav__sub { display: grid; gap: 0.25rem; }
 }
+/* Tablet e schermi touch: niente "passaggio del mouse", le sottovoci restano visibili */
+@media (min-width: 48rem) and (hover: none) {
+  .site-nav .site-nav__sub {
+    display: grid;
+    position: static;
+    min-width: 0;
+    padding: 0 0 0 var(--space);
+    border: 0;
+    background: none;
+  }
+}
 
 /* --- Pagina ---------------------------------------------------------------- */
 
