@@ -157,10 +157,19 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - [x] Logo e stile della testata nel tema; il logo conta in "Usato in"; avviso al vecchio destinatario dei messaggi
 - [x] Schermata Impostazioni nel pannello ("Dati del sito", "Aspetto"); e2e; test della regola d'oro senza più skip
 
+**6b — Menu** (D-140, D-141, D-145)
+- [x] Tabella `menus` (migrazione `0011`), `GET /menus`, `PUT` e `DELETE /menus/<posizione>` per chi può pubblicare, con versione, registro, versioni e cache
+- [x] Menu principale automatico finché non si salva, "Torna automatico"; pagine risolte al render, sottovoci e menu del piè di pagina nel tema
+- [x] Schermata Menu nel pannello: trascinamento tra sorelle, su/giù/rientra/esci, focus e annunci accessibili; e2e
+
 **Criteri della Fase 6**
 - [ ] Widget per area con visibilità per pagina (6c)
-- [ ] Menu per posizione, drag&drop, profondità massima (6b)
+- [x] Menu per posizione, drag&drop, profondità massima (6b)
 - [x] Impostazioni sito + settings del tema generate da `theme.json` (form dinamico tipizzato) su `PUT /api/admin/settings/appearance` (D-14)
+
+**Rimandati dalla 6b:**
+- 6c: estendere `test_theme_files_unchanged_after_full_admin_session` ai widget.
+- Dopo il test d'uso: "aria-current" diverso per la voce genitore della pagina aperta; pulsante per aprire i sottomenu sui tablet se le sottovoci sempre aperte disturbano.
 
 **Rimandati dalla 6a:**
 - 6b/6c: estendere `test_theme_files_unchanged_after_full_admin_session` a menu e widget; contatti e social del sito nei widget (D-142).

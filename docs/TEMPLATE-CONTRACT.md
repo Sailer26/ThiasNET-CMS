@@ -63,7 +63,7 @@ I template sono eseguiti in sandbox (D-52): non possono leggere file fuori dal t
 | `preview` | `true` dentro l'anteprima del pannello |
 | `cms_head()` · `cms_body_end()` | `<title>`, description, canonical, robots, `/_vars.css` · banner del consenso e script del CMS |
 | `render_zone(nome)` · `zone_has_blocks(nome)` | blocchi di una zona già renderizzati · se la zona ha blocchi |
-| `menu("main")` | voci `{title, url, current}` (fino alla Fase 6 menu automatico, D-58) |
+| `menu("posizione")` | voci `{title, url, current, children}` per ogni menu dichiarato in `theme.json > menus` (D-145); `children` fino a `max_depth`. "main" è automatico (D-58) finché il cliente non lo cambia; gli altri sono vuoti finché non li riempie |
 | `img(media_id, size="card", sizes=None, eager=False, css_class=None)` | `<img>` responsive (D-81): `srcset` con larghezza normale e doppia, `width`/`height`, `alt`, `loading="lazy"` (con `eager=True` per l'immagine in cima, es. hero). `size` deve essere un `image_sizes` del tema (altrimenti errore del tema). `sizes` e `css_class` accettano solo testo semplice. Media mancante: niente sul sito, segnaposto in anteprima |
 | `media_url(id)` | indirizzo del file principale, o `None` |
 | `media_file(id)` | per i file da scaricare: `{url, name, ext, size_label}` (es. `PDF`, `340 kB`), o `None` |

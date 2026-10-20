@@ -55,6 +55,7 @@ widgets(id, type, title, data_json, area, sort, visibility_json)
 menus(id, location, locale) · menu_items(id, menu_id, parent_id, label, target_type, target_id, url, sort)
 settings(scope PK 'site'|'appearance', values_json, version, updated_by, updated_at)  -- D-143, D-144
 entity_revisions(id, entity_type, entity_key, snapshot_json, author_id, created_at)   -- versioni di impostazioni, menu, widget (D-139)
+menus(location, locale, items_json, version, updated_by, updated_at)  PK(location, locale)  -- menu fatti a mano (D-145)
 redirects(id, from_path, to_path, code)
 audit_log(id, user_id, action, entity, entity_id, diff_json, ip_hash, created_at)   -- D-30
 page_drafts(page_id, data_json, version, author_id, created_at, updated_at)   -- autosave (D-07, D-44)
@@ -154,6 +155,9 @@ SPA ──fetch──► /api/admin/* (cookie di sessione SameSite=Strict + head
   `settings_fields.py` dà schema (per `SchemaForm` del pannello, con `x-color` per la palette) e validazione;
   `settings_store.py` salva con versione, registro, versioni e `mark_changed()`; `site_settings.current()` e
   `theme_settings()` leggono dal database (cache per richiesta in `g`).
+- 6b: `GET /menus`, `PUT`/`DELETE /menus/<posizione>` (`content.publish`); `app/services/menus.py` valida l'albero
+  (senza ricorsione sul conteggio), salva con versione e dà al rendering `site_menus()` (un `Link` con `children`
+  per posizione); pannello in `admin/src/features/menus/` (operazioni pure in `tree.ts`).
 - API dell'amministrazione: `GET/PATCH/DELETE /messages[/<id>]`, `GET /messages/summary` (`messages.view`,
   admin e owner), `GET /audit` con filtri controllati (`audit.view`, solo owner), `/users`, `/auth/password`,
   `/auth/totp/*`. L'eliminazione di un messaggio scrive nel registro solo l'id.
