@@ -10,8 +10,7 @@ from app.extensions import db
 from app.models.entry import Entry, EntryStatus
 from app.models.page import Page, PageStatus
 from app.services import entries as entry_service
-from app.services.page_paths import live
-from app.services.public_pages import public_path
+from app.services.page_paths import live, public_path
 from app.services.theme import Theme
 
 SITEMAP_LIMIT = 50_000  # massimo del protocollo per un singolo file

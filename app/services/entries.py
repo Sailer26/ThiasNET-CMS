@@ -8,6 +8,7 @@ programmazione stanno in `entry_publishing.py`.
 from __future__ import annotations
 
 import uuid
+from types import EllipsisType
 from typing import Any
 
 from sqlalchemy import delete, func, select, update
@@ -22,7 +23,7 @@ from app.models.user import User
 from app.services import audit, collections, entity_revisions, page_cache
 from app.services.blocks import Mode
 from app.services.errors import ServiceError, not_found, version_conflict
-from app.services.page_paths import HOME_PATH, live
+from app.services.page_paths import HOME_PATH, live, public_path
 from app.services.permissions import Permission, require
 from app.services.sanitize import clean_line
 from app.services.slugs import slugify, validate_slug
@@ -92,8 +93,6 @@ def listing_page(theme: Theme, collection: str, locale: str, *, online: bool) ->
 
 
 def entry_url(listing: Page, slug: str, theme: Theme) -> str:
-    from app.services.public_pages import public_path  # public_pages usa questo modulo
-
     base = "" if listing.path == HOME_PATH else listing.path
     return public_path(listing.locale, f"{base}/{slug}", theme)
 
@@ -175,7 +174,13 @@ def create(actor: User, collection: str, *, title: str, locale: str | None = Non
         updated_by=actor.id,
     )
     db.session.add(entry)
-    db.session.flush()
+    try:  # due creazioni con lo stesso titolo nello stesso istante: 409, non 500
+        db.session.flush()
+    except IntegrityError as exc:
+        db.session.rollback()
+        if any(marker in str(exc.orig) for marker in SLUG_INDEX_MARKERS):
+            raise _slug_taken_error() from exc
+        raise
     db.session.add(
         EntryDraft(entry_id=entry.id, data_json=empty_document(clean_title), author_id=actor.id)
     )
@@ -353,8 +358,20 @@ def _iso(value: Any) -> str | None:
     return None if value is None else value.isoformat()
 
 
-def serialize(entry: Entry, theme: Theme, *, has_draft: bool | None = None) -> dict[str, Any]:
+def serialize(
+    entry: Entry,
+    theme: Theme,
+    *,
+    has_draft: bool | None = None,
+    listing: Page | EllipsisType | None = ...,
+) -> dict[str, Any]:
+    """`listing` già cercata evita una query per riga nell'elenco del pannello."""
     drafted = load_draft(entry.id) is not None if has_draft is None else has_draft
+    found = (
+        listing_page(theme, entry.collection, entry.locale, online=False)
+        if isinstance(listing, EllipsisType)
+        else listing
+    )
     return {
         "id": entry.id,
         "collection": entry.collection,
@@ -370,7 +387,7 @@ def serialize(entry: Entry, theme: Theme, *, has_draft: bool | None = None) -> d
         "updated_by": entry.updated_by,
         "deleted_at": _iso(entry.deleted_at),
         "has_draft": drafted,
-        "url": public_url(entry, theme),
+        "url": None if found is None else entry_url(found, entry.slug, theme),
     }
 
 
@@ -391,7 +408,9 @@ def panel_list(
             select(EntryDraft.entry_id).where(EntryDraft.entry_id.in_([e.id for e in rows]))
         ).scalars()
     )
-    return [serialize(e, theme, has_draft=e.id in drafted) for e in rows], int(total)
+    listing = listing_page(theme, collection, locale, online=False)
+    found = [serialize(e, theme, has_draft=e.id in drafted, listing=listing) for e in rows]
+    return found, int(total)
 
 
 def revisions(entry: Entry) -> list[dict[str, Any]]:

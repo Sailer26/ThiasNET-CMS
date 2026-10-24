@@ -9,7 +9,7 @@ from types import MappingProxyType
 from typing import Any
 
 from flask import current_app
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
 
 from app.extensions import db
 from app.models.entry import Entry, EntryStatus
@@ -126,7 +126,7 @@ def page_media(
 # --- Raccolte (D-147, D-149) -----------------------------------------------------------
 
 
-def _online_entries(collection: str, locale: str) -> Any:
+def _online_entries(collection: str, locale: str) -> Select[Entry]:
     return select(Entry).where(
         Entry.deleted_at.is_(None),
         Entry.collection == collection,

@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import String, cast, or_, select
 
 from app.extensions import db
 from app.models.entry import Entry, EntryDraft, EntryStatus
@@ -127,12 +127,21 @@ def _scheduled(media_id: int) -> Iterator[tuple[Page, str]]:
 SOURCES = (_published, _drafts, _scheduled)
 
 
-def _entry_documents() -> Iterator[tuple[Entry, str, Any]]:
+def _entry_documents(media_id: int) -> Iterator[tuple[Entry, str, Any]]:
+    """Solo le voci delle raccolte con immagini che nominano l'id da qualche parte: il controllo
+    vero lo fa poi lo schema (il filtro sul testo serve solo a non leggere tutto)."""
     theme = active_theme()
-    rows = db.session.execute(select(Entry).where(Entry.deleted_at.is_(None))).scalars()
-    for entry in rows:
-        if entry.collection not in theme.collections:
-            continue
+    keys = [key for key in theme.collections if collections.has_media(theme, key)]
+    if not keys:
+        return
+    needle = f"%{media_id}%"
+    mentions = or_(
+        cast(Entry.fields_json, String).like(needle),
+        cast(Entry.seo_json, String).like(needle),
+        cast(Entry.scheduled_json, String).like(needle),
+    )
+    query = select(Entry).where(Entry.deleted_at.is_(None), Entry.collection.in_(keys), mentions)
+    for entry in db.session.execute(query).scalars():
         where = "published" if entry.status == EntryStatus.PUBLISHED else "unpublished"
         yield entry, where, entries.published_document(entry)
         if entry.scheduled_json is not None:
@@ -140,7 +149,11 @@ def _entry_documents() -> Iterator[tuple[Entry, str, Any]]:
     drafts = db.session.execute(
         select(EntryDraft, Entry)
         .join(Entry, Entry.id == EntryDraft.entry_id)
-        .where(Entry.deleted_at.is_(None))
+        .where(
+            Entry.deleted_at.is_(None),
+            Entry.collection.in_(keys),
+            cast(EntryDraft.data_json, String).like(needle),
+        )
     )
     for draft, entry in drafts:
         yield entry, "draft", draft.data_json
@@ -149,7 +162,7 @@ def _entry_documents() -> Iterator[tuple[Entry, str, Any]]:
 def _entries_using(media_id: int) -> Iterator[tuple[Entry, str]]:
     """Le notizie (pubblicate, bozze, programmate) che usano un media (D-147)."""
     theme = active_theme()
-    for entry, where, document in _entry_documents():
+    for entry, where, document in _entry_documents(media_id):
         refs = collections.media_refs(theme, entry.collection, document)
         if any(ref.media_id == media_id for ref in refs):
             yield entry, where

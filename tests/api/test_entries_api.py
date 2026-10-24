@@ -190,8 +190,58 @@ def test_due_schedule_publishes_from_the_command(app: Flask, admin: FlaskClient)
     )
     assert sent.status_code == 200
     with app.app_context():
-        assert entry_publishing.run_due(datetime.now(UTC) + timedelta(minutes=10)) == 1
+        result = entry_publishing.run_due(datetime.now(UTC) + timedelta(minutes=10))
+    assert (result.published, result.failed) == (1, 0)
     assert entry(admin, item["id"])["status"] == "published"
+
+
+def test_schedule_that_no_longer_validates_is_dropped(app: Flask, admin: FlaskClient) -> None:
+    """Il tema o i media cambiano dopo la programmazione: niente pubblicazione, niente
+    tentativi ogni minuto, e il registro dice perché."""
+    from app.extensions import db
+    from app.models.entry import Entry
+    from app.services import entry_publishing
+
+    item = create(admin)
+    assert save(admin, item["id"], fields=fields(cover=999_999)).status_code == 200
+    with app.app_context():  # programmata quando l'immagine c'era ancora
+        stored = db.session.get_one(Entry, item["id"])
+        stored.scheduled_json = {"title": "Festa", "fields": fields(cover=999_999), "seo": {}}
+        stored.publish_at = datetime.now(UTC) - timedelta(minutes=1)
+        stored.status = "scheduled"
+        db.session.commit()
+        result = entry_publishing.run_due(datetime.now(UTC))
+    assert (result.published, result.failed) == (0, 0)
+    after = entry(admin, item["id"])
+    assert (after["status"], after["publish_at"]) == ("draft", None)
+    assert "entry.schedule_failed" in actions(app)
+
+
+def test_publish_checks_the_media(admin: FlaskClient) -> None:
+    item = create(admin)
+    assert save(admin, item["id"], fields=fields(cover=999_999)).status_code == 200
+    response = publish(admin, item["id"])
+    assert response.status_code == 422
+    assert ("fields/cover", "media_missing") in details(response)
+
+
+def test_empty_date_counts_as_missing(admin: FlaskClient) -> None:
+    item = create(admin)
+    assert save(admin, item["id"], fields=fields(date="")).status_code == 200
+    assert "date" not in draft(admin, item["id"])["data"]["fields"]
+    response = publish(admin, item["id"])
+    assert ("fields/date", "required") in details(response)
+
+
+def test_two_creations_with_the_same_slug_give_a_conflict(
+    admin: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.services import entries
+
+    create(admin)
+    monkeypatch.setattr(entries, "_free_slug", lambda *_args: "festa-del-paese")
+    response = admin.post(NEWS, json={"title": "Festa del paese"})
+    assert (response.status_code, error_code(response)) == (409, "slug_taken")
 
 
 def test_unpublish_and_trash_and_restore(admin: FlaskClient) -> None:

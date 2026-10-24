@@ -277,7 +277,7 @@ def _publish_scheduled(page: Page, now: datetime) -> bool:
         return False
     snapshot, author_id = revision.snapshot_json, revision.author_id
     try:
-        document = _validated(snapshot)
+        document = _validated(snapshot, page)
     except ServiceError as exc:
         _fail(page, revision, exc, now)
         return False

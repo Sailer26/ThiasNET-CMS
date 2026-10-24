@@ -117,6 +117,14 @@ def _listing_has_no_children() -> ServiceError:
     )
 
 
+def _listing_not_home() -> ServiceError:
+    return ServiceError(
+        "listing_not_home",
+        "Le notizie hanno una pagina loro: la homepage non può elencarle",
+        422,
+    )
+
+
 def is_listing(page: Page) -> bool:
     layout = active_theme().layouts.get(page.layout)
     return layout is not None and layout.collection is not None
@@ -127,6 +135,8 @@ def check_listing(page: Page | None, layout: str, locale: str) -> None:
     spec = active_theme().layouts.get(layout)
     if spec is None or spec.collection is None:
         return
+    if page is not None and is_home(page):
+        raise _listing_not_home()
     query = select(Page.id).where(live(), Page.locale == locale, Page.layout == layout)
     if page is not None:
         query = query.where(Page.id != page.id)
@@ -226,6 +236,8 @@ def create_page(
     if layout not in theme.layouts:
         raise ServiceError("unknown_layout", "Layout non disponibile nel tema", 422)
     check_listing(None, layout, locale)
+    if slug == "" and theme.layouts[layout].collection is not None:
+        raise _listing_not_home()
     slug, path, parent = _new_address(clean_title, slug, parent_id, locale)
     parent_key = None if parent is None else parent.id
     page = Page(
@@ -389,8 +401,11 @@ def restore(actor: User, page: Page, version: int) -> Page:
         parent = db.session.get(Page, page.parent_id)
         if parent is None or parent.deleted_at is not None:
             raise ServiceError("parent_trashed", "Ripristina prima la pagina superiore", 409)
+        if is_listing(parent):
+            raise _listing_has_no_children()
         if depth(parent.path) + 1 > MAX_DEPTH:
             raise _too_deep()
+    check_listing(page, page.layout, page.locale)  # D-149: mai due pagine elenco
     path = path_for(parent, page.slug)  # il genitore può essere stato spostato nel frattempo
     page_paths.check_length([path])
     if path_taken(page.locale, path, exclude=[page.id]):

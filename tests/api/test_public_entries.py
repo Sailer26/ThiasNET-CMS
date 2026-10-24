@@ -113,6 +113,8 @@ def test_pagination(admin: FlaskClient, visitor: FlaskClient) -> None:
     assert 'href="/notizie"' in second.get_data(as_text=True)  # pagina precedente
     one = visitor.get("/notizie?p=1")
     assert one.status_code == 301 and one.headers["Location"].endswith("/notizie")
+    padded = visitor.get("/notizie?p=02")
+    assert padded.status_code == 301 and padded.headers["Location"].endswith("/notizie?p=2")
     for bad in ("3", "0", "abc", "{{7*7}}"):
         assert visitor.get(f"/notizie?p={bad}").status_code == 404, bad
 
@@ -133,6 +135,22 @@ def test_one_listing_page_per_language(admin: FlaskClient) -> None:
     listing(admin)
     response = admin.post(PAGES, json={"title": "Altre notizie", "layout": "news_list"})
     assert (response.status_code, error_code(response)) == (409, "listing_exists")
+
+
+def test_restoring_a_second_listing_page_is_refused(admin: FlaskClient) -> None:
+    first = listing(admin)
+    version = page_version(admin, first["id"])
+    assert admin.delete(f"{PAGES}/{first['id']}", json={"version": version}).status_code == 200
+    listing(admin, "Avvisi")
+    trashed = admin.get(f"{PAGES}/trash").get_json()["data"]
+    version = next(p["version"] for p in trashed if p["id"] == first["id"])
+    back = admin.post(f"{PAGES}/{first['id']}/restore", json={"version": version})
+    assert (back.status_code, error_code(back)) == (409, "listing_exists")
+
+
+def test_homepage_cannot_be_the_listing(admin: FlaskClient) -> None:
+    response = admin.post(PAGES, json={"title": "Home", "layout": "news_list", "slug": ""})
+    assert (response.status_code, error_code(response)) == (422, "listing_not_home")
 
 
 def test_listing_page_has_no_subpages(admin: FlaskClient) -> None:

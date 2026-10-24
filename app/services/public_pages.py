@@ -19,7 +19,7 @@ from app.extensions import db
 from app.models.entry import Entry, EntryStatus
 from app.models.page import PATH_MAX_LENGTH, Page, PageRedirect, PageStatus
 from app.services import entries, publishing
-from app.services.page_paths import HOME_PATH, live
+from app.services.page_paths import HOME_PATH, live, public_path
 from app.services.render_context import Link
 from app.services.theme import Theme
 
@@ -50,13 +50,6 @@ def _not_found(locale: str) -> Resolution:
 
 def _redirect(locale: str, location: str) -> Resolution:
     return Resolution(Outcome.REDIRECT, locale, location=location)
-
-
-def public_path(locale: str, path: str, theme: Theme) -> str:
-    """Indirizzo pubblico relativo (senza dominio) di un percorso interno."""
-    if locale == theme.locales[0]:
-        return path
-    return f"/{locale}/" if path == HOME_PATH else f"/{locale}{path}"
 
 
 def public_url(page: Page, theme: Theme) -> str:

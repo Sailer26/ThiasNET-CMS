@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
 from typing import Any
 
@@ -93,15 +94,25 @@ def collection_schema(collection: CollectionSpec) -> dict[str, Any]:
     }
 
 
+@dataclass(frozen=True)
+class _Cached:
+    theme: Theme
+    registry: BlockRegistry
+
+
 def registry(theme: Theme) -> BlockRegistry:
     """Un registro per il tema attivo (come il renderer): si rifà solo se il tema cambia."""
     cached = current_app.extensions.get(REGISTRY_KEY)
-    if isinstance(cached, tuple) and cached[0] is theme:
-        found: BlockRegistry = cached[1]
-        return found
+    if isinstance(cached, _Cached) and cached.theme is theme:
+        return cached.registry
     built = BlockRegistry({key: collection_schema(c) for key, c in theme.collections.items()})
-    current_app.extensions[REGISTRY_KEY] = (theme, built)
+    current_app.extensions[REGISTRY_KEY] = _Cached(theme, built)
     return built
+
+
+def has_media(theme: Theme, key: str) -> bool:
+    collection = theme.collections.get(key)
+    return collection is not None and any(f.type == "media" for f in collection.fields.values())
 
 
 def public_schema(theme: Theme, key: str) -> dict[str, Any]:
@@ -125,11 +136,12 @@ def _parse_date(value: str) -> date | None:
 def _parse_datetime(value: str) -> datetime | None:
     try:
         found = datetime.fromisoformat(value)
-        if found.tzinfo is None or found.year not in YEARS:
+        if found.tzinfo is None:
             return None
-        return found.astimezone(UTC)
+        moment = found.astimezone(UTC)
     except (ValueError, OverflowError):
         return None
+    return moment if moment.year in YEARS else None
 
 
 def _dates(collection: CollectionSpec, fields: dict[str, Any]) -> list[FieldError]:
@@ -152,6 +164,14 @@ def _dates(collection: CollectionSpec, fields: dict[str, Any]) -> list[FieldErro
     return errors
 
 
+def _without_empty_dates(collection: CollectionSpec, fields: Any) -> Any:
+    """Un campo data svuotato nel pannello arriva come "": vale come non compilato."""
+    if not isinstance(fields, dict):
+        return fields
+    dates = {name for name, field in collection.fields.items() if field.type in DATE_TYPES}
+    return {k: v for k, v in fields.items() if not (v == "" and k in dates)}
+
+
 def validate(theme: Theme, key: str, document: Any, mode: Mode) -> dict[str, Any]:
     """Documento pulito di una voce, oppure ServiceError 422 (413 se enorme). Non modifica
     mai quello ricevuto."""
@@ -165,7 +185,7 @@ def validate(theme: Theme, key: str, document: Any, mode: Mode) -> dict[str, Any
     if mode is Mode.PUBLISH and not title:
         errors.append(FieldError("title", "required", "Campo obbligatorio"))
     found = registry(theme)
-    fields = found.clean(key, document["fields"])
+    fields = found.clean(key, _without_empty_dates(collection, document["fields"]))
     errors += found.errors(key, fields, mode, "fields")
     if not errors:
         errors += _dates(collection, fields)

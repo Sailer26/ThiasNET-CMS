@@ -14,6 +14,7 @@ from sqlalchemy import ColumnElement, delete, func, select
 from app.extensions import db
 from app.models.page import PATH_MAX_LENGTH, Page, PageRedirect
 from app.services.errors import ServiceError
+from app.services.theme import Theme
 
 MAX_DEPTH = 4
 HOME_PATH = "/"
@@ -122,3 +123,10 @@ def apply_paths(branch: list[Page], new_paths: Mapping[int, str]) -> list[tuple[
             clear_redirects(locale, [old])
             db.session.add(PageRedirect(page_id=page.id, locale=locale, from_path=old))
     return changed
+
+
+def public_path(locale: str, path: str, theme: Theme) -> str:
+    """Indirizzo pubblico relativo (senza dominio) di un percorso interno."""
+    if locale == theme.locales[0]:
+        return path
+    return f"/{locale}/" if path == HOME_PATH else f"/{locale}{path}"

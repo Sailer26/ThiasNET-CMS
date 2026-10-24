@@ -63,20 +63,21 @@ def _publish_entries(generation: int) -> int:
 
 
 def _listing_number(page: Page) -> int | BaseResponse:
-    """`?p=` di una pagina elenco (D-149): 1 è l'indirizzo semplice, fuori dai limiti è 404.
+    """`?p=` di una pagina elenco (D-149): 1 è l'indirizzo semplice, "02" diventa "2"; il limite
+    superiore si controlla solo se la pagina non è in cache (niente conteggio a ogni visita).
     Le altre pagine ignorano `p`."""
     theme = active_theme()
-    pages = public_render.listing_pages(page, theme)
     raw = request.args.get("p")
-    if pages is None or raw is None:
+    if raw is None or public_pages.listing_collection(page, theme) is None:
         return 1
-    if not LISTING_PAGE.fullmatch(raw):
+    if not LISTING_PAGE.fullmatch(raw) or int(raw) < 1:
         return not_found_response(page.locale)
     number = int(raw)
+    base = public_pages.public_url(page, theme)
     if number == 1:
-        return redirect(public_pages.public_url(page, theme), code=301)
-    if not 1 < number <= pages:
-        return not_found_response(page.locale)
+        return redirect(base, code=301)
+    if raw != str(number):
+        return redirect(f"{base}?p={number}", code=301)
     return number
 
 
@@ -116,6 +117,8 @@ def page(path: str) -> BaseResponse:
     html = cache.get(key, generation)
     if html is not None:
         return conditional(html_page(html), request)
+    if number > 1 and number > (public_render.listing_pages(page, theme) or 1):
+        return not_found_response(page.locale)
     view = public_render.page_view(page)
     forms = contact_form.public_forms(view, sent=request.args.get("contatto") == "inviato")
     context = public_render.page_context(page, forms=forms, view=view, listing_number=number)

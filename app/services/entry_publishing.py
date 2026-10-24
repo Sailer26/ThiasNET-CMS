@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from flask import current_app
@@ -30,6 +30,7 @@ from app.services.theme import active_theme
 
 Document = dict[str, Any]
 DUE_KEY = "thiasnet_entries_due"
+RETRY_AFTER = timedelta(seconds=60)
 
 
 def _source(entry: Entry, draft_version: int) -> tuple[Any, bool]:
@@ -97,7 +98,8 @@ def schedule(actor: User, entry: Entry, draft_version: int, publish_at: str) -> 
     source, _has_draft = _source(entry, draft_version)
     document = validated(entry, source)
     entries.bump_version(entry, entry.version)
-    entry.scheduled_json, entry.scheduled_by, entry.publish_at = document, actor.id, when
+    entry.scheduled_json = copy.deepcopy(document)
+    entry.scheduled_by, entry.publish_at = actor.id, when
     if entry.status != EntryStatus.PUBLISHED:  # una voce online resta online fino all'ora
         entry.status = EntryStatus.SCHEDULED
     entry.updated_by = actor.id
@@ -201,23 +203,34 @@ def _publish_scheduled(entry: Entry, now: datetime) -> bool:
     return True
 
 
-def run_due(now: datetime) -> int:
+@dataclass(frozen=True)
+class DueResult:
+    published: int
+    failed: int
+
+
+def run_due(now: datetime) -> DueResult:
     """Pubblica le voci con programmazione scaduta; un errore su una non ferma le altre."""
     query = (
         select(Entry.id)
         .where(Entry.deleted_at.is_(None), Entry.publish_at.is_not(None), Entry.publish_at <= now)
         .order_by(Entry.publish_at, Entry.id)
     )
-    published = 0
+    published = failed = 0
     for entry_id in list(db.session.execute(query).scalars()):
         try:
             entry = db.session.get(Entry, entry_id)
             if entry is not None and _publish_scheduled(entry, now):
                 published += 1
+        except ServiceError as exc:  # di solito un altro processo l'ha appena pubblicata (409)
+            db.session.rollback()
+            current_app.logger.warning("publish-scheduled: notizia %s: %s", entry_id, exc.code)
+            failed += 1
         except Exception:  # un errore inatteso su una voce non deve fermare le altre
             db.session.rollback()
             current_app.logger.exception("publish-scheduled: notizia %s non pubblicata", entry_id)
-    return published
+            failed += 1
+    return DueResult(published=published, failed=failed)
 
 
 @dataclass(frozen=True)
@@ -231,12 +244,21 @@ def publish_due(generation: int) -> bool:
     normali non fanno query in più finché la generazione della cache non cambia (D-146)."""
     now = datetime.now(UTC)
     known = current_app.extensions.get(DUE_KEY)
-    fresh = isinstance(known, _Due) and known.generation == generation
-    if fresh and isinstance(known, _Due) and (known.next_due is None or now < known.next_due):
+    if (
+        isinstance(known, _Due)
+        and known.generation == generation
+        and (known.next_due is None or now < known.next_due)
+    ):
         return False
-    published = run_due(now) > 0
-    upcoming = select(func.min(Entry.publish_at)).where(Entry.deleted_at.is_(None))
-    next_due = db.session.execute(upcoming).scalar_one_or_none()
+    result = run_due(now)
+    published = result.published > 0
+    upcoming = select(func.min(Entry.publish_at)).where(
+        Entry.deleted_at.is_(None), Entry.publish_at > now
+    )
+    next_due: datetime | None = db.session.execute(upcoming).scalar_one()
+    if result.failed:  # una voce che non riesce: si riprova tra un po', non a ogni visita
+        retry = now + RETRY_AFTER
+        next_due = retry if next_due is None else min(next_due, retry)
     current = page_cache.current_generation() if published else generation
     current_app.extensions[DUE_KEY] = _Due(current, next_due)
     return published
