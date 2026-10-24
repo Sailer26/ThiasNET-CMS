@@ -35,6 +35,13 @@ def test_missing_templates_are_errors(make_theme: MakeTheme, theme_data: dict[st
     assert any("blocks/quote.html" in e for e in errors)
 
 
+def test_collection_detail_template_is_required(
+    make_theme: MakeTheme, theme_data: dict[str, Any]
+) -> None:
+    errors, _ = _lint(make_theme, theme_data, **{"entries__news.html": None})
+    assert any("entries/news.html" in e for e in errors)
+
+
 def test_syntax_errors_are_reported_with_the_file(
     make_theme: MakeTheme, theme_data: dict[str, Any]
 ) -> None:

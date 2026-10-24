@@ -109,7 +109,15 @@ def theme_data() -> dict[str, Any]:
 
 
 DEFAULT_THEME_DIR = ROOT / "themes" / "default"
-TEMPLATE_FOLDERS = ("layouts", "partials", "blocks", "widgets", "assets/css", "assets/js")
+TEMPLATE_FOLDERS = (
+    "layouts",
+    "partials",
+    "blocks",
+    "widgets",
+    "entries",
+    "assets/css",
+    "assets/js",
+)
 VALID_THUMBNAIL = re.compile(r"variants/[a-z0-9][a-z0-9_-]*[.](png|jpg|webp)")
 
 

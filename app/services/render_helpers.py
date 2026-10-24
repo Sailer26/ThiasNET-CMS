@@ -11,13 +11,14 @@ from __future__ import annotations
 import math
 import re
 from collections.abc import Mapping
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlencode
 
 from markupsafe import Markup
 
 from app.services import render_media
-from app.services.public_texts import text
+from app.services.public_texts import month, text
 from app.services.render_context import BlockView, PageContext, RenderMode
 from app.services.sanitize import clean_rich, is_safe_url
 
@@ -179,3 +180,17 @@ def image_placeholder(locale: str) -> Markup:
     return Markup(
         '<span class="cms-media-placeholder" role="img" aria-label="{0}">{0}</span>'
     ).format(text("image_placeholder", locale))
+
+
+def format_date(value: object, locale: str, style: str = "long") -> str:
+    """Una data del CMS ("AAAA-MM-GG" o istante ISO) come la legge un visitatore:
+    "24 ottobre 2026" (style "long") o "24.10.2026" (style "short"). Valore strano → vuoto."""
+    if not isinstance(value, str):
+        return ""
+    try:
+        moment = datetime.fromisoformat(value if "T" in value else f"{value}T00:00")
+    except ValueError:
+        return ""
+    if style == "short":
+        return f"{moment.day:02d}.{moment.month:02d}.{moment.year}"
+    return f"{moment.day} {month(moment.month, locale)} {moment.year}"

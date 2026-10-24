@@ -1,0 +1,11 @@
+{% extends "layouts/_base.html" %}
+{% block content %}
+<article class="container entry">
+{% include "partials/breadcrumbs.html" %}
+<h1 class="page-title">{{ entry.title }}</h1>
+{% if entry.fields.date %}<p class="entry__date"><time datetime="{{ entry.fields.date }}">{{ format_date(entry.fields.date) }}</time></p>{% endif %}
+{% if entry.fields.cover %}<figure class="entry__cover">{{ img(entry.fields.cover, 'content', sizes='(min-width: 64rem) 64rem, 100vw', eager=True) }}</figure>{% endif %}
+{% if entry.fields.summary %}<p class="entry__summary">{{ entry.fields.summary }}</p>{% endif %}
+{% if entry.fields.body %}<div class="prose">{{ entry.fields.body | safe_html }}</div>{% endif %}
+</article>
+{% endblock %}

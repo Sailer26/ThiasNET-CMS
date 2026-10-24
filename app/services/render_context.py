@@ -68,6 +68,30 @@ class WidgetView:
 
 
 @dataclass(frozen=True)
+class EntryView:
+    """Una voce di raccolta come la vede il tema (D-147): campi già ripuliti, solo dati."""
+
+    id: int
+    collection: str
+    title: str
+    url: str
+    fields: Mapping[str, Any]
+    published_at: str | None
+
+
+@dataclass(frozen=True)
+class ListingView:
+    """L'elenco di una pagina elenco: voci della pagina corrente e link per sfogliare."""
+
+    collection: str
+    items: tuple[EntryView, ...] = ()
+    page: int = 1
+    pages: int = 1
+    prev_url: str | None = None
+    next_url: str | None = None
+
+
+@dataclass(frozen=True)
 class SiteInfo:
     name: str
     base_url: str  # SITE_URL, senza "/" finale: canonical e sitemap (D-62)
@@ -137,6 +161,8 @@ class PageContext:
     forms: Mapping[str, ContactFormView] = field(default_factory=lambda: EMPTY)
     media: Mapping[int, MediaView] = field(default_factory=lambda: MappingProxyType({}))
     og_image: MediaView | None = None
+    entry: EntryView | None = None  # dettaglio di una voce (entries/<raccolta>.html)
+    listing: ListingView | None = None  # pagina elenco (D-149)
 
 
 def _freeze(value: Any) -> Any:

@@ -80,10 +80,12 @@ def problems(source: Any) -> tuple[Document | None, list[FieldError]]:
         return None, [FieldError("", error.code, error.message)]
 
 
-def _validated(source: Any) -> Document:
+def _validated(source: Any, page: Page | None = None) -> Document:
     document, found = _problems(source)
     if found or document is None:
         raise content_invalid(found)
+    if page is not None:  # D-149: il layout di una pagina elenco ha le sue regole
+        pages.check_listing(page, document["layout"], page.locale)
     return document
 
 
@@ -124,7 +126,7 @@ def _drop_draft(page_id: int, draft_version: int) -> None:
 def publish(actor: User, page: Page, draft_version: int) -> Page:
     require(actor, Permission.PUBLISH)
     source, draft = _source(page, draft_version)
-    document = _validated(source)
+    document = _validated(source, page)
     cancelled = revisions.cancel_schedule(page.id)
     _apply(page, document, actor.id, utcnow())
     revisions.add(page.id, RevisionKind.PUBLISHED, document, actor.id)
@@ -164,7 +166,7 @@ def schedule(actor: User, page: Page, draft_version: int, publish_at: str) -> Pa
     require(actor, Permission.PUBLISH)
     when = parse_publish_at(publish_at, utcnow())
     source, _draft = _source(page, draft_version)
-    document = _validated(source)
+    document = _validated(source, page)
     try:
         pages.bump_version(page, page.version)
         revisions.cancel_schedule(page.id)

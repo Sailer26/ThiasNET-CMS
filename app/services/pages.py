@@ -109,10 +109,41 @@ def _title(raw: str) -> str:
     return title
 
 
+def _listing_has_no_children() -> ServiceError:
+    return ServiceError(
+        "listing_has_no_children",
+        "Sotto la pagina delle notizie ci sono le notizie: niente sottopagine",
+        422,
+    )
+
+
+def is_listing(page: Page) -> bool:
+    layout = active_theme().layouts.get(page.layout)
+    return layout is not None and layout.collection is not None
+
+
+def check_listing(page: Page | None, layout: str, locale: str) -> None:
+    """D-149: una sola pagina elenco per raccolta e lingua, e senza sottopagine."""
+    spec = active_theme().layouts.get(layout)
+    if spec is None or spec.collection is None:
+        return
+    query = select(Page.id).where(live(), Page.locale == locale, Page.layout == layout)
+    if page is not None:
+        query = query.where(Page.id != page.id)
+    if db.session.execute(query.limit(1)).first() is not None:
+        raise ServiceError(
+            "listing_exists", "C'è già una pagina che elenca queste notizie in questa lingua", 409
+        )
+    if page is not None and page_paths.has_children(page):
+        raise _listing_has_no_children()
+
+
 def _parent(parent_id: int | None, locale: str) -> Page | None:
     if parent_id is None:
         return None
     parent = get_page(parent_id)
+    if is_listing(parent):
+        raise _listing_has_no_children()
     if is_home(parent):
         raise ServiceError("home_has_no_children", "La homepage non può avere sottopagine", 422)
     if parent.locale != locale:
@@ -194,6 +225,7 @@ def create_page(
         raise ServiceError("unknown_locale", "Lingua non attiva in questo sito", 422)
     if layout not in theme.layouts:
         raise ServiceError("unknown_layout", "Layout non disponibile nel tema", 422)
+    check_listing(None, layout, locale)
     slug, path, parent = _new_address(clean_title, slug, parent_id, locale)
     parent_key = None if parent is None else parent.id
     page = Page(
@@ -240,6 +272,8 @@ def _new_parent(page: Page, parent_id: int | None, branch: list[Page]) -> Page |
     parent = get_page(parent_id)
     if any(p.id == parent.id for p in branch):
         raise ServiceError("cycle", "Una pagina non può stare sotto una sua sottopagina", 422)
+    if is_listing(parent):
+        raise _listing_has_no_children()
     if is_home(parent):
         raise ServiceError("home_has_no_children", "La homepage non può avere sottopagine", 422)
     if parent.locale != page.locale:

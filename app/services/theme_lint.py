@@ -34,6 +34,7 @@ def _required_templates(theme: Theme, allowed: set[str]) -> list[str]:
     required += [f"blocks/{block}.html" for block in sorted(allowed)]
     used = {w for area in theme.widget_areas.values() for w in area.widgets}
     required += [f"widgets/{widget}.html" for widget in sorted(used & ENABLED_WIDGET_TYPES)]
+    required += [f"entries/{key}.html" for key in sorted(theme.collections)]  # dettaglio (D-149)
     if "contacts" in allowed:
         required.append(CONTACT_FORM_TEMPLATE)
     return required

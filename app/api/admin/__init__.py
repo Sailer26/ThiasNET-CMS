@@ -11,6 +11,7 @@ from app.api.admin import (  # noqa: E402, F401
     audit,
     auth,
     blocks,
+    entries,
     media,
     menus,
     messages,

@@ -54,6 +54,24 @@ class Layout:
     name: str
     label: str
     zones: Mapping[str, Zone]
+    collection: str | None = None  # layout della pagina elenco di una raccolta (D-149)
+
+
+@dataclass(frozen=True)
+class FieldSpec:
+    key: str
+    type: str
+    label: str
+    required: bool
+    max: int | None
+
+
+@dataclass(frozen=True)
+class CollectionSpec:
+    key: str
+    label: str
+    per_page: int
+    fields: Mapping[str, FieldSpec]
 
 
 @dataclass(frozen=True)
@@ -97,7 +115,7 @@ class Theme:
     layouts: Mapping[str, Layout]
     widget_areas: Mapping[str, WidgetArea]
     menus: Mapping[str, Any]
-    collections: Mapping[str, Any]
+    collections: Mapping[str, CollectionSpec]
     image_sizes: Mapping[str, Any]
     block_variants: Mapping[str, VariantSet]
     settings: Mapping[str, SettingSpec]
@@ -122,6 +140,12 @@ class Theme:
 
     def setting(self, key: str) -> SettingSpec:
         return self.settings[key]
+
+    def listing_layout(self, collection: str) -> str | None:
+        """Il layout della pagina elenco della raccolta (al massimo uno, D-149)."""
+        return next(
+            (n for n, layout in self.layouts.items() if layout.collection == collection), None
+        )
 
 
 def active_theme() -> Theme:
@@ -193,6 +217,7 @@ def _contract_errors(data: Mapping[str, Any], theme_dir: Path, name: str) -> lis
     if data["name"] != name:
         errors.append(f"name: {data['name']!r} deve coincidere con la cartella {name!r}")
     errors += _layout_errors(data.get("layouts", {}))
+    errors += _listing_errors(data.get("layouts", {}), data.get("collections", {}))
     errors += _widget_area_errors(data.get("widget_areas", {}))
     errors += _variant_errors(data.get("block_variants", {}), theme_dir)
     errors += _setting_errors(data.get("settings", {}))
@@ -207,6 +232,25 @@ def _layout_errors(layouts: Mapping[str, Any]) -> list[str]:
         for block in zone_spec["blocks"]
         if block not in BLOCK_TYPES
     ]
+
+
+def _listing_errors(layouts: Mapping[str, Any], collections: Mapping[str, Any]) -> list[str]:
+    errors: list[str] = []
+    seen: dict[str, str] = {}
+    for name, spec in layouts.items():
+        collection = spec.get("collection")
+        if collection is None:
+            continue
+        if collection not in collections:
+            errors.append(f"layouts/{name}/collection: raccolta sconosciuta {collection!r}")
+        elif collection in seen:
+            errors.append(
+                f"layouts/{name}/collection: la raccolta {collection!r} ha già il layout "
+                f"{seen[collection]!r} (una sola pagina elenco per raccolta, D-149)"
+            )
+        else:
+            seen[collection] = name
+    return errors
 
 
 def _widget_area_errors(areas: Mapping[str, Any]) -> list[str]:
@@ -311,7 +355,9 @@ def _build_theme(data: Mapping[str, Any], theme_dir: Path) -> Theme:
             }
         ),
         menus=_freeze(data.get("menus", {})),
-        collections=_freeze(data.get("collections", {})),
+        collections=MappingProxyType(
+            {key: _build_collection(key, spec) for key, spec in data.get("collections", {}).items()}
+        ),
         image_sizes=_freeze(data.get("image_sizes", {})),
         block_variants=MappingProxyType(
             {block: _build_variants(spec) for block, spec in data.get("block_variants", {}).items()}
@@ -332,7 +378,34 @@ def _build_layout(name: str, spec: Mapping[str, Any]) -> Layout:
         )
         for zone, zone_spec in spec["zones"].items()
     }
-    return Layout(name=name, label=spec["label"], zones=MappingProxyType(zones))
+    return Layout(
+        name=name,
+        label=spec["label"],
+        zones=MappingProxyType(zones),
+        collection=spec.get("collection"),
+    )
+
+
+DEFAULT_PER_PAGE = 10
+
+
+def _build_collection(key: str, spec: Mapping[str, Any]) -> CollectionSpec:
+    fields = {
+        name: FieldSpec(
+            key=name,
+            type=field["type"],
+            label=field.get("label", name),
+            required=bool(field.get("required", False)),
+            max=field.get("max"),
+        )
+        for name, field in spec["fields"].items()
+    }
+    return CollectionSpec(
+        key=key,
+        label=spec["label"],
+        per_page=spec.get("per_page", DEFAULT_PER_PAGE),
+        fields=MappingProxyType(fields),
+    )
 
 
 def _build_variants(spec: Mapping[str, Any]) -> VariantSet:

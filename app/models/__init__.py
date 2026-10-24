@@ -23,6 +23,7 @@ class Base(DeclarativeBase):
 from app.models import (  # noqa: E402, F401
     audit,
     contact,
+    entry,
     login_attempt,
     media,
     menu,

@@ -23,6 +23,13 @@
       "zones": {
         "main": { "label": "Contenuto principale", "blocks": ["heading", "text", "image", "text_image", "gallery", "cta", "quote", "video", "files", "map", "divider"] }
       }
+    },
+    "news_list": {
+      "label": "Elenco notizie",
+      "collection": "news",
+      "zones": {
+        "main": { "label": "Introduzione", "blocks": ["heading", "text", "image"], "max": 3 }
+      }
     }
   },
   "widget_areas": {
@@ -37,21 +44,12 @@
   "collections": {
     "news": {
       "label": "Notizie",
+      "per_page": 10,
       "fields": {
-        "date": { "type": "date", "required": true },
-        "cover": { "type": "media" },
-        "summary": { "type": "textarea", "max": 300 },
-        "body": { "type": "richtext" }
-      }
-    },
-    "events": {
-      "label": "Eventi",
-      "fields": {
-        "start": { "type": "datetime", "required": true },
-        "end": { "type": "datetime" },
-        "place": { "type": "text" },
-        "cover": { "type": "media" },
-        "body": { "type": "richtext" }
+        "date": { "type": "date", "label": "Data", "required": true },
+        "cover": { "type": "media", "label": "Immagine di copertina" },
+        "summary": { "type": "textarea", "label": "Riassunto", "max": 300 },
+        "body": { "type": "richtext", "label": "Testo" }
       }
     }
   },

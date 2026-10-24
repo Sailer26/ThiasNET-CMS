@@ -24,6 +24,7 @@ MAX_DOCUMENT_BYTES = 512 * 1024
 MAX_ZONES = 32
 UID_PATTERN = "^[0-9a-f]{32}$"
 SEO_FIELDS = ("title", "description")
+OG_IMAGE_KEY = "og_image_media_id"
 
 _BLOCK_SHAPE: dict[str, Any] = {
     "type": "object",
@@ -84,7 +85,7 @@ def empty_document(theme: Theme, title: str, layout: str) -> dict[str, Any]:
     }
 
 
-def _check_size(document: Any) -> None:
+def check_size(document: Any) -> None:
     """Dimensione massima, niente NaN/Infinity (JSON non valido per il pannello) né
     annidamenti senza fine."""
     try:
@@ -102,7 +103,7 @@ def _check_size(document: Any) -> None:
         )
 
 
-def _clean_seo(seo: dict[str, Any]) -> dict[str, Any]:
+def clean_seo(seo: dict[str, Any]) -> dict[str, Any]:
     cleaned = {k: clean_line(v) if k in SEO_FIELDS else v for k, v in seo.items()}
     return {k: v for k, v in cleaned.items() if v != ""}
 
@@ -171,7 +172,7 @@ def _zone(
 
 def validate_document(theme: Theme, document: Any, mode: Mode) -> dict[str, Any]:
     """Documento pulito e valido per `theme`, oppure ServiceError 422 (o 413 se enorme)."""
-    _check_size(document)
+    check_size(document)
     shape = schema_errors(_SHAPE, document, "")
     if shape:
         raise invalid(shape)
@@ -197,6 +198,6 @@ def validate_document(theme: Theme, document: Any, mode: Mode) -> dict[str, Any]
     return {
         "title": title,
         "layout": layout,
-        "seo": _clean_seo(document["seo"]),
+        "seo": clean_seo(document["seo"]),
         "zones": {zone: zones.get(zone, []) for zone in theme.zones(layout)},
     }

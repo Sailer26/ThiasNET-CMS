@@ -7,7 +7,9 @@ from xml.sax.saxutils import escape
 from sqlalchemy import select
 
 from app.extensions import db
+from app.models.entry import Entry, EntryStatus
 from app.models.page import Page, PageStatus
+from app.services import entries as entry_service
 from app.services.page_paths import live
 from app.services.public_pages import public_path
 from app.services.theme import Theme
@@ -35,7 +37,36 @@ def sitemap_xml(theme: Theme, base_url: str) -> str:
         entries.append(
             f"  <url><loc>{location}</loc><lastmod>{modified.date().isoformat()}</lastmod></url>\n"
         )
+    entries += _entry_urls(theme, base_url, SITEMAP_LIMIT - len(entries))
     return SITEMAP_HEAD + "".join(entries) + "</urlset>\n"
+
+
+def _entry_urls(theme: Theme, base_url: str, room: int) -> list[str]:
+    """Le voci online sotto la loro pagina elenco online (D-149)."""
+    found: list[str] = []
+    for key in theme.collections:
+        for locale in theme.locales:
+            listing = entry_service.listing_page(theme, key, locale, online=True)
+            if listing is None or (listing.seo_json or {}).get("noindex"):
+                continue
+            query = (
+                select(Entry.slug, Entry.seo_json, Entry.published_at, Entry.updated_at)
+                .where(
+                    Entry.deleted_at.is_(None),
+                    Entry.collection == key,
+                    Entry.locale == locale,
+                    Entry.status == EntryStatus.PUBLISHED,
+                )
+                .order_by(Entry.sort_at.desc(), Entry.id.desc())
+                .limit(max(room - len(found), 0))
+            )
+            for slug, seo, published_at, updated_at in db.session.execute(query):
+                if (seo or {}).get("noindex"):
+                    continue
+                location = escape(base_url + entry_service.entry_url(listing, slug, theme))
+                modified = (published_at or updated_at).date().isoformat()
+                found.append(f"  <url><loc>{location}</loc><lastmod>{modified}</lastmod></url>\n")
+    return found
 
 
 def robots_txt(base_url: str, *, allow_indexing: bool) -> str:

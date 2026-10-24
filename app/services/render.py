@@ -27,6 +27,7 @@ from app.services.render_context import (
     BlockView,
     ContactFormView,
     Link,
+    ListingView,
     MediaView,
     PageContext,
     RenderMode,
@@ -83,6 +84,9 @@ def asset_path_is_valid(path: str) -> bool:
     )
 
 
+EMPTY_LISTING = ListingView(collection="")
+
+
 class Renderer:
     """Un renderer per tema attivo; tiene in memoria i template compilati e gli hash degli asset."""
 
@@ -111,6 +115,13 @@ class Renderer:
 
     def render_page(self, context: PageContext) -> str:
         template = self._layout_template(context.page.layout)
+        return template.render(_Helpers(self, context).namespace())
+
+    def render_entry(self, context: PageContext) -> str:
+        """Dettaglio di una voce: `entries/<raccolta>.html` con `entry` e `page` (D-149)."""
+        if context.entry is None or context.entry.collection not in self.theme.collections:
+            raise TemplateNotFound("entries")
+        template = self.env.get_template(f"entries/{context.entry.collection}.html")
         return template.render(_Helpers(self, context).namespace())
 
     def render_not_found(self, context: PageContext) -> str:
@@ -178,6 +189,11 @@ class _Helpers:
             "embed": render_helpers.embed,
             "menu": self.menu,
             "widget_area": self.widget_area,
+            "entry": context.entry,
+            "entry_list": self.entry_list,
+            "format_date": lambda value, style="long": render_helpers.format_date(
+                value, self.locale, style
+            ),
             "contact_form": self.contact_form,
         }
 
@@ -201,6 +217,10 @@ class _Helpers:
                 continue
             found.append(Markup(html))  # noqa: S704 (output del template, già escapato)
         return Markup("\n").join(found)
+
+    def entry_list(self) -> ListingView:
+        """Le voci della pagina elenco (vuoto fuori da una pagina elenco)."""
+        return self.context.listing or EMPTY_LISTING
 
     def zone_has_blocks(self, name: str) -> bool:
         return bool(self.context.page.zones.get(name))

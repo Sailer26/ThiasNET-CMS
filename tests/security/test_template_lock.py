@@ -271,12 +271,39 @@ def test_theme_files_unchanged_after_full_admin_session(owner_client):
     assert rejected.status_code == 422  # link non sicuro
     html = owner_client.get(page["path"]).get_data(as_text=True)
     assert "Widget {{ 7*7 }}" in html and "<script>x</script>" not in html
+    _entry_session(owner_client, api)
     page_now = owner_client.get(f"{api}/pages/{page['id']}").get_json()["data"]
     trashed = owner_client.delete(
         f"{api}/pages/{page['id']}", json={"version": page_now["version"]}
     )
     assert trashed.status_code == 200
     assert _themes_hash() == before
+
+
+def _entry_session(client, api: str) -> None:
+    """Notizie (7a): pagina elenco, notizia con Jinja nei campi, campi non previsti rifiutati."""
+    listing = client.post(f"{api}/pages", json={"title": "Notizie", "layout": "news_list"})
+    assert listing.status_code == 201, listing.get_json()
+    listing_id = listing.get_json()["data"]["id"]
+    version = client.get(f"{api}/pages/{listing_id}/draft").get_json()["data"]["version"]
+    published = client.post(f"{api}/pages/{listing_id}/publish", json={"draft_version": version})
+    assert published.status_code == 200
+    created = client.post(f"{api}/collections/news/entries", json={"title": "Festa {{ 7*7 }}"})
+    entry_id = created.get_json()["data"]["id"]
+    draft_url = f"{api}/entries/{entry_id}/draft"
+    fields = {"date": "2026-10-24", "body": "<p>{% include 'x' %}</p><script>x</script>"}
+    document = {"title": "Festa {{ 7*7 }}", "fields": fields, "seo": {}}
+    saved = client.put(draft_url, json={"version": 1, **document})
+    assert saved.status_code == 200, saved.get_json()
+    evil = {**document, "fields": {**fields, "template": "{{ config }}"}}
+    assert client.put(draft_url, json={"version": 2, **evil}).status_code == 422
+    css = {**document, "seo": {"custom_css": "body{display:none}"}}
+    assert client.put(draft_url, json={"version": 2, **css}).status_code == 422
+    publish = client.post(f"{api}/entries/{entry_id}/publish", json={"draft_version": 2})
+    assert publish.status_code == 200, publish.get_json()
+    html = client.get("/notizie/festa-7-7").get_data(as_text=True)
+    assert "Festa {{ 7*7 }}" in html and "<script>x</script>" not in html
+    assert client.get("/notizie?p={{7*7}}").status_code == 404
 
 
 def _png_bytes() -> bytes:

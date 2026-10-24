@@ -3,15 +3,21 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import replace
 from datetime import UTC, datetime
 from types import MappingProxyType
 from typing import Any
 
 from flask import current_app
+from sqlalchemy import func, select
 
+from app.extensions import db
+from app.models.entry import Entry, EntryStatus
 from app.models.page import Page
 from app.services import (
+    collections,
     drafts,
+    entries,
     media_library,
     media_refs,
     menus,
@@ -26,6 +32,9 @@ from app.services.render import Renderer
 from app.services.render_context import (
     Analytics,
     ContactFormView,
+    EntryView,
+    Link,
+    ListingView,
     MediaView,
     PageContext,
     PageView,
@@ -114,6 +123,69 @@ def page_media(
     return MappingProxyType(found), og
 
 
+# --- Raccolte (D-147, D-149) -----------------------------------------------------------
+
+
+def _online_entries(collection: str, locale: str) -> Any:
+    return select(Entry).where(
+        Entry.deleted_at.is_(None),
+        Entry.collection == collection,
+        Entry.locale == locale,
+        Entry.status == EntryStatus.PUBLISHED,
+    )
+
+
+def listing_pages(page: Page, theme: Theme) -> int | None:
+    """Quante pagine ha l'elenco (almeno una); None se la pagina non elenca una raccolta."""
+    collection = public_pages.listing_collection(page, theme)
+    spec = None if collection is None else theme.collections.get(collection)
+    if collection is None or spec is None:
+        return None
+    count = select(func.count()).select_from(_online_entries(collection, page.locale).subquery())
+    total = int(db.session.execute(count).scalar_one())
+    return max(1, -(-total // spec.per_page))
+
+
+def entry_view(entry: Entry, listing: Page, theme: Theme) -> EntryView:
+    fields = collections.lenient(theme, entry.collection, entry.fields_json or {})
+    return EntryView(
+        id=entry.id,
+        collection=entry.collection,
+        title=entry.title,
+        url=entries.entry_url(listing, entry.slug, theme),
+        fields=MappingProxyType(fields),
+        published_at=None if entry.published_at is None else entry.published_at.isoformat(),
+    )
+
+
+def _entry_media(views: tuple[EntryView, ...], theme: Theme) -> list[int]:
+    return [
+        ref.media_id
+        for view in views
+        for ref in collections.media_refs(theme, view.collection, {"fields": view.fields})
+    ]
+
+
+def listing_view(page: Page, theme: Theme, number: int) -> ListingView | None:
+    """Le voci online della pagina `number` dell'elenco, dalla più recente (D-149)."""
+    collection = public_pages.listing_collection(page, theme)
+    spec = None if collection is None else theme.collections.get(collection)
+    pages = listing_pages(page, theme)
+    if collection is None or spec is None or pages is None:
+        return None
+    query = (
+        _online_entries(collection, page.locale)
+        .order_by(Entry.sort_at.desc(), Entry.published_at.desc(), Entry.id.desc())
+        .offset((number - 1) * spec.per_page)
+        .limit(spec.per_page)
+    )
+    items = tuple(entry_view(e, page, theme) for e in db.session.execute(query).scalars())
+    base = public_pages.public_url(page, theme)
+    prev_url = None if number <= 1 else (base if number == 2 else f"{base}?p={number - 1}")
+    next_url = f"{base}?p={number + 1}" if number < pages else None
+    return ListingView(collection, items, number, pages, prev_url, next_url)
+
+
 def page_context(
     page: Page,
     *,
@@ -121,14 +193,21 @@ def page_context(
     document: Mapping[str, Any] | None = None,
     forms: Mapping[str, ContactFormView] | None = None,
     view: PageView | None = None,
+    listing_number: int = 1,
 ) -> PageContext:
-    """`view` già pronta evita di normalizzare due volte lo stesso documento."""
+    """`view` già pronta evita di normalizzare due volte lo stesso documento. Una pagina
+    elenco porta con sé le voci della pagina `listing_number`."""
     theme = active_theme()
     values, css_version = theme_values(theme)
     page_view_ = view if view is not None else page_view(page, document)
+    listing = listing_view(page, theme, listing_number)
+    if listing is not None and listing_number > 1:  # canonical con il numero di pagina
+        page_view_ = replace(page_view_, path=f"{page_view_.path}?p={listing_number}")
     site = site_info()
-    media, og_image = page_media(page_view_, (site.logo,))
+    extra = (site.logo, *(_entry_media(listing.items, theme) if listing else ()))
+    media, og_image = page_media(page_view_, extra)
     return PageContext(
+        listing=listing,
         page=page_view_,
         media=media,
         og_image=og_image,
@@ -141,6 +220,45 @@ def page_context(
         css_version=css_version,
         analytics=_analytics(),
         forms=MappingProxyType(dict(forms or {})),
+    )
+
+
+def entry_context(listing: Page, entry: Entry) -> PageContext:
+    """Il dettaglio di una voce: menu, widget e briciole della sua pagina elenco (D-149)."""
+    theme = active_theme()
+    values, css_version = theme_values(theme)
+    view = entry_view(entry, listing, theme)
+    page = PageView(
+        id=None,
+        locale=entry.locale,
+        title=entry.title,
+        layout=listing.layout,
+        path=view.url,
+        seo=MappingProxyType(dict(entry.seo_json or {})),
+        zones=MappingProxyType({}),
+        is_home=False,
+    )
+    site = site_info()
+    document = {"fields": view.fields, "seo": page.seo}
+    refs = collections.media_refs(theme, entry.collection, document)
+    media, _og = page_media(page, (site.logo, *(ref.media_id for ref in refs)))
+    images = (media.get(ref.media_id) for ref in refs)
+    og = next((m for m in images if m is not None and m.kind == "image"), None)
+    crumbs = tuple(
+        replace(link, current=False) for link in public_pages.breadcrumbs(listing, theme)
+    )
+    return PageContext(
+        page=page,
+        media=media,
+        og_image=og,
+        site=site,
+        menus=menus.site_menus(entry.locale, listing, theme),
+        widgets=widgets.site_widgets(entry.locale, listing.id, theme),
+        breadcrumbs=(*crumbs, Link(entry.title, view.url, current=True)),
+        settings=values,
+        css_version=css_version,
+        analytics=_analytics(),
+        entry=view,
     )
 
 

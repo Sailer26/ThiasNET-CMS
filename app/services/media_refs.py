@@ -14,11 +14,13 @@ from typing import Any
 from sqlalchemy import select
 
 from app.extensions import db
+from app.models.entry import Entry, EntryDraft, EntryStatus
 from app.models.media import Media, MediaKind
 from app.models.page import Block, Page, PageDraft, PageRevision, PageStatus, RevisionKind
-from app.services import settings_store
+from app.services import collections, entries, settings_store
 from app.services.blocks import FieldError, MediaRef, get_registry
 from app.services.page_paths import live
+from app.services.theme import active_theme
 
 OG_PATH = "seo/og_image_media_id"
 MAX_USAGES = 50
@@ -55,7 +57,11 @@ def load(ids: Iterable[int]) -> dict[int, Media]:
 
 
 def check_document(document: Any) -> list[FieldError]:
-    refs = document_refs(document)
+    return check_refs(document_refs(document))
+
+
+def check_refs(refs: Sequence[MediaRef]) -> list[FieldError]:
+    """Ogni media esiste, è del tipo giusto e, se immagine, ha il testo alternativo."""
     found = load(ref.media_id for ref in refs)
     errors: list[FieldError] = []
     for ref in refs:
@@ -117,8 +123,36 @@ def _scheduled(media_id: int) -> Iterator[tuple[Page, str]]:
             yield page, "scheduled"
 
 
-# Fonti di "in uso": dalla Fase 6 si aggiungono widget e impostazioni, dalla 7 le collezioni.
+# Fonti di "in uso": pagine (pubblicate, bozze, programmate); poi notizie e impostazioni.
 SOURCES = (_published, _drafts, _scheduled)
+
+
+def _entry_documents() -> Iterator[tuple[Entry, str, Any]]:
+    theme = active_theme()
+    rows = db.session.execute(select(Entry).where(Entry.deleted_at.is_(None))).scalars()
+    for entry in rows:
+        if entry.collection not in theme.collections:
+            continue
+        where = "published" if entry.status == EntryStatus.PUBLISHED else "unpublished"
+        yield entry, where, entries.published_document(entry)
+        if entry.scheduled_json is not None:
+            yield entry, "scheduled", entry.scheduled_json
+    drafts = db.session.execute(
+        select(EntryDraft, Entry)
+        .join(Entry, Entry.id == EntryDraft.entry_id)
+        .where(Entry.deleted_at.is_(None))
+    )
+    for draft, entry in drafts:
+        yield entry, "draft", draft.data_json
+
+
+def _entries_using(media_id: int) -> Iterator[tuple[Entry, str]]:
+    """Le notizie (pubblicate, bozze, programmate) che usano un media (D-147)."""
+    theme = active_theme()
+    for entry, where, document in _entry_documents():
+        refs = collections.media_refs(theme, entry.collection, document)
+        if any(ref.media_id == media_id for ref in refs):
+            yield entry, where
 
 
 def _is_logo(media_id: int) -> bool:
@@ -143,6 +177,22 @@ def pages_using(media_id: int) -> list[dict[str, Any]]:
             )
             if len(usages) >= MAX_USAGES:
                 return usages
+    entry_seen: set[tuple[int, str]] = set()
+    for entry, where in _entries_using(media_id):
+        if (entry.id, where) in entry_seen:
+            continue
+        entry_seen.add((entry.id, where))
+        usages.append(
+            {
+                "page_id": None,
+                "entry_id": entry.id,
+                "title": entry.title,
+                "path": "",
+                "where": where,
+            }
+        )
+        if len(usages) >= MAX_USAGES:
+            return usages
     return usages
 
 
@@ -152,4 +202,7 @@ def used_by_online_pages(media_id: int) -> bool:
     online = (where for _page, where in _published(media_id) if where == "published")
     if _is_logo(media_id):  # il logo è sempre online
         return True
-    return next(online, None) is not None or next(_scheduled(media_id), None) is not None
+    if next(online, None) is not None or next(_scheduled(media_id), None) is not None:
+        return True
+    live_entries = (w for _e, w in _entries_using(media_id) if w in ("published", "scheduled"))
+    return next(live_entries, None) is not None

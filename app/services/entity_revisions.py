@@ -34,3 +34,14 @@ def record(
     stale = list(db.session.execute(old).scalars())
     if stale:
         db.session.execute(delete(EntityRevision).where(EntityRevision.id.in_(stale)))
+
+
+def history(entity_type: str, entity_key: str) -> list[EntityRevision]:
+    """Le versioni tenute di un oggetto, dalla più recente."""
+    query = (
+        select(EntityRevision)
+        .where(EntityRevision.entity_type == entity_type, EntityRevision.entity_key == entity_key)
+        .order_by(EntityRevision.created_at.desc(), EntityRevision.id.desc())
+        .limit(KEPT)
+    )
+    return list(db.session.execute(query).scalars())

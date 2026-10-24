@@ -16,8 +16,9 @@ from enum import StrEnum
 from sqlalchemy import select
 
 from app.extensions import db
+from app.models.entry import Entry, EntryStatus
 from app.models.page import PATH_MAX_LENGTH, Page, PageRedirect, PageStatus
-from app.services import publishing
+from app.services import entries, publishing
 from app.services.page_paths import HOME_PATH, live
 from app.services.render_context import Link
 from app.services.theme import Theme
@@ -29,6 +30,7 @@ MAX_PUBLIC_PATH = PATH_MAX_LENGTH + 6  # "/rm" + path
 
 class Outcome(StrEnum):
     PAGE = "page"
+    ENTRY = "entry"  # dettaglio di una voce sotto la sua pagina elenco (D-149)
     REDIRECT = "redirect"
     NOT_FOUND = "not_found"
 
@@ -39,6 +41,7 @@ class Resolution:
     locale: str
     page: Page | None = None
     location: str | None = None
+    entry: Entry | None = None
 
 
 def _not_found(locale: str) -> Resolution:
@@ -122,7 +125,53 @@ def resolve(path: str, theme: Theme, now: datetime, *, publish_due: bool = True)
     target = db.session.get(Page, moved.page_id) if moved is not None else None
     if target is not None and _is_online(target):
         return _redirect(locale, public_url(target, theme))
-    return _not_found(locale)
+    return _entry(locale, inner, theme)
+
+
+def listing_collection(page: Page, theme: Theme) -> str | None:
+    """La raccolta elencata dalla pagina, se il suo layout ne elenca una (D-149)."""
+    layout = theme.layouts.get(page.layout)
+    return None if layout is None else layout.collection
+
+
+def _online_entry(collection: str, locale: str, slug: str) -> Entry | None:
+    query = select(Entry).where(
+        Entry.deleted_at.is_(None),
+        Entry.collection == collection,
+        Entry.locale == locale,
+        Entry.slug == slug,
+        Entry.status == EntryStatus.PUBLISHED,
+    )
+    return db.session.execute(query).scalar_one_or_none()
+
+
+def _moved_listing(locale: str, old_path: str) -> Page | None:
+    query = select(PageRedirect).where(
+        PageRedirect.locale == locale, PageRedirect.from_path == old_path
+    )
+    moved = db.session.execute(query).scalar_one_or_none()
+    target = db.session.get(Page, moved.page_id) if moved is not None else None
+    return target if target is not None and _is_online(target) else None
+
+
+def _entry(locale: str, inner: str, theme: Theme) -> Resolution:
+    """`/<elenco>/<slug>`: una voce online sotto la sua pagina elenco online; se l'elenco ha
+    cambiato indirizzo, 301 verso quello nuovo (le voci lo seguono, D-149)."""
+    parent_path, _sep, slug = inner.rpartition("/")
+    if not slug:
+        return _not_found(locale)
+    parent_path = parent_path or HOME_PATH
+    listing = _live_page(locale, parent_path)
+    moved = listing is None or not _is_online(listing)
+    if moved:
+        listing = _moved_listing(locale, parent_path)
+    collection = None if listing is None else listing_collection(listing, theme)
+    found = None if collection is None else _online_entry(collection, locale, slug)
+    if listing is None or found is None:
+        return _not_found(locale)
+    if moved:
+        return _redirect(locale, entries.entry_url(listing, slug, theme))
+    return Resolution(Outcome.ENTRY, locale, page=listing, entry=found)
 
 
 def _home(locale: str) -> Page | None:

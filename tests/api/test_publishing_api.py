@@ -417,7 +417,7 @@ def test_catalog_keeps_the_order_of_the_files(admin: FlaskClient) -> None:
     assert hero == ["title", "subtitle", "media_id", "cta_label", "cta_url"]
     assert list(body["layouts"]["page"]["zones"]) == ["main", "sidebar"]
     assert next(iter(body["variants"]["text_image"]["options"])) == "image_left"
-    assert list(body["layouts"]) == ["home", "page", "full"]
+    assert list(body["layouts"]) == ["home", "page", "full", "news_list"]
 
 
 # --- Regressioni dalla review ECC della Fase 2 -------------------------------------------

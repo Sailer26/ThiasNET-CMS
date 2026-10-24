@@ -29,7 +29,7 @@ def variant_theme(make_theme: MakeTheme, theme_data: dict[str, Any]) -> Theme:
 
 
 def test_layout_names(theme: Theme) -> None:
-    assert set(theme.layouts) == {"home", "page", "full"}
+    assert set(theme.layouts) == {"home", "page", "full", "news_list"}
     assert theme.layouts["page"].label == "Pagina standard"
 
 
@@ -107,7 +107,15 @@ def test_settings_exposed_typed(theme: Theme) -> None:
 
 
 def test_collections_and_menus(theme: Theme) -> None:
-    assert theme.collections["news"]["fields"]["date"]["type"] == "date"
+    news = theme.collections["news"]
+    assert (news.key, news.label, news.per_page) == ("news", "Notizie", 10)
+    assert news.fields["date"].type == "date" and news.fields["date"].required
+    assert news.fields["summary"].max == 300 and news.fields["body"].label == "Testo"
+    assert set(theme.collections) == {"news"}  # D-148: gli eventi quando un cliente li chiede
+    assert theme.layouts["news_list"].collection == "news"
+    assert theme.layouts["page"].collection is None
+    assert theme.listing_layout("news") == "news_list"
+    assert theme.listing_layout("eventi") is None
     assert theme.menus["main"]["max_depth"] == 2
     assert theme.image_sizes["hero"]["width"] == 1920
 
@@ -118,7 +126,7 @@ def test_theme_model_is_immutable(theme: Theme) -> None:
     with pytest.raises(TypeError):
         theme.layouts["nuovo"] = theme.layouts["page"]  # type: ignore[index]
     with pytest.raises(TypeError):
-        theme.collections["news"]["fields"]["x"] = {}
+        theme.collections["news"].fields["x"] = theme.collections["news"].fields["date"]  # type: ignore[index]
     assert isinstance(theme.locales, tuple)
 
 

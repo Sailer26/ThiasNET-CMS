@@ -316,3 +316,26 @@ def test_fake_thumbnails_rejected(
     (themes_dir / "demo" / "assets" / THUMBS[0]).write_bytes(content)
     with pytest.raises(ThemeValidationError, match=match):
         load_theme(themes_dir, "demo")
+
+
+def test_collection_per_page_bounded(make_theme: MakeTheme, theme_data: dict[str, Any]) -> None:
+    theme_data["collections"]["news"]["per_page"] = 500
+    _expect_error(make_theme, theme_data, "per_page")
+
+
+def test_listing_layout_must_name_a_declared_collection(
+    make_theme: MakeTheme, theme_data: dict[str, Any]
+) -> None:
+    theme_data["layouts"]["news_list"]["collection"] = "eventi"
+    _expect_error(make_theme, theme_data, "eventi")
+
+
+def test_one_listing_layout_per_collection(
+    make_theme: MakeTheme, theme_data: dict[str, Any]
+) -> None:
+    """D-149: una sola pagina elenco per raccolta, quindi un solo layout che la elenca."""
+    theme_data["layouts"]["altro_elenco"] = {
+        **theme_data["layouts"]["news_list"],
+        "label": "Altro elenco",
+    }
+    _expect_error(make_theme, theme_data, "news")

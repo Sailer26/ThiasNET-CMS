@@ -1,0 +1,32 @@
+{% extends "layouts/_base.html" %}
+{% block content %}
+<div class="container">
+{% include "partials/breadcrumbs.html" %}
+<h1 class="page-title">{{ page.title }}</h1>
+<div class="zone zone--main">
+{{ render_zone("main") }}
+</div>
+{% set listing = entry_list() %}
+{% if listing.items %}
+<ul class="entry-list">
+{% for item in listing.items %}
+<li class="entry-card">
+{% if item.fields.cover %}<a class="entry-card__image" href="{{ item.url }}" tabindex="-1" aria-hidden="true">{{ img(item.fields.cover, 'card', sizes='(min-width: 48rem) 20rem, 100vw') }}</a>{% endif %}
+<h2 class="entry-card__title"><a href="{{ item.url }}">{{ item.title }}</a></h2>
+{% if item.fields.date %}<p class="entry-card__date"><time datetime="{{ item.fields.date }}">{{ format_date(item.fields.date) }}</time></p>{% endif %}
+{% if item.fields.summary %}<p class="entry-card__summary">{{ item.fields.summary }}</p>{% endif %}
+</li>
+{% endfor %}
+</ul>
+{% if listing.pages > 1 %}
+<nav class="pager" aria-label="{{ cms_text('listing_page') }}">
+{% if listing.prev_url %}<a href="{{ listing.prev_url }}" rel="prev">{{ cms_text('listing_prev') }}</a>{% endif %}
+<span>{{ cms_text('listing_page') }} {{ listing.page }} / {{ listing.pages }}</span>
+{% if listing.next_url %}<a href="{{ listing.next_url }}" rel="next">{{ cms_text('listing_next') }}</a>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+<p class="entry-list__empty">{{ cms_text('listing_empty') }}</p>
+{% endif %}
+</div>
+{% endblock %}

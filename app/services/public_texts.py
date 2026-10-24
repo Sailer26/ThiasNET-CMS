@@ -32,6 +32,30 @@ _TEXTS: dict[str, dict[str, str]] = {
         "rm": "Links utils",
         "en": "Useful links",
     },
+    "listing_prev": {
+        "it": "Più recenti",
+        "de": "Neuere",
+        "rm": "Pli novs",
+        "en": "Newer",
+    },
+    "listing_next": {
+        "it": "Meno recenti",
+        "de": "Ältere",
+        "rm": "Pli vegls",
+        "en": "Older",
+    },
+    "listing_page": {
+        "it": "Pagina",
+        "de": "Seite",
+        "rm": "Pagina",
+        "en": "Page",
+    },
+    "listing_empty": {
+        "it": "Ancora nessuna notizia.",
+        "de": "Noch keine Beiträge.",
+        "rm": "Anc naginas novitads.",
+        "en": "No news yet.",
+    },
     "breadcrumbs_label": {
         "it": "Percorso",
         "de": "Sie sind hier",
@@ -222,6 +246,71 @@ _TEXTS: dict[str, dict[str, str]] = {
 TEXTS: Mapping[str, Mapping[str, str]] = MappingProxyType(
     {key: MappingProxyType(values) for key, values in _TEXTS.items()}
 )
+
+
+MONTHS: dict[str, tuple[str, ...]] = {
+    "it": (
+        "gennaio",
+        "febbraio",
+        "marzo",
+        "aprile",
+        "maggio",
+        "giugno",
+        "luglio",
+        "agosto",
+        "settembre",
+        "ottobre",
+        "novembre",
+        "dicembre",
+    ),
+    "de": (
+        "Januar",
+        "Februar",
+        "März",
+        "April",
+        "Mai",
+        "Juni",
+        "Juli",
+        "August",
+        "September",
+        "Oktober",
+        "November",
+        "Dezember",
+    ),
+    "rm": (
+        "schaner",
+        "favrer",
+        "mars",
+        "avrigl",
+        "matg",
+        "zercladur",
+        "fanadur",
+        "avust",
+        "settember",
+        "october",
+        "november",
+        "december",
+    ),
+    "en": (
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ),
+}
+
+
+def month(number: int, locale: str) -> str:
+    names = MONTHS.get(locale) or MONTHS[FALLBACK_LOCALE]
+    return names[number - 1]
 
 
 def text(key: str, locale: str) -> str:
