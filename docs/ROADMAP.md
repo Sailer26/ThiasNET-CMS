@@ -146,7 +146,7 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - 5b: titolo, layout e SEO della pagina nell'editor (oggi il clic sul titolo apre un segnaposto); bozza risalvata dopo un nuovo accesso.
 - 5c: `blob:` nella CSP del pannello per l'anteprima dei file da caricare.
 - Dopo il test d'uso: menu "⋯" per le azioni delle righe su tablet, se serve (oggi le azioni vanno a capo sotto il titolo).
-- Fase 6: azione rapida "banner avviso" da telefono (D-97). Fase 7: lingue nel pannello (D-94), azione "notizia".
+- ~~Fase 6: azione rapida "banner avviso" da telefono (D-97)~~ fatta nella 6c. Fase 7: lingue nel pannello (D-94), azione "notizia".
 - Fase 8: Docker con `npm ci && npm run build` (che include il controllo CSP), Caddy per `/admin/assets/`, build obbligatoria all'avvio in produzione, e2e completi, `npm audit` e action fissate a SHA, axe sul pannello.
 - Fase 8 (dalla review di sicurezza della 5a): guardiani della regola d'oro e del pannello basati sull'albero del codice (oggi controllano i nomi: `getattr` con nomi calcolati o import rinominati non si vedono), `eslint-plugin-jsx-a11y` se l'audit axe lo chiede.
 
@@ -162,17 +162,25 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - [x] Menu principale automatico finché non si salva, "Torna automatico"; pagine risolte al render, sottovoci e menu del piè di pagina nel tema
 - [x] Schermata Menu nel pannello: trascinamento tra sorelle, su/giù/rientra/esci, focus e annunci accessibili; e2e
 
+**6c — Widget** (D-140, D-142, D-146)
+- [x] Tabella `widget_areas` (migrazione `0012`), `GET /widgets`, `GET` e `PUT /widgets/<area>` per chi può pubblicare, con versione, registro, versioni e cache
+- [x] Sette widget con schema e template nel tema (banner, contatti in riga, orari, contatti, social, testo, invito all'azione); visibilità per pagina; banner con "fino al"
+- [x] Schermata Widget nel pannello e "Banner avviso" dal telefono (D-97); e2e; la sessione completa della regola d'oro salva anche i widget
+
 **Criteri della Fase 6**
-- [ ] Widget per area con visibilità per pagina (6c)
+- [x] Widget per area con visibilità per pagina (6c)
 - [x] Menu per posizione, drag&drop, profondità massima (6b)
 - [x] Impostazioni sito + settings del tema generate da `theme.json` (form dinamico tipizzato) su `PUT /api/admin/settings/appearance` (D-14)
 
+**Rimandati dalla 6c:**
+- Fase 7: widget "ultime notizie" con le collezioni (schema e tipo già pronti, spento); azione rapida "notizia" dal telefono.
+- Dopo il test d'uso: trascinamento dei widget (oggi su/giù), anteprima del widget nella finestra di modifica.
+- Fase 8: scheletro comune per le liste salvate con versione (`menus.py` e `widgets.py` si somigliano molto: `_write`, `_conflict`, commit).
+
 **Rimandati dalla 6b:**
-- 6c: estendere `test_theme_files_unchanged_after_full_admin_session` ai widget.
 - Dopo il test d'uso: "aria-current" diverso per la voce genitore della pagina aperta; pulsante per aprire i sottomenu sui tablet se le sottovoci sempre aperte disturbano.
 
 **Rimandati dalla 6a:**
-- 6b/6c: estendere `test_theme_files_unchanged_after_full_admin_session` a menu e widget; contatti e social del sito nei widget (D-142).
 - Fase 8: limite di dimensione del corpo per le API JSON del pannello (oggi vale quello dei caricamenti); limite di richieste sulle scritture.
 
 ## Fase 7 — Collezioni e multilingua

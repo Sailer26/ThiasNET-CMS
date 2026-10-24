@@ -1,6 +1,6 @@
 # Passaggio di consegne — ThiasNET CMS (per una nuova sessione / nuovo account Claude)
 
-Aggiornato: 2026-10-19. Leggi questo file **dopo** `CLAUDE.md` e prima di qualsiasi altra cosa.
+Aggiornato: 2026-10-24. Leggi questo file **dopo** `CLAUDE.md` e prima di qualsiasi altra cosa.
 
 ## 1. Dove siamo
 - Repository: https://github.com/Sailer26/ThiasNET-CMS (branch di default `main`)
@@ -19,8 +19,9 @@ Aggiornato: 2026-10-19. Leggi questo file **dopo** `CLAUDE.md` e prima di qualsi
 - **Fase 5d-1 — Controlli e assistenza:** completata sul branch `phase-5d-help`, partito da `phase-5c2-admin` (1130 test Python, 259 del pannello, 4 e2e, review ECC fatta). La PR da `phase-5d-help` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **5d-2**.
 - **Fase 5d-2 — Guida e rifiniture:** completata sul branch `phase-5d2-help`, partito da `phase-5d-help` (1138 test Python, 272 del pannello, 4 e2e, review ECC fatta). **La Fase 5 è chiusa** tranne il test d'uso con un cliente vero, che fa Thias con `docs/TEST-USO.md`. La PR da `phase-5d2-help` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **Fase 6**.
 - **Fase 6a — Impostazioni:** completata sul branch `phase-6-widgets`, partito da `phase-5d2-help` (1180 test Python, 278 del pannello, 5 e2e, review ECC fatta). La PR da `phase-6-widgets` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **6b**.
-- **Fase 6b — Menu:** completata sul branch `phase-6b-menus`, partito da `phase-6-widgets` (1208 test Python, 289 del pannello, 6 e2e, review ECC fatta). La PR da `phase-6b-menus` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **6c — Widget** sul branch `phase-6c-widgets`.
-- Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-145). Prevalgono sugli altri documenti.
+- **Fase 6b — Menu:** completata sul branch `phase-6b-menus`, partito da `phase-6-widgets` (1208 test Python, 289 del pannello, 6 e2e, review ECC fatta). La PR da `phase-6b-menus` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **6c**.
+- **Fase 6c — Widget:** completata sul branch `phase-6c-widgets`, partito da `phase-6b-menus` (1236 test Python, 305 del pannello, 7 e2e, review ECC fatta). La PR da `phase-6c-widgets` verso `main` contiene tutte le fasi dalla 4 in poi. **La Fase 6 è chiusa.** Prossima: **Fase 7 — Collezioni e multilingua**.
+- Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-146). Prevalgono sugli altri documenti.
 
 ## 2. Preparare l'ambiente (se la `.venv` non c'è)
 ```bash
@@ -128,9 +129,16 @@ nuovo blocco, testo, salvataggio, anteprima, pubblicazione (il testo compare sul
 - Pannello: `admin/src/features/menus/` (`tree.ts` puro e testato, `MenuEditor.tsx` con focus e annunci).
 - Trappola: con il PC lento vitest può non avviare un worker in tempo ("Timeout waiting for worker"): rilanciare.
 
-## 14. Prossimo passo: Fase 6c — Widget
-1. Branch `phase-6c-widgets` da `phase-6b-menus` (o da `main` se le PR sono unite).
-2. Piano della 6c in `docs/PIANO-FASE-6.md`: aree widget dal tema, sei widget (D-142: banner avviso, testo,
-   contatti, orari, social, invito all'azione), visibilità per pagina, banner con "fino al", azione rapida dal
-   telefono (D-97), template `widgets/*.html` nel tema, migrazione `0012`, sessione completa della regola d'oro.
-3. Test prima, codice, review ECC in parallelo, docs, push, link della PR.
+## 14. Fase 6c — fatta
+- Widget: `app/services/widgets.py`, schemi in `app/widgets/`, migrazione `0012` (`widget_areas`, D-146),
+  `app/api/admin/widgets.py`; nel contesto dei template `widgets` per area, helper `widget_area()`, template
+  `themes/default/widgets/*.html`; `theme_lint` li richiede per i tipi delle aree.
+- Pannello: `admin/src/features/widgets/` (schermata Widget, "Banner avviso" dal telefono nella schermata Pagine).
+- Trappola: i commit con i controlli di pre-commit vogliono la `.venv` nel PATH (mypy e pytest non sono nel Python di sistema).
+
+## 15. Prossimo passo: Fase 7 — Collezioni e multilingua
+1. Branch `phase-7-collections` da `phase-6c-widgets` (o da `main` se le PR sono unite).
+2. Piano con `ecc:planner`: collezioni da `theme.json` (notizie, eventi), elenco paginato e dettaglio, widget
+   "ultime notizie" (oggi spento), azione "notizia" dal telefono (D-97), traduzioni collegate, selettore lingua,
+   hreflang, lingue nel pannello (D-94).
+3. Domande a Thias, test prima, codice, review ECC in parallelo, docs, push, link della PR.

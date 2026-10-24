@@ -23,7 +23,7 @@ Decisioni D-139 … D-143. Piano di `ecc:planner`, risposte di Thias tutte sulle
 - **6b — Menu:** `menus` + `menu_items` (migrazione `0011`), albero intero salvato con versione (niente
   `parent_id` dal client: niente cicli), profondità da `theme.json`, pagine risolte al render; pannello con
   trascinamento e pulsanti; "Torna automatico".
-- **6c — Widget:** `widget_areas` + `widgets` (migrazione `0012`), schemi in `app/widgets/`, template
+- **6c — Widget (fatta, D-146):** `widget_areas` con la lista in JSON (migrazione `0012`, invece di `widgets`), schemi in `app/widgets/`, template
   `widgets/*.html` nel tema, visibilità per pagina (tutte / solo / tranne), banner con "fino al", azione rapida dal
   telefono (D-97), test della regola d'oro con CRUD completo.
 
