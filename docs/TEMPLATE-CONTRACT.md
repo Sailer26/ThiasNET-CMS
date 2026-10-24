@@ -10,6 +10,7 @@ themes/<nome>/
   partials/           # header.html, footer.html, menu.html ...
   blocks/             # un file per tipo di blocco: text.html, image.html ...
   widgets/            # un file per tipo di widget
+  entries/            # dettaglio delle voci: un file per raccolta (news.html ...)
   assets/             # css, js, font, immagini del tema (servite con hash + cache lunga)
 ```
 
@@ -17,7 +18,8 @@ themes/<nome>/
 - `layouts`: elenco layout selezionabili dall'utente e, per ciascuno, le **zone** con `label` (il nome che il cliente vede nell'editor, es. "Contenuto principale"; senza, vede il nome tecnico), i blocchi ammessi e un eventuale `max`. Una pagina nuova nasce col layout `page` (la homepage con `home`), se il tema li ha (D-95).
 - `widget_areas`: aree globali (header, footer, sidebar) e tipi di widget ammessi.
 - `menus`: posizioni dei menu e profondità massima.
-- `collections`: tipi di contenuto con campi tipizzati.
+- `collections`: tipi di contenuto con campi tipizzati (`text`, `textarea`, `richtext`, `date`, `datetime`, `media`, `boolean`, `url`, `number`; `label`, `required`, `max`) e `per_page` (1–50, predefinito 10). Mai HTML libero: il testo formattato passa dall'allowlist (D-147).
+- `layouts.<nome>.collection`: il layout della **pagina elenco** di una raccolta (al massimo uno per raccolta). La pagina con quel layout elenca le voci; ogni voce è a `<indirizzo della pagina>/<slug>` e si disegna con `entries/<raccolta>.html` (D-149).
 - `image_sizes`: varianti da generare (larghezza, ratio).
 - `block_variants` (D-03): per ogni tipo di blocco, le varianti grafiche che il cliente può scegliere. Ogni variante ha `label` (italiano), `thumbnail` (immagine in `assets/variants/`) ed è un valore di un enum chiuso: il server rifiuta varianti non dichiarate. Il template del blocco riceve `block.variant` e lo usa solo come classe/ramo del template, mai come CSS o markup. Esempio:
   ```json
@@ -65,6 +67,9 @@ I template sono eseguiti in sandbox (D-52): non possono leggere file fuori dal t
 | `render_zone(nome)` · `zone_has_blocks(nome)` | blocchi di una zona già renderizzati · se la zona ha blocchi |
 | `menu("posizione")` | voci `{title, url, current, children}` per ogni menu dichiarato in `theme.json > menus` (D-145); `children` fino a `max_depth`. "main" è automatico (D-58) finché il cliente non lo cambia; gli altri sono vuoti finché non li riempie |
 | `widget_area("area")` | i widget dell'area già disegnati (D-146), solo quelli visibili nella pagina; vuoto se non ce ne sono (si può usare in `{% if %}`). Ogni tipo usa `widgets/<tipo>.html` con la variabile `widget` (`id`, `type`, `data`); il template mette `data-widget-id="{{ widget.id }}"` sull'elemento esterno. I contatti e i social vengono da `site` |
+| `entry_list()` | nella pagina elenco: `{collection, items, page, pages, prev_url, next_url}`; `items` sono voci come `entry`. Fuori da una pagina elenco: elenco vuoto |
+| `entry` | in `entries/<raccolta>.html`: `{id, collection, title, url, fields, published_at}`. `fields` contiene solo i campi dichiarati: il testo formattato si stampa con `\|safe_html`, i media con `img(entry.fields.cover, ...)`, il resto è testo semplice (già escapato) |
+| `format_date(valore, "long")` | una data del CMS nella lingua della pagina: "24 ottobre 2026" (`"short"`: "24.10.2026"); valore non valido → vuoto |
 | `img(media_id, size="card", sizes=None, eager=False, css_class=None)` | `<img>` responsive (D-81): `srcset` con larghezza normale e doppia, `width`/`height`, `alt`, `loading="lazy"` (con `eager=True` per l'immagine in cima, es. hero). `size` deve essere un `image_sizes` del tema (altrimenti errore del tema). `sizes` e `css_class` accettano solo testo semplice. Media mancante: niente sul sito, segnaposto in anteprima |
 | `media_url(id)` | indirizzo del file principale, o `None` |
 | `media_file(id)` | per i file da scaricare: `{url, name, ext, size_label}` (es. `PDF`, `340 kB`), o `None` |

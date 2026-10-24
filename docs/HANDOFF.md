@@ -20,8 +20,9 @@ Aggiornato: 2026-10-24. Leggi questo file **dopo** `CLAUDE.md` e prima di qualsi
 - **Fase 5d-2 — Guida e rifiniture:** completata sul branch `phase-5d2-help`, partito da `phase-5d-help` (1138 test Python, 272 del pannello, 4 e2e, review ECC fatta). **La Fase 5 è chiusa** tranne il test d'uso con un cliente vero, che fa Thias con `docs/TEST-USO.md`. La PR da `phase-5d2-help` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **Fase 6**.
 - **Fase 6a — Impostazioni:** completata sul branch `phase-6-widgets`, partito da `phase-5d2-help` (1180 test Python, 278 del pannello, 5 e2e, review ECC fatta). La PR da `phase-6-widgets` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **6b**.
 - **Fase 6b — Menu:** completata sul branch `phase-6b-menus`, partito da `phase-6-widgets` (1208 test Python, 289 del pannello, 6 e2e, review ECC fatta). La PR da `phase-6b-menus` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **6c**.
-- **Fase 6c — Widget:** completata sul branch `phase-6c-widgets`, partito da `phase-6b-menus` (1236 test Python, 305 del pannello, 7 e2e, review ECC fatta). La PR da `phase-6c-widgets` verso `main` contiene tutte le fasi dalla 4 in poi. **La Fase 6 è chiusa.** Prossima: **Fase 7 — Collezioni e multilingua**.
-- Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-146). Prevalgono sugli altri documenti.
+- **Fase 6c — Widget:** completata sul branch `phase-6c-widgets`, partito da `phase-6b-menus` (1236 test Python, 305 del pannello, 7 e2e, review ECC fatta). La PR da `phase-6c-widgets` verso `main` contiene tutte le fasi dalla 4 in poi. **La Fase 6 è chiusa.** Prossima: **Fase 7**.
+- **Fase 7a — Raccolte (server e sito):** completata sul branch `phase-7-collections`, partito da `phase-6c-widgets` (1278 test Python, 305 del pannello, 7 e2e, review ECC fatta). La PR da `phase-7-collections` verso `main` contiene tutte le fasi dalla 4 in poi. Prossima: **7b — Notizie nel pannello** sul branch `phase-7b-news-panel`.
+- Le decisioni di prodotto sono in `docs/DECISIONI.md` (D-01 … D-152). Prevalgono sugli altri documenti.
 
 ## 2. Preparare l'ambiente (se la `.venv` non c'è)
 ```bash
@@ -136,9 +137,16 @@ nuovo blocco, testo, salvataggio, anteprima, pubblicazione (il testo compare sul
 - Pannello: `admin/src/features/widgets/` (schermata Widget, "Banner avviso" dal telefono nella schermata Pagine).
 - Trappola: i commit con i controlli di pre-commit vogliono la `.venv` nel PATH (mypy e pytest non sono nel Python di sistema).
 
-## 15. Prossimo passo: Fase 7 — Collezioni e multilingua
-1. Branch `phase-7-collections` da `phase-6c-widgets` (o da `main` se le PR sono unite).
-2. Piano con `ecc:planner`: collezioni da `theme.json` (notizie, eventi), elenco paginato e dettaglio, widget
-   "ultime notizie" (oggi spento), azione "notizia" dal telefono (D-97), traduzioni collegate, selettore lingua,
-   hreflang, lingue nel pannello (D-94).
-3. Domande a Thias, test prima, codice, review ECC in parallelo, docs, push, link della PR.
+## 15. Fase 7a — fatta
+- Piano e risposte di Thias in `docs/PIANO-FASE-7.md` (D-147 … D-151), D-152 per le regole delle notizie.
+- Server: `app/models/entry.py`, migrazione `0013`, `app/services/collections.py`, `entries.py`,
+  `entry_publishing.py`, `app/api/admin/entries.py`. Sito: pagina elenco con layout `news_list`,
+  `themes/default/entries/news.html`, helper `entry_list()` e `format_date()`.
+- Nessuna schermata nel pannello ancora: le notizie si creano solo dall'API (la 7b aggiunge la schermata).
+
+## 16. Prossimo passo: Fase 7b — Notizie nel pannello
+1. Branch `phase-7b-news-panel` da `phase-7-collections`.
+2. Schermata Notizie (elenco, nuova, editor dallo schema con salvataggio automatico, versioni, programmazione,
+   controllo prima di pubblicare, cestino), anteprima, "Notizia" dal telefono (D-97), widget "ultime notizie"
+   acceso (oggi spento in `ENABLED_WIDGET_TYPES`), e2e.
+3. Test prima, codice, review ECC in parallelo, docs, push, link della PR.

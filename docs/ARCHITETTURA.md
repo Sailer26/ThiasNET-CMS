@@ -45,8 +45,10 @@ pages(id, parent_id, locale, translation_group, slug, path, title, layout, statu
 page_revisions(id, page_id, kind[published|scheduled|unpublished|draft], snapshot_json, author_id, created_at)
 blocks(id, page_id, uid, zone, type, variant, data_json, sort)   -- solo la versione pubblicata (D-38)
 page_redirects(id, page_id, locale, from_path, created_at)       -- vecchi indirizzi → 301 dalla Fase 3 (D-45)
-collections(id, key)            -- dichiarate dal tema, sincronizzate all'avvio
-entries(id, collection_id, locale, slug, title, fields_json, status, publish_at)
+entries(id, collection, locale, translation_group, slug, title, fields_json, seo_json, status, publish_at,
+        published_at, sort_at, scheduled_json, scheduled_by, version, created/updated/deleted_*)  -- D-147
+        unico (locale, collection, slug) tra le non cestinate; la raccolta è la chiave del tema
+entry_drafts(entry_id PK, data_json, version, author_id, created_at, updated_at)
 media(id, storage_key, kind[image|document], mime, ext, original_name, search_key, size_bytes, sha256 UNIQUE,
       width, height, alt, focal_x, focal_y, variants_json, file_rev, version, folder_id, created_by, updated_by,
       created_at, updated_at)   -- file in MEDIA_ROOT/<key[:2]>/<key>/r<rev>-..., mai nel database (D-74)
@@ -161,6 +163,11 @@ SPA ──fetch──► /api/admin/* (cookie di sessione SameSite=Strict + head
   schemi di `app/widgets/` (lo stesso `BlockRegistry` dei blocchi), salva con versione e dà al rendering
   `site_widgets()` (i `WidgetView` visibili per area); `expire_due()` rinnova la cache quando scade un banner
   (route pubblica e `publish-scheduled`). Pannello in `admin/src/features/widgets/` (operazioni pure in `model.ts`).
+- 7a: `GET /collections`, `GET`/`POST /collections/<chiave>/entries`, `GET`/`PATCH`/`DELETE /entries/<id>` e
+  `/restore`, `/draft`, `/publish`, `/schedule`, `/unschedule`, `/unpublish`, `/revisions` (`content.edit`, le azioni
+  su voci online chiedono `content.publish`). `collections.py` genera lo schema dei campi dal tema e lo valida con il
+  `BlockRegistry`; `entries.py` (bozza, indirizzo, cestino) ed `entry_publishing.py` (pubblicazione e programmazione);
+  sul sito `public_pages` risolve `/<elenco>/<slug>` e `public_render` prepara `listing` ed `entry` nel contesto.
 - API dell'amministrazione: `GET/PATCH/DELETE /messages[/<id>]`, `GET /messages/summary` (`messages.view`,
   admin e owner), `GET /audit` con filtri controllati (`audit.view`, solo owner), `/users`, `/auth/password`,
   `/auth/totp/*`. L'eliminazione di un messaggio scrive nel registro solo l'id.

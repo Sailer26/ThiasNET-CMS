@@ -16,7 +16,7 @@ Decisioni D-147 … D-151. Piano di `ecc:planner`, risposte di Thias tutte sulle
 - Menu, widget, pagine e altro usano `theme.locales[0]` in vari punti (D-94): con la 7c un solo `panel_locale()`.
 
 ## Divisione (D-147)
-- **7a — Raccolte (server e sito):** migrazione `0013` (`entries`, `entry_drafts`), schema dei campi generato da
+- **7a — Raccolte (server e sito) (fatta, D-152):** migrazione `0013` (`entries`, `entry_drafts`), schema dei campi generato da
   `theme.json` e validato come i blocchi, bozza, pubblica, programma, ritira, cestino, versioni; API
   `/collections/<chiave>/entries` e `/entries/<id>…` con i permessi di oggi (D-48); pagina elenco (layout con
   `collection`) con paginazione `?p=`, dettaglio `entries/<chiave>.html`, helper `entry_list()` e

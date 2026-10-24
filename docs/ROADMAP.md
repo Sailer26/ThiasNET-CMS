@@ -172,6 +172,10 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - [x] Menu per posizione, drag&drop, profondità massima (6b)
 - [x] Impostazioni sito + settings del tema generate da `theme.json` (form dinamico tipizzato) su `PUT /api/admin/settings/appearance` (D-14)
 
+**Rimandati dalla 7a:**
+- 7b: schermata Notizie nel pannello, anteprima della notizia, "Notizia" dal telefono (D-97), widget "ultime notizie".
+- Con gli eventi (quando un cliente li chiede): gli eventi passati spariscono dall'elenco (D-150). Insieme: `format_date` per data e ora nel fuso svizzero (oggi mostra il giorno UTC; il tema default ha solo date).
+
 **Rimandati dalla 6c:**
 - Fase 7: widget "ultime notizie" con le collezioni (schema e tipo già pronti, spento); azione rapida "notizia" dal telefono.
 - Dopo il test d'uso: trascinamento dei widget (oggi su/giù), anteprima del widget nella finestra di modifica.
@@ -184,7 +188,12 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - Fase 8: limite di dimensione del corpo per le API JSON del pannello (oggi vale quello dei caricamenti); limite di richieste sulle scritture.
 
 ## Fase 7 — Collezioni e multilingua
-- [ ] Collezioni da `theme.json` (news, eventi), listing paginato, dettaglio
+**7a — Raccolte: server e sito** (D-147 … D-152)
+- [x] Raccolte e campi tipizzati da `theme.json` (`per_page`, layout elenco con `collection`); tema default con solo le Notizie (D-148)
+- [x] Tabelle `entries` ed `entry_drafts` (migrazione `0013`): bozza con versione, pubblica, programma, ritira, cestino, versioni; API `/collections` e `/entries`
+- [x] Sito: pagina elenco paginata, dettaglio `entries/<raccolta>.html`, 301 se l'elenco si sposta, sitemap, "Usato in" dei media; regola d'oro con le notizie
+
+- [x] Collezioni da `theme.json` (news; gli eventi quando servono, D-148), listing paginato, dettaglio (7a; pannello nella 7b)
 - [ ] Traduzioni collegate, selettore lingua, hreflang
 
 ## Fase 8 — Produzione
