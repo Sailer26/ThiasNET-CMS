@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 
 from flask import Response, abort, current_app, redirect, request, send_from_directory
+from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.wrappers import Response as BaseResponse
 
+from app.extensions import db
 from app.public import bp
 from app.public.errors import not_found_response
 from app.public.responses import conditional, html_page
@@ -28,6 +31,20 @@ RESERVED_SEGMENTS = frozenset({"api", "admin", "static", "media", "assets"})
 LONG_CACHE = 365 * 24 * 3600
 SHORT_CACHE = 3600
 
+log = logging.getLogger(__name__)
+
+
+def _expire_banners(generation: int) -> int:
+    """Banner scaduto: la cache si rinnova prima di leggerla (D-146). È manutenzione: se il
+    database è occupato si riprova alla visita dopo (o dal cron), la pagina si vede comunque."""
+    try:
+        if widgets.expire_due(generation):
+            return page_cache.current_generation()
+    except SQLAlchemyError:
+        db.session.rollback()
+        log.warning("banner scaduti: rinnovo della cache rimandato", exc_info=True)
+    return generation
+
 
 @bp.get("/", defaults={"path": ""})
 @bp.get("/<path:path>")
@@ -35,10 +52,9 @@ def page(path: str) -> BaseResponse:
     if path.split("/", 1)[0] in RESERVED_SEGMENTS:
         abort(404)
     theme = active_theme()
-    widgets.expire_due()  # banner scaduto: la cache si rinnova prima di leggerla (D-146)
     # Prima la generazione, poi la pagina: il contenuto letto dopo è almeno altrettanto nuovo,
     # quindi in cache non finisce mai una pagina vecchia con un numero nuovo (D-54).
-    generation = page_cache.current_generation()
+    generation = _expire_banners(page_cache.current_generation())
     resolution = public_pages.resolve(request.path, theme, datetime.now(UTC))
     if resolution.outcome is Outcome.REDIRECT and resolution.location:
         return redirect(resolution.location, code=301)

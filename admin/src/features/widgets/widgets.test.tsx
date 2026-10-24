@@ -32,10 +32,11 @@ const HOURS = { uid: "1".repeat(32), type: "hours", data: { title: "Orari" }, vi
 
 function areas(sidebar: WidgetItem[] = [], top: WidgetItem[] = []): WidgetAreaInfo[] {
   return [
-    { area: "header_top", label: "Fascia in cima", version: 0, items: top, types: [{ type: "notice", label: "Banner avviso", schema: NOTICE_SCHEMA }] },
+    { area: "header_top", label: "Fascia in cima", locale: "it", version: 0, items: top, types: [{ type: "notice", label: "Banner avviso", schema: NOTICE_SCHEMA }] },
     {
       area: "sidebar",
       label: "Colonna laterale",
+      locale: "it",
       version: 2,
       items: sidebar,
       types: [
@@ -180,5 +181,25 @@ describe("banner dal telefono (D-97)", () => {
     await user.click(within(confirm).getByRole("button", { name: "Togli il banner" }));
     expect(await screen.findByText("Banner tolto dal sito.")).toBeInTheDocument();
     expect(sentItems(api, "header_top")).toEqual([]);
+  });
+});
+
+describe("banner dal telefono: conflitto (D-44)", () => {
+  beforeEach(() => setCsrfToken(null));
+
+  test("dopo un 409 l'area si rilegge e il secondo tentativo usa la versione nuova", async () => {
+    const top = { ...areas()[0]!, version: 1, items: [] };
+    const api = start(areas(), "/admin/");
+    api.on("GET", "/widgets/header_top", { data: top });
+    api.on("PUT", "/widgets/header_top", { status: 409, error: { code: "version_conflict", message: "Qualcun altro ha modificato questa parte del sito" } });
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(await screen.findByRole("button", { name: "Banner avviso" }));
+    const dialog = await screen.findByRole("dialog", { name: "Banner avviso sul sito" });
+    await user.type(await within(dialog).findByLabelText(/Testo dell'avviso/), "Chiuso");
+    await user.click(within(dialog).getByRole("button", { name: "Mostra sul sito" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(/un altro utente/);
+    await within(dialog).findByLabelText(/Testo dell'avviso/);
+    expect(api.callsTo("GET", "/widgets/header_top")).toHaveLength(2);
   });
 });

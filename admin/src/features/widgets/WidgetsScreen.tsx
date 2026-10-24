@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { errorMessage } from "../../api/client";
 import { fetchTree } from "../../api/pages";
 import type { PageNode } from "../../api/types";
@@ -18,16 +18,24 @@ export function WidgetsScreen() {
   const [areas, setAreas] = useState<WidgetAreaInfo[] | null>(null);
   const [pages, setPages] = useState<PageOption[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const latest = useRef(0);
 
+  /** Pagine nella lingua delle aree (il server controlla quelle). Conta solo l'ultima richiesta. */
   const load = useCallback(() => {
-    Promise.all([fetchWidgetAreas(), fetchTree(site.default_locale)]).then(
-      ([found, tree]) => {
-        setAreas(found);
-        setPages(flatten(tree.nodes));
-        setError(null);
-      },
-      (failure: unknown) => setError(errorMessage(failure)),
-    );
+    const request = ++latest.current;
+    fetchWidgetAreas()
+      .then(async (found) => [found, await fetchTree(found[0]?.locale ?? site.default_locale)] as const)
+      .then(
+        ([found, tree]) => {
+          if (request !== latest.current) return;
+          setAreas(found);
+          setPages(flatten(tree.nodes));
+          setError(null);
+        },
+        (failure: unknown) => {
+          if (request === latest.current) setError(errorMessage(failure));
+        },
+      );
   }, [site.default_locale]);
 
   useEffect(() => {

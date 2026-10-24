@@ -2,7 +2,7 @@ import { describe, expect, it as test } from "vitest";
 import type { WidgetItem, WidgetType } from "../../api/widgets";
 import { isoToZurich } from "../editor/schedule/siteTime";
 import { currentNotice, moveBy, neighbourAfterRemoval, removeWidget, replaceWidget, setNotice, summary } from "./model";
-import { untilIso } from "./UntilFields";
+import { nextUntil, NO_END, untilFields, untilIso } from "./UntilFields";
 
 const A: WidgetItem = { uid: "a".repeat(32), type: "text", data: { title: "Chi siamo" } };
 const B: WidgetItem = { uid: "b".repeat(32), type: "hours", data: {} };
@@ -58,5 +58,19 @@ describe("fino al (ora svizzera)", () => {
   test("dall'istante salvato ai campi del modulo", () => {
     expect(isoToZurich("2099-01-10T07:00:00+00:00")).toEqual({ date: "2099-01-10", time: "08:00" });
     expect(isoToZurich("non una data")).toBeNull();
+  });
+});
+
+describe("fino al già salvato", () => {
+  test("uno scaduto non si propone; uno futuro sì", () => {
+    expect(untilFields("2020-01-10T07:00:00+00:00")).toEqual(NO_END);
+    expect(untilFields("2099-01-10T07:00:00+00:00")).toEqual({ date: "2099-01-10", time: "08:00" });
+  });
+
+  test("se non lo si tocca resta il valore salvato; se lo si cambia si converte", () => {
+    const start = { date: "2099-01-10", time: "08:00" };
+    expect(nextUntil(start, start, "2099-01-10T07:00:00+00:00")).toBe("2099-01-10T07:00:00+00:00");
+    expect(nextUntil({ date: "2099-01-11", time: "08:00" }, start, "x")).toBe("2099-01-11T08:00:00+01:00");
+    expect(nextUntil(NO_END, start, "x")).toBeNull();
   });
 });

@@ -1,15 +1,12 @@
 import { useEffect, useId, useState } from "react";
-import { errorMessage } from "../../api/client";
+import { errorMessage, isConflict } from "../../api/client";
 import { fetchWidgetArea, storeWidgetArea, type WidgetAreaInfo } from "../../api/widgets";
 import { wg } from "../../text/widgets";
 import { FormDialog } from "../../ui/FormDialog";
-import { isoToZurich } from "../editor/schedule/siteTime";
 import { currentNotice, NOTICE, removeWidget, setNotice } from "./model";
-import { UntilFields, untilIso, type Until } from "./UntilFields";
+import { nextUntil, NO_END, UntilFields, untilFields, type Until } from "./UntilFields";
 
 export const NOTICE_AREA = "header_top";
-const LEVELS = ["info", "warning", "urgent"] as const;
-const NO_END: Until = { date: "", time: "" };
 
 type State = { kind: "loading" } | { kind: "failed"; message: string } | { kind: "ready"; area: WidgetAreaInfo };
 
@@ -24,7 +21,9 @@ export function PhoneNotice({ onClose, onDone }: Props) {
   const [text, setText] = useState("");
   const [level, setLevel] = useState("info");
   const [until, setUntil] = useState<Until>(NO_END);
+  const [start, setStart] = useState<Until>(NO_END);
   const [removing, setRemoving] = useState(false);
+  const [attempt, setAttempt] = useState(0); // dopo un conflitto si rilegge l'area
   const id = useId();
 
   useEffect(() => {
@@ -35,7 +34,9 @@ export function PhoneNotice({ onClose, onDone }: Props) {
         const found = currentNotice(area.items);
         setText(typeof found?.data.text === "string" ? found.data.text : "");
         setLevel(typeof found?.data.level === "string" ? found.data.level : "info");
-        setUntil((found?.until && isoToZurich(found.until)) || NO_END);
+        const fields = untilFields(found?.until);
+        setStart(fields);
+        setUntil(fields);
         setState({ kind: "ready", area });
       },
       (error: unknown) => {
@@ -45,10 +46,25 @@ export function PhoneNotice({ onClose, onDone }: Props) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [attempt]);
+
+  /** Qualcuno ha salvato nel frattempo: l'errore si vede e l'area si rilegge, così si può riprovare. */
+  async function store(run: () => Promise<unknown>) {
+    try {
+      await run();
+    } catch (error) {
+      if (isConflict(error)) {
+        setRemoving(false);
+        setState({ kind: "loading" });
+        setAttempt((n) => n + 1);
+      }
+      throw error;
+    }
+  }
 
   const area = state.kind === "ready" ? state.area : null;
   const schema = area?.types.find((type) => type.type === NOTICE)?.schema;
+  const levels = (schema?.properties?.level?.enum ?? []).map(String);
   const levelTitles = schema?.properties?.level?.["x-enum-titles"] ?? [];
   const existing = area ? currentNotice(area.items) : null;
 
@@ -60,7 +76,7 @@ export function PhoneNotice({ onClose, onDone }: Props) {
         danger
         onClose={() => setRemoving(false)}
         onSubmit={async () => {
-          await storeWidgetArea(NOTICE_AREA, area.version, removeWidget(area.items, existing.uid));
+          await store(() => storeWidgetArea(NOTICE_AREA, area.version, removeWidget(area.items, existing.uid)));
           onDone(wg.phone.removed);
         }}
       >
@@ -77,7 +93,8 @@ export function PhoneNotice({ onClose, onDone }: Props) {
       onSubmit={async () => {
         if (!area) return;
         const data = { ...(existing?.data ?? {}), text: text.trim(), level };
-        await storeWidgetArea(NOTICE_AREA, area.version, setNotice(area.items, data, untilIso(until)));
+        const ends = nextUntil(until, start, existing?.until);
+        await store(() => storeWidgetArea(NOTICE_AREA, area.version, setNotice(area.items, data, ends)));
         onDone(wg.phone.saved);
       }}
     >
@@ -96,7 +113,8 @@ export function PhoneNotice({ onClose, onDone }: Props) {
           <div className="field">
             <label htmlFor={`${id}-level`}>{wg.phone.level}</label>
             <select id={`${id}-level`} value={level} onChange={(event) => setLevel(event.target.value)}>
-              {LEVELS.map((option, index) => (
+              {!levels.includes(level) && <option value={level}>{level}</option>}
+              {levels.map((option, index) => (
                 <option key={option} value={option}>
                   {levelTitles[index] ?? option}
                 </option>

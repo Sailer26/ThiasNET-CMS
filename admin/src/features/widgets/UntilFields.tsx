@@ -1,13 +1,27 @@
 import { useId } from "react";
 import { ApiError } from "../../api/client";
 import { wg } from "../../text/widgets";
-import { zurichToIso } from "../editor/schedule/siteTime";
+import { isoToZurich, zurichToIso } from "../editor/schedule/siteTime";
 
 const TIME_STEP_S = 300; // 5 minuti
 
 export interface Until {
   date: string;
   time: string;
+}
+
+export const NO_END: Until = { date: "", time: "" };
+
+/** Il "fino al" salvato nei campi del modulo; uno già passato non si propone di nuovo. */
+export function untilFields(iso: string | null | undefined, now = Date.now()): Until {
+  if (!iso || new Date(iso).getTime() <= now) return NO_END;
+  return isoToZurich(iso) ?? NO_END;
+}
+
+/** Un "fino al" non toccato resta com'è: correggere il testo non chiede una data nuova. */
+export function nextUntil(current: Until, start: Until, saved: string | null | undefined): string | null {
+  const untouched = start.date !== "" && current.date === start.date && current.time === start.time;
+  return untouched ? (saved ?? null) : untilIso(current);
 }
 
 /** "Fino al" del banner → ISO con il fuso (ora svizzera, D-122); vuoto = senza scadenza. */

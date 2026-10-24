@@ -17,7 +17,8 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
-from sqlalchemy import select, update
+from flask import current_app
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.core_types import ENABLED_WIDGET_TYPES, WIDGET_TYPES
@@ -44,6 +45,8 @@ MAX_ID = 2**31 - 1
 UID_RE = re.compile(r"^[0-9a-f]{32}$")
 ITEM_KEYS = frozenset({"uid", "type", "data", "visibility", "until"})
 MODES = ("all", "only", "except")
+NOTICE = "notice"  # l'unico widget con "fino al" (D-142)
+YEARS = range(2000, 2101)  # "fino al" plausibile: niente date che non si possono convertire
 SUBJECT = "questa parte del sito"
 MESSAGES = {
     "invalid_shape": "Widget non valido",
@@ -55,6 +58,7 @@ MESSAGES = {
     ),
     "page_missing": "Una delle pagine scelte non c'è più (o è nel cestino)",
     "invalid_until": "Data e ora non valide",
+    "until_not_allowed": "Solo il banner avviso può sparire da solo a una data",
     "too_many": f"Al massimo {MAX_WIDGETS} widget per parte del sito",
 }
 
@@ -125,12 +129,12 @@ def _until(raw: Any, path: str, check: _Check) -> str | None:
         return None
     try:
         moment = datetime.fromisoformat(raw) if isinstance(raw, str) else None
-    except ValueError:
-        moment = None
-    if moment is None or moment.tzinfo is None:
+        if moment is None or moment.tzinfo is None or moment.year not in YEARS:
+            raise ValueError(raw)
+        return moment.astimezone(UTC).isoformat()
+    except (ValueError, OverflowError):
         check.errors.append(_problem(path, "invalid_until"))
         return None
-    return moment.astimezone(UTC).isoformat()
 
 
 def _item(raw: Any, path: str, check: _Check) -> dict[str, Any] | None:
@@ -148,10 +152,16 @@ def _item(raw: Any, path: str, check: _Check) -> dict[str, Any] | None:
     if kind not in check.allowed:
         check.errors.append(_problem(f"{path}/type", "not_allowed"))
         return None
-    data = REGISTRY.clean(kind, raw.get("data", {}))
+    raw_data = raw.get("data", {})
+    if not isinstance(raw_data, dict):
+        check.errors.append(_problem(f"{path}/data", "invalid_shape"))
+        return None
+    data = REGISTRY.clean(kind, raw_data)
     check.errors.extend(REGISTRY.errors(kind, data, Mode.PUBLISH, join_path(path, "data")))
     visibility = _visibility(raw.get("visibility"), f"{path}/visibility", check)
     until = _until(raw.get("until"), f"{path}/until", check)
+    if until is not None and kind != NOTICE:
+        check.errors.append(_problem(f"{path}/until", "until_not_allowed"))
     if not isinstance(uid, str):
         return None
     return {"uid": uid, "type": kind, "data": data, "visibility": visibility, "until": until}
@@ -160,7 +170,7 @@ def _item(raw: Any, path: str, check: _Check) -> dict[str, Any] | None:
 def _check_pages(check: _Check, locale: str) -> None:
     if not check.pages:
         return
-    query = select(Page.id).where(Page.id.in_(check.pages), live(), Page.locale == locale)
+    query = select(Page.id).where(Page.id.in_(list(check.pages)), live(), Page.locale == locale)
     existing = set(db.session.execute(query).scalars())
     for page_id, paths in check.pages.items():
         if page_id not in existing:
@@ -200,6 +210,7 @@ def editable(area_name: str, theme: Theme) -> dict[str, Any]:
     return {
         "area": area_name,
         "label": area.label,
+        "locale": _locale(theme),  # le pagine della visibilità sono di questa lingua
         "types": _types(area),
         "version": row.version if row is not None else 0,
         "items": list(row.items_json) if row is not None else [],
@@ -297,20 +308,45 @@ def store_area(
     return editable(area_name, theme)
 
 
-def expire_due() -> bool:
-    """Un banner è scaduto: la cache del sito si rinnova (una volta) e si segna il prossimo."""
+@dataclass(frozen=True)
+class _Expiry:
+    generation: int
+    next_due: datetime | None
+
+
+EXPIRY_KEY = "thiasnet_widget_expiry"
+
+
+def _known_expiry() -> _Expiry | None:
+    found = current_app.extensions.get(EXPIRY_KEY)
+    return found if isinstance(found, _Expiry) else None
+
+
+def expire_due(generation: int | None = None) -> bool:
+    """Un banner è scaduto: la cache del sito si rinnova (una volta) e si segna il prossimo.
+
+    Con `generation` (la route pubblica) il prossimo "fino al" si ricorda per processo: finché la
+    generazione non cambia (ogni salvataggio la cambia) e quell'ora non arriva, niente query."""
     now = _now()
+    known = _known_expiry()
+    fresh = generation is not None and known is not None and known.generation == generation
+    if fresh and known is not None and (known.next_due is None or now < known.next_due):
+        return False
     query = select(WidgetAreaRow).where(
         WidgetAreaRow.next_change_at.is_not(None), WidgetAreaRow.next_change_at <= now
     )
     due = list(db.session.execute(query).scalars())
-    if not due:
-        return False
-    for row in due:
-        row.next_change_at = _next_change(row.items_json, now)
-    page_cache.mark_changed()
-    db.session.commit()
-    return True
+    if due:
+        for row in due:
+            row.next_change_at = _next_change(row.items_json, now)
+        page_cache.mark_changed()
+        db.session.commit()
+    if generation is not None:
+        upcoming = select(func.min(WidgetAreaRow.next_change_at))
+        next_due = db.session.execute(upcoming).scalar_one_or_none()
+        current = page_cache.current_generation() if due else generation
+        current_app.extensions[EXPIRY_KEY] = _Expiry(current, next_due)
+    return bool(due)
 
 
 # --- Lettura per il sito -------------------------------------------------------------------------

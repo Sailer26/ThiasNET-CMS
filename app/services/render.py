@@ -145,6 +145,10 @@ class Renderer:
         return fallback
 
 
+def _no_widgets(_name: str) -> Markup:
+    return Markup("")
+
+
 class _Helpers:
     """Helper di un singolo rendering: nessuno stato condiviso tra richieste."""
 
@@ -184,7 +188,10 @@ class _Helpers:
         for widget in self.context.widgets.get(name, ()):
             try:
                 template = self.renderer.widget_template(widget.type)
-                html = template.render({**self.namespace(), "widget": widget})
+                # Un widget non disegna altre aree: niente ricorsione da un tema sbagliato.
+                html = template.render(
+                    {**self.namespace(), "widget_area": _no_widgets, "widget": widget}
+                )
             except (TemplateError, TypeError, ValueError, AttributeError):
                 if self.renderer.strict:
                     raise

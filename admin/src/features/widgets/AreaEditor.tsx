@@ -68,6 +68,7 @@ export function AreaEditor({ area, pages, onReload }: Props) {
       return;
     }
     const next = moveBy(items, item.uid, action === "up" ? -1 : 1);
+    if (next === items) return; // già al bordo: niente focus in sospeso
     pending.current = { uid: item.uid, action };
     setItems(next);
     setSaid(wg.moved(name, next.indexOf(item) + 1, next.length));
@@ -133,7 +134,7 @@ export function AreaEditor({ area, pages, onReload }: Props) {
             const name = label(item);
             const n = index + 1;
             const typeLabel = area.types.find((type) => type.type === item.type)?.label;
-            const notes = [typeLabel, placement(item), ending(item, now)].filter(Boolean);
+            const notes = [typeLabel ?? wg.unavailable, placement(item), ending(item, now)].filter(Boolean);
             return (
               <li key={item.uid} className="widget-list__item" data-uid={item.uid}>
                 <span className="widget-list__title">
@@ -153,7 +154,7 @@ export function AreaEditor({ area, pages, onReload }: Props) {
                   >
                     ↓
                   </button>
-                  <button type="button" className="button button--small" aria-label={wg.editOf(name, n)} data-action="edit" onClick={() => setEditing({ item, isNew: false })}>
+                  <button type="button" className="button button--small" aria-label={wg.editOf(name, n)} data-action="edit" disabled={!typeLabel} onClick={() => setEditing({ item, isNew: false })}>
                     {wg.edit}
                   </button>
                   <button type="button" className="button button--small button--danger" aria-label={wg.remove(name, n)} data-action="remove" onClick={() => act("remove", item)}>

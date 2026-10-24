@@ -34,7 +34,7 @@ def areas(client: FlaskClient) -> dict[str, dict[str, Any]]:
     return {area["area"]: area for area in response.get_json()["data"]}
 
 
-def widget(n: int, kind: str, data: dict[str, Any], **extra: Any) -> dict[str, Any]:
+def widget(n: int, kind: str, data: dict[str, Any] | None, **extra: Any) -> dict[str, Any]:
     return {"uid": uid(n), "type": kind, "data": data, **extra}
 
 
@@ -53,6 +53,7 @@ def details(response: Any) -> set[tuple[str, str]]:
 def test_only_who_can_publish(login_as: LoginAs) -> None:
     editor, _ = login_as("editor")
     assert editor.get(WIDGETS).status_code == 403
+    assert editor.get(f"{WIDGETS}/footer").status_code == 403
     assert editor.put(f"{WIDGETS}/footer", json={"version": 0, "items": []}).status_code == 403
 
 
@@ -61,6 +62,7 @@ def test_areas_list_the_widgets_the_theme_allows(admin: FlaskClient) -> None:
     assert set(found) == {"header_top", "footer", "sidebar"}
     footer = found["footer"]
     assert footer["label"] == "Piè di pagina" and footer["version"] == 0 and footer["items"] == []
+    assert footer["locale"] == "it"  # le pagine della visibilità sono di questa lingua
     types = [t["type"] for t in footer["types"]]
     assert types == [
         "hours",
@@ -188,6 +190,22 @@ def test_contacts_and_social_use_the_site_data(admin: FlaskClient) -> None:
             [widget(1, "notice", {"text": "x"}, until="2026-12-01T10:00:00")],
             ("items/0/until", "invalid_until"),
         ),
+        (
+            "header_top",
+            [widget(1, "notice", {"text": "x"}, until="0001-01-01T00:00:00+05:00")],
+            ("items/0/until", "invalid_until"),
+        ),
+        (
+            "header_top",
+            [widget(1, "notice", {"text": "x"}, until="9999-12-31T23:59:59-05:00")],
+            ("items/0/until", "invalid_until"),
+        ),
+        (
+            "footer",
+            [widget(1, "text", {"body": "<p>x</p>"}, until="2099-01-01T10:00:00+01:00")],
+            ("items/0/until", "until_not_allowed"),
+        ),
+        ("footer", [widget(1, "text", None)], ("items/0/data", "invalid_shape")),
         (
             "footer",
             [{"uid": uid(1), "type": "text", "data": {"body": "x"}, "evil": 1}],

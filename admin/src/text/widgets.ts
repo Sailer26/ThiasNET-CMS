@@ -32,7 +32,7 @@ export const wg = {
   shownOn: (n: number) => (n === 1 ? "Solo in una pagina" : `Solo in ${n} pagine`),
   hiddenOn: (n: number) => (n === 1 ? "In tutte tranne una pagina" : `In tutte tranne ${n} pagine`),
   until: "Fino al (facoltativo)",
-  untilHelp: "Dopo questo giorno e ora il banner sparisce da solo. Ora svizzera.",
+  untilHelp: "Dopo questo giorno e ora il banner sparisce da solo (senza ora: alle 23:59). Ora svizzera.",
   date: "Giorno",
   time: "Ora",
   untilInvalid: "Giorno o ora non validi",
@@ -40,6 +40,7 @@ export const wg = {
   untilPast: "Il giorno e l'ora scelti sono già passati",
   untilShort: (when: string) => `Fino a ${when}`,
   expired: "Scaduto: non si vede più",
+  unavailable: "Non più previsto dal tema: toglilo per poter salvare",
   phone: {
     open: "Banner avviso",
     title: "Banner avviso sul sito",

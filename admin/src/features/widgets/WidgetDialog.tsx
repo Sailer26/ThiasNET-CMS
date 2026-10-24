@@ -2,13 +2,12 @@ import { useId, useState } from "react";
 import type { VisibilityMode, WidgetItem, WidgetType } from "../../api/widgets";
 import { wg } from "../../text/widgets";
 import { FormDialog } from "../../ui/FormDialog";
-import { isoToZurich } from "../editor/schedule/siteTime";
 import { setPath, type Data, type Path } from "../editor/model/document";
 import { SchemaForm } from "../editor/schema/SchemaForm";
 import { fieldProblem } from "../editor/schema/validate";
 import type { PageOption } from "../menus/MenuEditor";
 import { NOTICE } from "./model";
-import { UntilFields, untilIso, type Until } from "./UntilFields";
+import { nextUntil, UntilFields, untilFields, type Until } from "./UntilFields";
 
 const NONE: ReadonlyMap<string, string> = new Map();
 const MODES: VisibilityMode[] = ["all", "only", "except"];
@@ -21,10 +20,6 @@ function complete(type: WidgetType, data: Data): boolean {
     const empty = value === undefined || value === "" || (Array.isArray(value) && value.length === 0);
     return !(required.has(name) && empty) && fieldProblem(spec, value) === null;
   });
-}
-
-function startUntil(item: WidgetItem): Until {
-  return (item.until && isoToZurich(item.until)) || { date: "", time: "" };
 }
 
 interface Props {
@@ -41,7 +36,8 @@ export function WidgetDialog({ type, item, isNew, pages, onClose, onDone }: Prop
   const [data, setData] = useState<Data>(item.data);
   const [mode, setMode] = useState<VisibilityMode>(item.visibility?.mode ?? "all");
   const [chosen, setChosen] = useState<Set<number>>(() => new Set(item.visibility?.pages ?? []));
-  const [until, setUntil] = useState<Until>(() => startUntil(item));
+  const [start] = useState<Until>(() => untilFields(item.until));
+  const [until, setUntil] = useState<Until>(start);
   const id = useId();
   const known = pages.filter((page) => chosen.has(page.id));
   const placed = mode === "all" || known.length > 0;
@@ -60,7 +56,7 @@ export function WidgetDialog({ type, item, isNew, pages, onClose, onDone }: Prop
       onClose={onClose}
       onSubmit={async () => {
         const pagesKept = mode === "all" ? [] : known.map((page) => page.id);
-        const ends = type.type === NOTICE ? untilIso(until) : null;
+        const ends = type.type === NOTICE ? nextUntil(until, start, item.until) : null;
         onDone({ uid: item.uid, type: type.type, data, visibility: { mode, pages: pagesKept }, until: ends });
       }}
     >

@@ -27,6 +27,8 @@ export interface WidgetType {
 export interface WidgetAreaInfo {
   area: string;
   label: string;
+  /** Lingua dell'area: le pagine della visibilità si scelgono in questa lingua. */
+  locale: string;
   types: WidgetType[];
   version: number;
   items: WidgetItem[];
