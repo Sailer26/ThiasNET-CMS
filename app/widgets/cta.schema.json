@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Invito all'azione",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "title": "Titolo",
+      "maxLength": 120
+    },
+    "text": {
+      "type": "string",
+      "title": "Testo",
+      "maxLength": 300
+    },
+    "button_label": {
+      "type": "string",
+      "title": "Testo del pulsante",
+      "maxLength": 40
+    },
+    "url": {
+      "type": "string",
+      "title": "Link del pulsante",
+      "description": "Una pagina del sito (es. /contatti) oppure un indirizzo completo (https://…).",
+      "maxLength": 2048,
+      "format": "safe-url"
+    }
+  },
+  "required": [
+    "title",
+    "button_label",
+    "url"
+  ]
+}

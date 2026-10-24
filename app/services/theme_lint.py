@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from jinja2 import TemplateError, meta, nodes
 
+from app.core_types import ENABLED_WIDGET_TYPES
 from app.services.render import NOT_FOUND_TEMPLATE, build_environment
 from app.services.theme import Theme
 
@@ -31,6 +32,8 @@ def _required_templates(theme: Theme, allowed: set[str]) -> list[str]:
     required = [f"layouts/{name}.html" for name in theme.layouts]
     required.append(NOT_FOUND_TEMPLATE)
     required += [f"blocks/{block}.html" for block in sorted(allowed)]
+    used = {w for area in theme.widget_areas.values() for w in area.widgets}
+    required += [f"widgets/{widget}.html" for widget in sorted(used & ENABLED_WIDGET_TYPES)]
     if "contacts" in allowed:
         required.append(CONTACT_FORM_TEMPLATE)
     return required

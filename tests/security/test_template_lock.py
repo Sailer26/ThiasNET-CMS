@@ -205,7 +205,7 @@ def test_unknown_theme_setting_rejected(owner_client):
 
 def test_theme_files_unchanged_after_full_admin_session(owner_client):
     """Una sessione completa dal pannello non cambia un byte dei temi. Pagine, media e
-    impostazioni dalla Fase 6a; menu e widget si aggiungono in 6b e 6c."""
+    impostazioni (6a), menu (6b) e widget (6c)."""
     before = _themes_hash()
     api = "/api/admin"
     page = owner_client.post(f"{api}/pages", json={"title": "Prova", "layout": "page"}).get_json()[
@@ -248,6 +248,29 @@ def test_theme_files_unchanged_after_full_admin_session(owner_client):
     ]
     stored_menu = owner_client.put(f"{api}/menus/main", json={"version": 0, "items": menu_items})
     assert stored_menu.status_code == 200, stored_menu.get_json()
+    footer = [
+        {
+            "uid": "b" * 32,
+            "type": "text",
+            "data": {
+                "title": "Widget {{ 7*7 }}",
+                "body": "<p>{% include 'x' %}</p><script>x</script>",
+            },
+        }
+    ]
+    stored_footer = owner_client.put(f"{api}/widgets/footer", json={"version": 0, "items": footer})
+    assert stored_footer.status_code == 200, stored_footer.get_json()
+    notice = [
+        {
+            "uid": "c" * 32,
+            "type": "notice",
+            "data": {"text": "{{ config }}", "link_url": "javascript:x"},
+        }
+    ]
+    rejected = owner_client.put(f"{api}/widgets/header_top", json={"version": 0, "items": notice})
+    assert rejected.status_code == 422  # link non sicuro
+    html = owner_client.get(page["path"]).get_data(as_text=True)
+    assert "Widget {{ 7*7 }}" in html and "<script>x</script>" not in html
     page_now = owner_client.get(f"{api}/pages/{page['id']}").get_json()["data"]
     trashed = owner_client.delete(
         f"{api}/pages/{page['id']}", json={"version": page_now["version"]}

@@ -61,6 +61,13 @@ class Link:
 
 
 @dataclass(frozen=True)
+class WidgetView:
+    id: str  # uid stabile: finisce in data-widget-id
+    type: str
+    data: Mapping[str, Any]
+
+
+@dataclass(frozen=True)
 class SiteInfo:
     name: str
     base_url: str  # SITE_URL, senza "/" finale: canonical e sitemap (D-62)
@@ -122,6 +129,7 @@ class PageContext:
     site: SiteInfo
     mode: RenderMode = RenderMode.PUBLIC
     menus: Mapping[str, tuple[Link, ...]] = EMPTY  # per posizione del tema (D-145)
+    widgets: Mapping[str, tuple[WidgetView, ...]] = EMPTY  # per area del tema (D-146)
     breadcrumbs: tuple[Link, ...] = ()
     settings: Mapping[str, Any] = EMPTY
     css_version: str = ""

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Contatti",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "title": "Titolo",
+      "maxLength": 80,
+      "description": "Email, telefono e indirizzo vengono dalle Impostazioni del sito."
+    }
+  },
+  "required": []
+}

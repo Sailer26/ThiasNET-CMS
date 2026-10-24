@@ -1,0 +1,9 @@
+<section class="widget widget-hours" data-widget-id="{{ widget.id }}">
+{% if widget.data.title %}<h2 class="widget__title">{{ widget.data.title }}</h2>{% endif %}
+<dl class="widget-hours__list">
+{% for row in widget.data.get("rows") or [] %}
+<dt>{{ row.days }}</dt><dd>{{ row.hours }}</dd>
+{% endfor %}
+</dl>
+{% if widget.data.note %}<p class="widget-hours__note">{{ widget.data.note }}</p>{% endif %}
+</section>

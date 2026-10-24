@@ -3,13 +3,15 @@
 <div class="container">
 {% include "partials/breadcrumbs.html" %}
 <h1 class="page-title">{{ page.title }}</h1>
-<div class="with-sidebar{% if not zone_has_blocks('sidebar') %} with-sidebar--empty{% endif %}">
+{% set sidebar_widgets = widget_area("sidebar") %}
+<div class="with-sidebar{% if not zone_has_blocks('sidebar') and not sidebar_widgets %} with-sidebar--empty{% endif %}">
 <div class="zone zone--main">
 {{ render_zone("main") }}
 </div>
-{% if zone_has_blocks("sidebar") %}
+{% if zone_has_blocks("sidebar") or sidebar_widgets %}
 <aside class="zone zone--sidebar" aria-label="{{ page.title }}">
 {{ render_zone("sidebar") }}
+{{ sidebar_widgets }}
 </aside>
 {% endif %}
 </div>

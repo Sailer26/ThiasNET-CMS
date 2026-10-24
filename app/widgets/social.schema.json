@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Social",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "title": "Titolo",
+      "maxLength": 80,
+      "description": "I link vengono dalle Impostazioni del sito."
+    }
+  },
+  "required": []
+}

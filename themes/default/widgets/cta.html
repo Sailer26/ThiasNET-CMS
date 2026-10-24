@@ -1,0 +1,6 @@
+{% set url = widget.data.url | clean_url %}
+<section class="widget widget-cta" data-widget-id="{{ widget.id }}">
+<h2 class="widget__title">{{ widget.data.title }}</h2>
+{% if widget.data.text %}<p>{{ widget.data.text }}</p>{% endif %}
+{% if url and widget.data.button_label %}<p><a class="button" href="{{ url }}">{{ widget.data.button_label }}</a></p>{% endif %}
+</section>

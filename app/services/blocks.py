@@ -256,6 +256,15 @@ class BlockRegistry:
         return tuple(ref.media_id for ref in self.media_refs(block_type, data))
 
 
+def plain(value: Any) -> Any:
+    """Gli schemi del registry sono di sola lettura: copia serializzabile in JSON."""
+    if isinstance(value, Mapping):
+        return {k: plain(v) for k, v in value.items()}
+    if isinstance(value, tuple | list):
+        return [plain(v) for v in value]
+    return value
+
+
 def _check_labels(schema: Mapping[str, Any], name: str, prefix: str = "") -> None:
     """D-106: ogni campo ha un'etichetta italiana; ogni enum le sue etichette, una per valore."""
     for field, spec in schema.get("properties", {}).items():
@@ -283,12 +292,13 @@ def _read_schema(path: Path, name: str) -> dict[str, Any]:
     return dict(schema)
 
 
-def load_registry(directory: Path) -> BlockRegistry:
+def load_registry(directory: Path, expected: frozenset[str] = BLOCK_TYPES) -> BlockRegistry:
+    """Blocchi (`app/blocks`) o widget (`app/widgets`, Fase 6c): stesse regole per gli schemi."""
     files = {p.name.removesuffix(SCHEMA_SUFFIX): p for p in directory.glob(f"*{SCHEMA_SUFFIX}")}
-    missing, unknown = BLOCK_TYPES - files.keys(), files.keys() - BLOCK_TYPES
+    missing, unknown = expected - files.keys(), files.keys() - expected
     if missing or unknown:
         raise BlockRegistryError(
-            f"Schemi dei blocchi non allineati a BLOCK_TYPES: mancanti {sorted(missing)}, "
+            f"Schemi in {directory.name} non allineati ai tipi: mancanti {sorted(missing)}, "
             f"sconosciuti {sorted(unknown)}"
         )
     return BlockRegistry({name: _read_schema(path, name) for name, path in sorted(files.items())})

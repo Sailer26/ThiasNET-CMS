@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Banner avviso",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "text": {
+      "type": "string",
+      "title": "Testo dell'avviso",
+      "description": "Una frase breve: per esempio \"Oggi gli uffici sono chiusi\".",
+      "maxLength": 300
+    },
+    "level": {
+      "type": "string",
+      "title": "Tipo",
+      "enum": [
+        "info",
+        "warning",
+        "urgent"
+      ],
+      "x-enum-titles": [
+        "Informazione",
+        "Attenzione",
+        "Urgente"
+      ]
+    },
+    "link_label": {
+      "type": "string",
+      "title": "Testo del link",
+      "maxLength": 40
+    },
+    "link_url": {
+      "type": "string",
+      "title": "Link",
+      "description": "Una pagina del sito (es. /avvisi) oppure un indirizzo completo.",
+      "maxLength": 2048,
+      "format": "safe-url"
+    }
+  },
+  "required": [
+    "text"
+  ]
+}

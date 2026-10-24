@@ -72,3 +72,11 @@ export function zurichToday(now = Date.now()): string {
   const values = Object.fromEntries(parts.formatToParts(new Date(now)).map((p) => [p.type, p.value]));
   return `${values.year}-${values.month}-${values.day}`;
 }
+
+/** Istante ISO → giorno e ora di Zurigo per i campi del pannello ("2026-11-01", "08:00"). */
+export function isoToZurich(iso: string): { date: string; time: string } | null {
+  const ms = new Date(iso).getTime();
+  if (Number.isNaN(ms)) return null;
+  const values = Object.fromEntries(parts.formatToParts(new Date(ms)).map((p) => [p.type, p.value]));
+  return { date: `${values.year}-${values.month}-${values.day}`, time: `${values.hour}:${values.minute}` };
+}

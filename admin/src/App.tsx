@@ -9,6 +9,7 @@ import { ProfileScreen } from "./features/admin/ProfileScreen";
 import { UsersScreen } from "./features/admin/UsersScreen";
 import { SettingsScreen } from "./features/settings/SettingsScreen";
 import { MenusScreen } from "./features/menus/MenusScreen";
+import { WidgetsScreen } from "./features/widgets/WidgetsScreen";
 import { Link } from "./router/Link";
 import { paths, useRoute, type Route } from "./router/router";
 import { Permission } from "./session/can";
@@ -49,6 +50,8 @@ function Screen({ route }: { route: Route }) {
       return <ProfileScreen />;
     case "menus":
       return can(Permission.publish) ? <MenusScreen /> : <NoAccess />;
+    case "widgets":
+      return can(Permission.publish) ? <WidgetsScreen /> : <NoAccess />;
     case "settings":
       return can(Permission.settingsEdit) ? <SettingsScreen /> : <NoAccess />;
     case "not-found":

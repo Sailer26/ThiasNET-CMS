@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Orari",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "title": "Titolo",
+      "maxLength": 80
+    },
+    "rows": {
+      "type": "array",
+      "title": "Righe",
+      "maxItems": 14,
+      "items": {
+        "type": "object",
+        "title": "Riga",
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "type": "string",
+            "title": "Giorni",
+            "description": "Per esempio \"Lunedì–Venerdì\".",
+            "maxLength": 40
+          },
+          "hours": {
+            "type": "string",
+            "title": "Orario",
+            "description": "Per esempio \"8:00–12:00\".",
+            "maxLength": 60
+          }
+        },
+        "required": [
+          "days",
+          "hours"
+        ]
+      }
+    },
+    "note": {
+      "type": "string",
+      "title": "Nota",
+      "maxLength": 200
+    }
+  },
+  "required": [
+    "rows"
+  ]
+}

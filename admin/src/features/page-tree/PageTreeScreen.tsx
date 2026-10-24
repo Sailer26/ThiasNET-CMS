@@ -12,15 +12,18 @@ import type { PageNode } from "../../api/types";
 import { Permission } from "../../session/can";
 import { useSession } from "../../session/context";
 import { it } from "../../text/it";
+import { wg } from "../../text/widgets";
 import { FormDialog } from "../../ui/FormDialog";
 import { NoticeArea, type NoticeState } from "../../ui/Notice";
 import { AddressDialog, CreatePageDialog, MoveDialog } from "./dialogs";
 import { PageRow, type RowAction } from "./PageRow";
+import { PhoneNotice } from "../widgets/PhoneNotice";
 import { PhonePublish } from "./PhonePublish";
 import { hasHome, reordered } from "./tree";
 
 type DialogState =
   | { kind: "create"; home: boolean }
+  | { kind: "notice" }
   | { kind: "move" | "address" | "trash" | "publish"; node: PageNode };
 
 /** Errori che dicono: l'albero sullo schermo non è più quello vero. Si avvisa e si ricarica (D-92). */
@@ -154,6 +157,13 @@ export function PageTreeScreen() {
         )}
       </div>
       <p className="phone-only hint">{it.tree.phoneNotice}</p>
+      {can(Permission.publish) && (
+        <p className="phone-only">
+          <button type="button" className="button" onClick={() => setDialog({ kind: "notice" })}>
+            {wg.phone.open}
+          </button>
+        </p>
+      )}
       <NoticeArea notice={notice} onClose={() => setNotice(null)} />
       {loadError && (
         <div className="notice notice--error" role="alert">
@@ -232,6 +242,15 @@ export function PageTreeScreen() {
               true,
             )
           }
+        />
+      )}
+      {dialog?.kind === "notice" && (
+        <PhoneNotice
+          onClose={() => setDialog(null)}
+          onDone={(text) => {
+            setDialog(null);
+            setNotice({ kind: "success", text });
+          }}
         />
       )}
       {dialog?.kind === "publish" && (

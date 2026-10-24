@@ -1,0 +1,4 @@
+<section class="widget widget-text" data-widget-id="{{ widget.id }}">
+{% if widget.data.title %}<h2 class="widget__title">{{ widget.data.title }}</h2>{% endif %}
+<div class="prose">{{ widget.data.body | safe_html }}</div>
+</section>

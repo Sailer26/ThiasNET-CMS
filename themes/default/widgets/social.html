@@ -1,0 +1,12 @@
+{% set names = {'facebook': 'Facebook', 'instagram': 'Instagram', 'linkedin': 'LinkedIn', 'youtube': 'YouTube'} %}
+{% if site.social %}
+<section class="widget widget-social" data-widget-id="{{ widget.id }}">
+{% if widget.data.title %}<h2 class="widget__title">{{ widget.data.title }}</h2>{% endif %}
+<ul class="widget-social__list">
+{% for network, url in site.social %}
+{% set link = url | clean_url %}
+{% if link %}<li><a href="{{ link }}" rel="noopener">{{ names.get(network, network) }}</a></li>{% endif %}
+{% endfor %}
+</ul>
+</section>
+{% endif %}

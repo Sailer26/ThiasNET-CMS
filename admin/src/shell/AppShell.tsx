@@ -25,6 +25,7 @@ const TITLES: Record<string, string> = {
   profile: it.titles.profile,
   settings: it.titles.settings,
   menus: it.titles.menus,
+  widgets: it.titles.widgets,
   "not-found": it.titles.notFound,
 };
 
@@ -122,6 +123,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           {can(Permission.publish) && (
             <Link to={paths.menus} aria-current={current("menus")}>
               {it.shell.menus}
+            </Link>
+          )}
+          {can(Permission.publish) && (
+            <Link to={paths.widgets} aria-current={current("widgets")}>
+              {it.shell.widgets}
             </Link>
           )}
           {can(Permission.settingsEdit) && (

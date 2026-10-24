@@ -1,3 +1,5 @@
+{% set top_widgets = widget_area("header_top") %}
+{% if top_widgets %}<div class="site-top"><div class="container">{{ top_widgets }}</div></div>{% endif %}
 <header class="site-header site-header--{{ settings.header_style or 'light' }}">
 <div class="container site-header__inner">
 <a class="site-name" href="{{ '/' if page.locale == site.locale else '/' ~ page.locale ~ '/' }}">{% if site.logo %}{{ img(site.logo, 'content', sizes='160px', eager=True, css_class='site-logo') }}{% endif %}<span>{{ site.name }}</span></a>

@@ -1,0 +1,10 @@
+{% set tel = ('tel:' ~ (site.phone or '') | replace(' ', '')) | clean_url %}
+{% set mail = ('mailto:' ~ (site.email or '')) | clean_url %}
+<section class="widget widget-contacts" data-widget-id="{{ widget.id }}">
+{% if widget.data.title %}<h2 class="widget__title">{{ widget.data.title }}</h2>{% endif %}
+<ul class="widget-contacts__list">
+{% if site.address %}<li>{{ site.address }}</li>{% endif %}
+{% if site.phone and tel %}<li><a href="{{ tel }}">{{ site.phone }}</a></li>{% endif %}
+{% if site.email and mail %}<li><a href="{{ mail }}">{{ site.email }}</a></li>{% endif %}
+</ul>
+</section>

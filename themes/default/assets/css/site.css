@@ -132,6 +132,24 @@ main:focus { outline: none; }
   }
 }
 
+/* --- Widget (Fase 6c) -------------------------------------------------------- */
+
+.site-top { background: var(--accent); color: #fff; }
+.site-top a { color: inherit; }
+.notice-banner { padding: 0.6rem 0; font-weight: 600; margin: 0; }
+.notice-banner p { margin: 0; }
+.notice-banner--warning { background: #ffd45c; color: #1b1b1b; padding-inline: 1rem; }
+.notice-banner--urgent { background: #b3261e; color: #fff; padding-inline: 1rem; }
+.widget { margin-block: 1rem; }
+.widget__title { font-size: 1.1rem; margin: 0 0 0.5rem; }
+.widget-contacts__list, .widget-social__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.25rem; }
+.widget-hours__list { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0; }
+.widget-hours__list dd { margin: 0; }
+.footer-widgets { display: grid; gap: 1.5rem; padding-block: 1.5rem; }
+@media (min-width: 48rem) {
+  .footer-widgets { grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+}
+
 /* --- Pagina ---------------------------------------------------------------- */
 
 .page-title { font-size: clamp(1.8rem, 4vw, 2.6rem); line-height: 1.2; margin: 2rem 0 1rem; }

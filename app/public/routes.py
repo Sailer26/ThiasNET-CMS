@@ -10,7 +10,15 @@ from werkzeug.wrappers import Response as BaseResponse
 from app.public import bp
 from app.public.errors import not_found_response
 from app.public.responses import conditional, html_page
-from app.services import contact_form, page_cache, public_pages, public_render, seo, site_settings
+from app.services import (
+    contact_form,
+    page_cache,
+    public_pages,
+    public_render,
+    seo,
+    site_settings,
+    widgets,
+)
 from app.services.public_pages import Outcome
 from app.services.render import asset_path_is_valid
 from app.services.theme import active_theme
@@ -27,6 +35,7 @@ def page(path: str) -> BaseResponse:
     if path.split("/", 1)[0] in RESERVED_SEGMENTS:
         abort(404)
     theme = active_theme()
+    widgets.expire_due()  # banner scaduto: la cache si rinnova prima di leggerla (D-146)
     # Prima la generazione, poi la pagina: il contenuto letto dopo è almeno altrettanto nuovo,
     # quindi in cache non finisce mai una pagina vecchia con un numero nuovo (D-54).
     generation = page_cache.current_generation()

@@ -1,4 +1,6 @@
 <footer class="site-footer">
+{% set footer_widgets = widget_area("footer") %}
+{% if footer_widgets %}<div class="container footer-widgets">{{ footer_widgets }}</div>{% endif %}
 <div class="container site-footer__inner">
 <p>&copy; {{ site.year }} {{ site.name }}</p>
 {% set footer_items = menu("footer") %}

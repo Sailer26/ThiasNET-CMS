@@ -20,7 +20,7 @@ from jinja2.environment import Environment
 from jinja2.sandbox import ImmutableSandboxedEnvironment
 from markupsafe import Markup
 
-from app.core_types import BLOCK_TYPES
+from app.core_types import BLOCK_TYPES, WIDGET_TYPES
 from app.services import render_helpers, render_media
 from app.services.public_texts import text
 from app.services.render_context import (
@@ -104,6 +104,11 @@ class Renderer:
             raise TemplateNotFound(block_type)
         return self.env.get_template(f"blocks/{block_type}.html")
 
+    def widget_template(self, widget_type: str) -> Template:
+        if widget_type not in WIDGET_TYPES:
+            raise TemplateNotFound(widget_type)
+        return self.env.get_template(f"widgets/{widget_type}.html")
+
     def render_page(self, context: PageContext) -> str:
         template = self._layout_template(context.page.layout)
         return template.render(_Helpers(self, context).namespace())
@@ -168,9 +173,27 @@ class _Helpers:
             "asset": self.renderer.asset_url,
             "embed": render_helpers.embed,
             "menu": self.menu,
-            "widget_area": lambda _name: (),  # Fase 6 (D-57)
+            "widget_area": self.widget_area,
             "contact_form": self.contact_form,
         }
+
+    def widget_area(self, name: str) -> Markup:
+        """I widget di un'area visibili in questa pagina, già disegnati (D-146). Un widget che
+        non si riesce a disegnare sparisce (con avviso nel log), come i blocchi (D-53)."""
+        found = []
+        for widget in self.context.widgets.get(name, ()):
+            try:
+                template = self.renderer.widget_template(widget.type)
+                html = template.render({**self.namespace(), "widget": widget})
+            except (TemplateError, TypeError, ValueError, AttributeError):
+                if self.renderer.strict:
+                    raise
+                log.exception(
+                    "tema %s: widget %s non disegnato", self.renderer.theme.name, widget.id
+                )
+                continue
+            found.append(Markup(html))  # noqa: S704 (output del template, già escapato)
+        return Markup("\n").join(found)
 
     def zone_has_blocks(self, name: str) -> bool:
         return bool(self.context.page.zones.get(name))

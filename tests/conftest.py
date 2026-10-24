@@ -109,7 +109,7 @@ def theme_data() -> dict[str, Any]:
 
 
 DEFAULT_THEME_DIR = ROOT / "themes" / "default"
-TEMPLATE_FOLDERS = ("layouts", "partials", "blocks", "assets/css", "assets/js")
+TEMPLATE_FOLDERS = ("layouts", "partials", "blocks", "widgets", "assets/css", "assets/js")
 VALID_THUMBNAIL = re.compile(r"variants/[a-z0-9][a-z0-9_-]*[.](png|jpg|webp)")
 
 
@@ -136,7 +136,7 @@ def make_theme(tmp_path: Path) -> MakeTheme:
         templates: bool = False,
     ) -> Path:
         """`thumbnails=None`: crea le miniature valide dichiarate in block_variants.
-        `templates=True`: copia layout, partials, blocchi e asset del tema `default`."""
+        `templates=True`: copia layout, partials, blocchi, widget e asset del tema `default`."""
         theme_dir = themes_dir / name
         (theme_dir / "assets").mkdir(parents=True, exist_ok=True)
         if templates:

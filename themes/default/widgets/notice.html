@@ -1,0 +1,4 @@
+{% set link = widget.data.link_url | clean_url %}
+<div class="widget notice-banner notice-banner--{{ widget.data.level or 'info' }}" data-widget-id="{{ widget.id }}" role="note">
+<p>{{ widget.data.text }}{% if link and widget.data.link_label %} <a href="{{ link }}">{{ widget.data.link_label }}</a>{% endif %}</p>
+</div>

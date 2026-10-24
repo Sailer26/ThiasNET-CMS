@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Testo",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "title": "Titolo",
+      "maxLength": 80
+    },
+    "body": {
+      "type": "string",
+      "title": "Testo",
+      "maxLength": 5000,
+      "x-richtext": true
+    }
+  },
+  "required": [
+    "body"
+  ]
+}

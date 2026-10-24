@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 import click
 from flask.cli import with_appcontext
 
-from app.services import publishing
+from app.services import publishing, widgets
 
 
 @click.command("publish-scheduled")
@@ -18,6 +18,7 @@ from app.services import publishing
 def publish_scheduled_command() -> None:
     """Pubblica le pagine con data di pubblicazione scaduta. Si può lanciare ogni minuto."""
     result = publishing.run_due(datetime.now(UTC))
+    widgets.expire_due()  # e i banner con "fino al" scaduti (D-146)
     click.echo(f"Pagine pubblicate: {result.published}")
     if result.failed:  # il cron lo segnala; i dettagli sono nel log dell'app
         click.echo(f"Pagine non pubblicate per errore: {result.failed}", err=True)
