@@ -1,9 +1,10 @@
 // Campi dei moduli generati dagli schemi (D-106, D-112). Ogni campo riceve valore e onChange;
 // `undefined` toglie la chiave dal documento.
-import { useId, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import type { FieldSchema } from "../../../api/catalog";
 import { MediaChoice } from "../../media-picker/MediaChoice";
 import { ed } from "../../../text/editor";
+import { isoToZurich, zurichToIso } from "../schedule/siteTime";
 import { completeUrl } from "./safeUrl";
 import { length } from "./validate";
 
@@ -84,7 +85,7 @@ export function TextField({ id, spec, value, onChange, required, error, unsaved,
     onChange: (event: { target: { value: string } }) => onChange(event.target.value === "" ? undefined : event.target.value),
   };
   // Area di testo solo per testi lunghi liberi: link, email e telefono stanno su una riga.
-  const long = !isUrl && !spec.pattern && (spec.maxLength ?? 0) > TEXTAREA_FROM;
+  const long = Boolean(spec["x-multiline"]) || (!isUrl && !spec.pattern && (spec.maxLength ?? 0) > TEXTAREA_FROM);
   return (
     <FieldFrame
       id={id}
@@ -116,6 +117,81 @@ export function TextField({ id, spec, value, onChange, required, error, unsaved,
           ))}
         </datalist>
       ) : null}
+    </FieldFrame>
+  );
+}
+
+/** Un giorno (raccolte, 7b): il selettore del browser, valore "AAAA-MM-GG". */
+export function DateField({ id, spec, value, onChange, required, error, unsaved }: FieldProps<string>) {
+  return (
+    <FieldFrame id={id} spec={spec} required={required} error={error} unsaved={unsaved}>
+      <input
+        id={id}
+        type="date"
+        value={value ?? ""}
+        aria-describedby={describedBy(id, spec, error, unsaved)}
+        aria-invalid={error || unsaved ? true : undefined}
+        onChange={(event) => onChange(event.target.value === "" ? undefined : event.target.value)}
+      />
+    </FieldFrame>
+  );
+}
+
+interface DayTime {
+  date: string;
+  time: string;
+}
+
+/** Giorno e ora nell'ora svizzera (D-122); al documento arriva l'istante con il fuso. Finché
+ * manca una delle due parti il campo tiene il valore per sé, e il documento non cambia. */
+export function DateTimeField({ id, spec, value, onChange, required, error, unsaved }: FieldProps<string>) {
+  const [partial, setPartial] = useState<DayTime | null>(null);
+  const shown: DayTime = partial ?? (value ? isoToZurich(value) : null) ?? { date: "", time: "" };
+  const [badHour, setBadHour] = useState(false);
+  function change(next: DayTime) {
+    setBadHour(false);
+    if (!next.date && !next.time) {
+      setPartial(null);
+      onChange(undefined);
+      return;
+    }
+    if (!next.date || !next.time) {
+      setPartial(next);
+      return;
+    }
+    const converted = zurichToIso(next.date, next.time);
+    if ("error" in converted) {
+      setPartial(next);
+      setBadHour(converted.error === "missing_hour");
+      return;
+    }
+    setPartial(null);
+    onChange(converted.iso);
+  }
+  const problem = badHour ? ed.fields.missingHour : undefined;
+  return (
+    <FieldFrame id={id} spec={spec} required={required} error={error ?? problem} unsaved={unsaved}>
+      <div className="schedule-fields">
+        <input
+          id={id}
+          type="date"
+          aria-label={ed.fields.day}
+          value={shown.date}
+          aria-describedby={`${id}-zone`}
+          onChange={(event) => change({ ...shown, date: event.target.value })}
+        />
+        <input
+          type="time"
+          aria-label={ed.fields.time}
+          step={300}
+          value={shown.time}
+          aria-describedby={`${id}-zone`}
+          onChange={(event) => change({ ...shown, time: event.target.value })}
+        />
+      </div>
+      <p id={`${id}-zone`} className="hint">
+        {ed.fields.swissTime}
+      </p>
     </FieldFrame>
   );
 }

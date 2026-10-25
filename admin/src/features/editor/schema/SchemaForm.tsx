@@ -5,7 +5,7 @@ import { MediaPicker } from "../../media-picker/MediaPicker";
 import { ed } from "../../../text/editor";
 import type { Data, Path } from "../model/document";
 import { RichTextField } from "../richtext/RichText";
-import { BooleanField, ChoiceField, MediaField, NumberField, TextField } from "./fields";
+import { BooleanField, ChoiceField, DateField, DateTimeField, MediaField, NumberField, TextField } from "./fields";
 import { effectiveField } from "./validate";
 
 export interface FormProps {
@@ -37,6 +37,8 @@ function Field({ name, spec, required, path, props }: { name: string; spec: Fiel
   const set = (next: unknown) => props.onChange(path, next);
   if (spec["x-media"]) return <MediaField {...common} value={value as number | undefined} onChange={set} />;
   if (spec["x-richtext"]) return <RichTextField {...common} value={value as string | undefined} onChange={set} />;
+  if (spec["x-date"]) return <DateField {...common} value={value as string | undefined} onChange={set} />;
+  if (spec["x-datetime"]) return <DateTimeField {...common} value={value as string | undefined} onChange={set} />;
   if (spec.enum) return <ChoiceField {...common} value={value as string | number | undefined} onChange={set} />;
   if (spec.type === "boolean") return <BooleanField {...common} value={value as boolean | undefined} onChange={set} />;
   if (spec.type === "integer" || spec.type === "number") {

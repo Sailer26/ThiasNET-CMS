@@ -76,6 +76,10 @@ export const ed = {
   },
   fields: {
     counter: (used: number, max: number) => `${used} / ${max}`,
+    day: "Giorno",
+    time: "Ora",
+    swissTime: "Ora svizzera.",
+    missingHour: "Quest'ora non esiste (passaggio all'ora legale): scegline un'altra",
     linkPages: "Pagine del sito",
     media: {
       chosen: (id: number) => `File scelto (n. ${id})`,

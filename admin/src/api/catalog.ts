@@ -21,6 +21,10 @@ export interface FieldSchema {
   dependentRequired?: Record<string, string[]>;
   "x-media"?: "image" | "file";
   "x-richtext"?: boolean;
+  /** Raccolte (7b): testo lungo, data "AAAA-MM-GG", data e ora con il fuso (ora svizzera). */
+  "x-multiline"?: boolean;
+  "x-date"?: boolean;
+  "x-datetime"?: boolean;
   /** Impostazioni d'aspetto (D-143): le scelte sono colori della palette del tema. */
   "x-color"?: boolean;
   not?: { enum?: unknown[] };

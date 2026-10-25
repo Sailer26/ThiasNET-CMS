@@ -9,12 +9,30 @@ export const MESSAGES = {
   enum: "Valore non ammesso",
   pattern: "Formato non valido",
   format: "Indirizzo non valido: usa https://, mailto:, tel: o un percorso con /",
+  date: "Data non valida",
+  datetime: "Data e ora non valide",
   reserved: "Dato non valido",
   maxLength: (n: number) => `Al massimo ${n} caratteri`,
   maxItems: (n: number) => `Al massimo ${n} ${n === 1 ? "elemento" : "elementi"}`,
   minimum: (n: number) => `Il valore minimo è ${n}`,
   maximum: (n: number) => `Il valore massimo è ${n}`,
 } as const;
+
+const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** "AAAA-MM-GG" di un giorno che esiste (come il server: niente 31 febbraio). */
+export function isDate(value: string): boolean {
+  const found = DATE_RE.exec(value);
+  if (!found) return false;
+  const [year, month, day] = [Number(found[1]), Number(found[2]), Number(found[3])];
+  const check = new Date(Date.UTC(year, month - 1, day));
+  return year >= 1900 && year <= 2100 && check.getUTCMonth() === month - 1 && check.getUTCDate() === day;
+}
+
+/** Istante ISO con il fuso (es. "2026-10-25T08:00:00+01:00"). */
+export function isDateTime(value: string): boolean {
+  return /T\d{2}:\d{2}/.test(value) && /(Z|[+-]\d{2}:\d{2})$/.test(value) && isDate(value.slice(0, 10)) && !Number.isNaN(Date.parse(value));
+}
 
 /** Lunghezza come in Python: punti di codice, non unità UTF-16. */
 export function length(text: string): number {
@@ -49,6 +67,8 @@ export function fieldProblem(spec: FieldSchema, value: unknown): string | null {
     if (spec.maxLength !== undefined && length(value) > spec.maxLength) return MESSAGES.maxLength(spec.maxLength);
     if (spec.pattern && !new RegExp(spec.pattern, "u").test(value)) return MESSAGES.pattern;
     if (spec.format === "safe-url" && !isSafeUrl(normalizeUrl(value))) return MESSAGES.format;
+    if (spec["x-date"] && !isDate(value)) return MESSAGES.date;
+    if (spec["x-datetime"] && !isDateTime(value)) return MESSAGES.datetime;
   }
   if (typeof value === "number") {
     if (spec.minimum !== undefined && value < spec.minimum) return MESSAGES.minimum(spec.minimum);

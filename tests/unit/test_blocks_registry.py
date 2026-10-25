@@ -168,6 +168,9 @@ PANEL_KEYWORDS = frozenset(
         "x-media",
         "x-richtext",
         "x-enum-titles",
+        "x-multiline",
+        "x-date",
+        "x-datetime",
     }
 )
 
@@ -411,3 +414,16 @@ def test_media_refs_know_kind_and_field(registry: BlockRegistry) -> None:
     [ref] = registry.media_refs("gallery", gallery, prefix="zones/main/0/data")
     assert (ref.media_id, ref.kind, ref.path) == (4, "image", "zones/main/0/data/items/0/media_id")
     assert registry.media_refs("files", VALID["files"])[0].kind == "file"
+
+
+def test_collection_schemas_use_only_keywords_the_panel_knows() -> None:
+    """Le raccolte (7b) passano dagli stessi moduli: lo schema generato dal tema non usa nulla
+    che il pannello non sappia mostrare e controllare."""
+    from app.services.collections import collection_schema
+    from app.services.theme import load_theme
+    from tests.conftest import ROOT
+
+    theme = load_theme(ROOT / "themes", "default")
+    for key, spec in theme.collections.items():
+        unknown = set(_keywords(collection_schema(spec))) - PANEL_KEYWORDS
+        assert not unknown, f"{key}: parole chiave sconosciute al pannello {sorted(unknown)}"
