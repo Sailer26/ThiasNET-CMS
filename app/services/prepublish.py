@@ -8,7 +8,7 @@ Non scrive nulla: nemmeno le programmazioni scadute (le pubblica il cron).
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from datetime import UTC, datetime
 from html.parser import HTMLParser
 from typing import Any
@@ -18,9 +18,10 @@ from flask import current_app
 from sqlalchemy import select
 
 from app.extensions import db
+from app.models.entry import Entry
 from app.models.media import Media
 from app.models.page import Page
-from app.services import drafts, media_storage, public_pages, publishing
+from app.services import drafts, entries, entry_publishing, media_storage, public_pages, publishing
 from app.services.blocks import FieldError, join_path
 from app.services.public_pages import Outcome
 from app.services.theme import Theme, active_theme
@@ -94,7 +95,7 @@ def _reachable(path: str, theme: Theme, now: datetime) -> bool:
         if path.split("/", 2)[1] in {"assets", "admin", "api", "static"}:
             return True  # non sono pagine: non si controllano
         resolution = public_pages.resolve(path, theme, now, publish_due=False)
-        if resolution.outcome is Outcome.PAGE:
+        if resolution.outcome in (Outcome.PAGE, Outcome.ENTRY):  # anche le notizie (7a)
             return True
         if resolution.outcome is Outcome.NOT_FOUND or not resolution.location:
             return False
@@ -103,10 +104,14 @@ def _reachable(path: str, theme: Theme, now: datetime) -> bool:
 
 
 def _broken_links(document: dict[str, Any]) -> list[FieldError]:
+    return _broken_links_in(_block_strings(document))
+
+
+def _broken_links_in(strings: Iterable[tuple[str, str]]) -> list[FieldError]:
     theme, now = active_theme(), datetime.now(UTC)
     found: dict[str, FieldError] = {}  # un avviso per campo
     checked = 0
-    for path, value in _block_strings(document):
+    for path, value in strings:
         for href in _hrefs(value):
             checked += 1  # ogni link conta, anche quelli esterni: il lavoro resta limitato
             if checked > MAX_LINKS:
@@ -146,6 +151,25 @@ def _warnings(document: dict[str, Any]) -> list[FieldError]:
 def _source(page: Page) -> Any:
     draft = drafts.load(page.id)
     return draft.data_json if draft is not None else drafts.published_document(page)
+
+
+def entry_report(entry: Entry) -> dict[str, list[dict[str, str]]]:
+    """Lo stesso controllo per una notizia (7b): bloccanti come `publish`, avvisi per la SEO
+    vuota e i link interni che non portano da nessuna parte."""
+    draft = entries.load_draft(entry.id)
+    source = draft.data_json if draft is not None else entries.published_document(entry)
+    document, blocking = entry_publishing.problems(entry)
+    checked = document if document is not None else source
+    warnings: list[FieldError] = []
+    if isinstance(checked, dict):
+        seo = checked.get("seo") or {}
+        if not str(seo.get("description") or "").strip():
+            warnings.append(SEO_EMPTY)
+        warnings += _broken_links_in(_strings(checked.get("fields") or {}, "fields"))
+    return {
+        "blocking": [error.as_dict() for error in blocking],
+        "warnings": [warning.as_dict() for warning in warnings],
+    }
 
 
 def report(page: Page) -> dict[str, list[dict[str, str]]]:

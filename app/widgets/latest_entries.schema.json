@@ -4,6 +4,17 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "title": {
+      "type": "string",
+      "title": "Titolo",
+      "maxLength": 80
+    },
+    "collection": {
+      "type": "string",
+      "title": "Raccolta",
+      "description": "Se il tema ne ha più d'una, quale mostrare.",
+      "maxLength": 64
+    },
     "limit": {
       "type": "integer",
       "title": "Quante",

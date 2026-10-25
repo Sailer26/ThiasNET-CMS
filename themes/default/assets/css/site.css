@@ -145,6 +145,8 @@ main:focus { outline: none; }
 .widget-contacts__list, .widget-social__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.25rem; }
 .widget-hours__list { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0; }
 .widget-hours__list dd { margin: 0; }
+.widget-latest__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
+.widget-latest__list time { display: block; font-size: 0.9rem; opacity: 0.8; }
 .footer-widgets { display: grid; gap: 1.5rem; padding-block: 1.5rem; }
 @media (min-width: 48rem) {
   .footer-widgets { grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }

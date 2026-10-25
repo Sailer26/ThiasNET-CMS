@@ -16,7 +16,7 @@ from app.api.admin import bp
 from app.api.admin.decorators import current, require_permission
 from app.api.validation import json_body, page_meta, pagination
 from app.models.page import SLUG_MAX_LENGTH, TITLE_MAX_LENGTH
-from app.services import collections, entries, entry_publishing
+from app.services import collections, entries, entry_publishing, prepublish
 from app.services.permissions import Permission
 from app.services.theme import active_theme
 
@@ -193,3 +193,26 @@ def unpublish_entry(entry_id: int) -> Response:
 @require_permission(EDIT)
 def entry_revisions(entry_id: int) -> Response:
     return ok(entries.revisions(entries.get_entry(entry_id)))
+
+
+@bp.get("/entries/<int:entry_id>/revisions/<int:revision_id>")
+@require_permission(EDIT)
+def entry_revision(entry_id: int, revision_id: int) -> Response:
+    found = entries.revision(entries.get_entry(entry_id), revision_id)
+    return ok(entries.serialize_revision(found, with_snapshot=True))
+
+
+@bp.post("/entries/<int:entry_id>/revisions/<int:revision_id>/restore")
+@require_permission(EDIT)
+def restore_entry_revision(entry_id: int, revision_id: int) -> Response:
+    body = json_body(PUBLISH_SCHEMA)
+    entry = entries.get_entry(entry_id)
+    version = entries.restore_revision(current(), entry, revision_id, body["draft_version"])
+    return ok({"version": version})
+
+
+@bp.get("/entries/<int:entry_id>/checks")
+@require_permission(EDIT)
+def entry_checks(entry_id: int) -> Response:
+    """Controllo prima di pubblicare (D-135): non scrive nulla."""
+    return ok(prepublish.entry_report(entries.get_entry(entry_id)))

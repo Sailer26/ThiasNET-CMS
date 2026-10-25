@@ -189,6 +189,9 @@ EXPECTED_PUBLIC_ROUTES = {
     "/robots.txt": set(),
     "/static/<path:filename>": set(),
     "/_preview/<int:page_id>": {"POST"},  # anteprima live: nessuna scrittura (D-55)
+    "/_preview/entries/<int:entry_id>": {
+        "POST"
+    },  # anteprima della notizia (D-156), niente scritture
     "/_contact": {"POST"},  # modulo contatti (D-61)
     "/media/<key>/<filename>": set(),  # file della libreria, solo lettura (D-75)
     "/admin/": set(),  # pannello compilato, solo lettura (D-87)

@@ -65,6 +65,7 @@ class WidgetView:
     id: str  # uid stabile: finisce in data-widget-id
     type: str
     data: Mapping[str, Any]
+    entries: tuple[EntryView, ...] = ()  # "ultime notizie" (D-155)
 
 
 @dataclass(frozen=True)

@@ -1,0 +1,10 @@
+{% if widget.entries %}
+<section class="widget widget-latest" data-widget-id="{{ widget.id }}">
+{% if widget.data.title %}<h2 class="widget__title">{{ widget.data.title }}</h2>{% endif %}
+<ul class="widget-latest__list">
+{% for item in widget.entries %}
+<li><a href="{{ item.url }}">{{ item.title }}</a>{% if item.fields.date %} <time datetime="{{ item.fields.date }}">{{ format_date(item.fields.date) }}</time>{% endif %}</li>
+{% endfor %}
+</ul>
+</section>
+{% endif %}

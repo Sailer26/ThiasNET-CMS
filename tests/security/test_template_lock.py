@@ -11,6 +11,7 @@ from __future__ import annotations
 import ast
 import hashlib
 import io
+import json
 import re
 from pathlib import Path
 
@@ -304,6 +305,20 @@ def _entry_session(client, api: str) -> None:
     html = client.get("/notizie/festa-7-7").get_data(as_text=True)
     assert "Festa {{ 7*7 }}" in html and "<script>x</script>" not in html
     assert client.get("/notizie?p={{7*7}}").status_code == 404
+    # 7b: anteprima, versioni e "ultime notizie" restano solo dati
+    posted = {"title": "Anteprima {{ 7*7 }}", "fields": fields, "seo": {}}
+    shown = client.post(
+        f"/_preview/entries/{entry_id}", data={"document": json.dumps(posted)}
+    ).get_data(as_text=True)
+    assert "Anteprima {{ 7*7 }}" in shown and "<script>x</script>" not in shown
+    revision = client.get(f"{api}/entries/{entry_id}/revisions").get_json()["data"][0]
+    restore = client.post(
+        f"{api}/entries/{entry_id}/revisions/{revision['id']}/restore", json={"draft_version": 0}
+    )
+    assert restore.status_code == 200, restore.get_json()
+    latest = [{"uid": "d" * 32, "type": "latest_entries", "data": {"title": "{{ config }}"}}]
+    sidebar = client.put(f"{api}/widgets/sidebar", json={"version": 0, "items": latest})
+    assert sidebar.status_code == 200, sidebar.get_json()
 
 
 def _png_bytes() -> bytes:

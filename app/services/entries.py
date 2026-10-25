@@ -18,9 +18,11 @@ from sqlalchemy.orm.attributes import set_committed_value
 from app.extensions import db
 from app.models.entry import Entry, EntryDraft, EntryStatus
 from app.models.page import SLUG_MAX_LENGTH, TITLE_MAX_LENGTH, Page, PageStatus
+from app.models.revision import EntityRevision
 from app.models.types import utcnow
 from app.models.user import User
 from app.services import audit, collections, entity_revisions, page_cache
+from app.services.authors import display_name
 from app.services.blocks import Mode
 from app.services.errors import ServiceError, not_found, version_conflict
 from app.services.page_paths import HOME_PATH, live, public_path
@@ -388,6 +390,19 @@ def serialize(
         "deleted_at": _iso(entry.deleted_at),
         "has_draft": drafted,
         "url": None if found is None else entry_url(found, entry.slug, theme),
+        "schedule": _schedule(entry),
+    }
+
+
+def _schedule(entry: Entry) -> dict[str, Any] | None:
+    """La programmazione in attesa; `draft_newer`: la bozza è cambiata dopo (D-122)."""
+    if entry.scheduled_json is None or entry.publish_at is None:
+        return None
+    draft = load_draft(entry.id)
+    return {
+        "publish_at": _iso(entry.publish_at),
+        "author_name": display_name(entry.scheduled_by),
+        "draft_newer": draft is not None and draft.data_json != entry.scheduled_json,
     }
 
 
@@ -413,13 +428,63 @@ def panel_list(
     return found, int(total)
 
 
+# --- Versioni (D-40, D-42) -----------------------------------------------------------------
+
+
+def record_revision(entry: Entry, kind: str, document: Document, author_id: int | None) -> None:
+    """Una versione con il suo tipo ("published" o "draft"); non fa commit."""
+    snapshot = {**document, "kind": kind}
+    entity_revisions.record(REVISION_TYPE, str(entry.id), snapshot, author_id)
+
+
+def _snapshot(revision: EntityRevision) -> Document:
+    data = revision.snapshot_json if isinstance(revision.snapshot_json, dict) else {}
+    return {key: value for key, value in data.items() if key != "kind"}
+
+
+def serialize_revision(revision: EntityRevision, *, with_snapshot: bool = False) -> dict[str, Any]:
+    data = revision.snapshot_json if isinstance(revision.snapshot_json, dict) else {}
+    found: dict[str, Any] = {
+        "id": revision.id,
+        "kind": data.get("kind", "published"),
+        "author_id": revision.author_id,
+        "author_name": display_name(revision.author_id),  # un editor non legge gli utenti (D-92)
+        "title": str(data.get("title") or ""),
+        "created_at": revision.created_at.isoformat(),
+    }
+    if with_snapshot:
+        found["snapshot"] = _snapshot(revision)
+    return found
+
+
 def revisions(entry: Entry) -> list[dict[str, Any]]:
     return [
-        {
-            "id": revision.id,
-            "created_at": revision.created_at.isoformat(),
-            "author_id": revision.author_id,
-            "title": revision.snapshot_json.get("title", ""),
-        }
+        serialize_revision(revision)
         for revision in entity_revisions.history(REVISION_TYPE, str(entry.id))
     ]
+
+
+def revision(entry: Entry, revision_id: int) -> EntityRevision:
+    found = entity_revisions.get(REVISION_TYPE, str(entry.id), revision_id)
+    if found is None:
+        raise not_found("Versione non trovata")
+    return found
+
+
+def restore_revision(actor: User, entry: Entry, revision_id: int, draft_version: int) -> int:
+    """D-42: la versione torna nella bozza, mai online. La bozza di adesso non va persa (D-40)."""
+    chosen = revision(entry, revision_id)
+    clean = collections.validate(active_theme(), entry.collection, _snapshot(chosen), Mode.DRAFT)
+    current = load_draft(entry.id)
+    if current is not None and current.version == draft_version:
+        record_revision(entry, "draft", current.data_json, actor.id)
+    version = _write_draft(actor, entry, draft_version, clean)
+    audit.record(
+        "entry.revision_restored",
+        actor_id=actor.id,
+        entity="entry",
+        entity_id=entry.id,
+        diff={"revision_id": chosen.id},
+    )
+    db.session.commit()
+    return version

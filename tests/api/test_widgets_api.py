@@ -64,12 +64,10 @@ def test_areas_list_the_widgets_the_theme_allows(admin: FlaskClient) -> None:
     assert footer["label"] == "Piè di pagina" and footer["version"] == 0 and footer["items"] == []
     assert footer["locale"] == "it"  # le pagine della visibilità sono di questa lingua
     types = [t["type"] for t in footer["types"]]
-    assert types == [
-        "hours",
-        "contacts",
-        "social",
-        "text",
-    ]  # "ultime notizie" con la Fase 7 (D-142)
+    assert types == ["hours", "contacts", "social", "latest_entries", "text"]  # D-155
+    latest = next(t for t in footer["types"] if t["type"] == "latest_entries")
+    collection = latest["schema"]["properties"]["collection"]
+    assert (collection["enum"], collection["x-enum-titles"]) == (["news"], ["Notizie"])
     hours = next(t for t in footer["types"] if t["type"] == "hours")
     assert hours["label"] == "Orari" and hours["schema"]["properties"]["rows"]["type"] == "array"
     assert admin.get(f"{WIDGETS}/nessuna").status_code == 404
@@ -159,7 +157,11 @@ def test_contacts_and_social_use_the_site_data(admin: FlaskClient) -> None:
     ("area", "items", "problem"),
     [
         ("header_top", [widget(1, "text", {"body": "<p>x</p>"})], ("items/0/type", "not_allowed")),
-        ("footer", [widget(1, "latest_entries", {})], ("items/0/type", "not_allowed")),
+        (
+            "footer",
+            [widget(1, "latest_entries", {"collection": "eventi"})],
+            ("items/0/data/collection", "unknown_collection"),
+        ),
         ("header_top", [widget(1, "notice", {})], ("items/0/data/text", "required")),
         (
             "footer",

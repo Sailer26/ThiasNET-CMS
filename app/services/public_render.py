@@ -40,6 +40,7 @@ from app.services.render_context import (
     PageView,
     RenderMode,
     SiteInfo,
+    WidgetView,
     normalize_document,
 )
 from app.services.theme import Theme, active_theme
@@ -166,6 +167,45 @@ def _entry_media(views: tuple[EntryView, ...], theme: Theme) -> list[int]:
     ]
 
 
+LATEST_DEFAULT = 3  # D-155
+
+
+def _latest(view: WidgetView, locale: str, theme: Theme) -> WidgetView:
+    """Il widget "ultime notizie": le voci online più recenti, sotto la pagina elenco online.
+    Senza pagina elenco resta vuoto (il template non mostra nulla)."""
+    wanted = view.data.get("collection")
+    collection = wanted if isinstance(wanted, str) else next(iter(theme.collections), None)
+    if collection is None or collection not in theme.collections:
+        return view
+    listing = entries.listing_page(theme, collection, locale, online=True)
+    if listing is None:
+        return view
+    limit = view.data.get("limit")
+    count = limit if isinstance(limit, int) and not isinstance(limit, bool) else LATEST_DEFAULT
+    query = (
+        _online_entries(collection, locale)
+        .order_by(Entry.sort_at.desc(), Entry.published_at.desc(), Entry.id.desc())
+        .limit(max(1, min(count, 10)))
+    )
+    found = tuple(entry_view(e, listing, theme) for e in db.session.execute(query).scalars())
+    return replace(view, entries=found)
+
+
+def with_latest_entries(
+    areas: Mapping[str, tuple[WidgetView, ...]], theme: Theme
+) -> Mapping[str, tuple[WidgetView, ...]]:
+    locale = theme.locales[0]  # come i widget (D-94): le lingue arrivano con la 7c
+    return MappingProxyType(
+        {
+            name: tuple(
+                _latest(view, locale, theme) if view.type == "latest_entries" else view
+                for view in views
+            )
+            for name, views in areas.items()
+        }
+    )
+
+
 def listing_view(page: Page, theme: Theme, number: int) -> ListingView | None:
     """Le voci online della pagina `number` dell'elenco, dalla più recente (D-149)."""
     collection = public_pages.listing_collection(page, theme)
@@ -214,7 +254,7 @@ def page_context(
         site=site,
         mode=mode,
         menus=menus.site_menus(page.locale, page, theme),
-        widgets=widgets.site_widgets(page.locale, page.id, theme),
+        widgets=with_latest_entries(widgets.site_widgets(page.locale, page.id, theme), theme),
         breadcrumbs=public_pages.breadcrumbs(page, theme),
         settings=values,
         css_version=css_version,
@@ -223,18 +263,32 @@ def page_context(
     )
 
 
-def entry_context(listing: Page, entry: Entry) -> PageContext:
-    """Il dettaglio di una voce: menu, widget e briciole della sua pagina elenco (D-149)."""
+def entry_context(
+    listing: Page,
+    entry: Entry,
+    *,
+    document: Mapping[str, Any] | None = None,
+    mode: RenderMode = RenderMode.PUBLIC,
+) -> PageContext:
+    """Il dettaglio di una voce: menu, widget e briciole della sua pagina elenco (D-149).
+    Con `document` (anteprima, D-156) si mostra quello al posto della versione pubblicata."""
     theme = active_theme()
     values, css_version = theme_values(theme)
     view = entry_view(entry, listing, theme)
+    seo = dict(entry.seo_json or {})
+    if document is not None:
+        fields = collections.lenient(theme, entry.collection, document.get("fields") or {})
+        view = replace(
+            view, title=str(document.get("title") or ""), fields=MappingProxyType(fields)
+        )
+        seo = dict(document.get("seo") or {})
     page = PageView(
         id=None,
         locale=entry.locale,
-        title=entry.title,
+        title=view.title,
         layout=listing.layout,
         path=view.url,
-        seo=MappingProxyType(dict(entry.seo_json or {})),
+        seo=MappingProxyType(seo),
         zones=MappingProxyType({}),
         is_home=False,
     )
@@ -252,9 +306,10 @@ def entry_context(listing: Page, entry: Entry) -> PageContext:
         media=media,
         og_image=og,
         site=site,
+        mode=mode,
         menus=menus.site_menus(entry.locale, listing, theme),
-        widgets=widgets.site_widgets(entry.locale, listing.id, theme),
-        breadcrumbs=(*crumbs, Link(entry.title, view.url, current=True)),
+        widgets=with_latest_entries(widgets.site_widgets(entry.locale, listing.id, theme), theme),
+        breadcrumbs=(*crumbs, Link(view.title, view.url, current=True)),
         settings=values,
         css_version=css_version,
         analytics=_analytics(),
@@ -287,7 +342,7 @@ def not_found_context(locale: str, path: str) -> PageContext:
         media=media,
         site=site,
         menus=menus.site_menus(locale, None, theme),
-        widgets=widgets.site_widgets(locale, None, theme),
+        widgets=with_latest_entries(widgets.site_widgets(locale, None, theme), theme),
         settings=values,
         css_version=css_version,
         analytics=_analytics(),

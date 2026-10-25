@@ -13,14 +13,16 @@ from flask import Response, request
 from flask_login import current_user
 from markupsafe import escape
 
+from app.models.entry import Entry
 from app.models.page import Page
 from app.public import bp
 from app.public.errors import not_found_response
 from app.public.responses import content_security_policy, html_page
-from app.services import contact_form, pages, preview, public_render
+from app.services import contact_form, entries, pages, preview, public_render
 from app.services.errors import ServiceError
 from app.services.permissions import Permission, has_permission
 from app.services.render_context import RenderMode
+from app.services.theme import active_theme
 
 PREVIEW_HEADERS = {
     "X-Frame-Options": "SAMEORIGIN",
@@ -66,6 +68,49 @@ def _render(page: Page, document: Mapping[str, Any]) -> Response:
     forms = contact_form.preview_forms(view)
     context = public_render.page_context(page, mode=RenderMode.PREVIEW, forms=forms, view=view)
     return _with_headers(html_page(public_render.renderer().render_page(context)))
+
+
+LISTING_MISSING = (
+    "Crea prima la pagina che elenca le notizie (layout «Elenco notizie»): "
+    "la notizia si vede sotto di lei."
+)
+
+
+def _editable_entry(entry_id: int) -> Entry | None:
+    if not current_user.is_authenticated:
+        return None
+    if not has_permission(current_user._get_current_object(), Permission.CONTENT_EDIT):
+        return None
+    try:
+        return entries.get_entry(entry_id)
+    except ServiceError:
+        return None
+
+
+def _error(message: str, status: int) -> Response:
+    return _with_headers(html_page(ERROR_PAGE.format(message=escape(message)), status))
+
+
+@bp.route("/_preview/entries/<int:entry_id>", methods=["GET", "POST"])
+def preview_entry(entry_id: int) -> Response:
+    """La notizia come la vedrà il sito, sotto la sua pagina elenco (D-156). Nessuna scrittura."""
+    entry = _editable_entry(entry_id)
+    if entry is None:
+        return _with_headers(not_found_response())
+    listing = entries.listing_page(active_theme(), entry.collection, entry.locale, online=False)
+    if listing is None:
+        return _error(LISTING_MISSING, 409)
+    if request.method == "GET":
+        document = preview.entry_stored_document(entry)
+    else:
+        try:
+            document = preview.entry_posted_document(entry, request.form.get("document"))
+        except ServiceError as exc:
+            return _error(exc.message, exc.status)
+    context = public_render.entry_context(
+        listing, entry, document=document, mode=RenderMode.PREVIEW
+    )
+    return _with_headers(html_page(public_render.renderer().render_entry(context)))
 
 
 @bp.route("/_preview/<int:page_id>", methods=["GET", "POST"])

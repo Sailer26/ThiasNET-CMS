@@ -20,8 +20,8 @@ from app.extensions import db
 from app.models.entry import Entry, EntryDraft, EntryStatus
 from app.models.types import utcnow
 from app.models.user import User
-from app.services import audit, collections, entity_revisions, entries, media_refs, page_cache
-from app.services.blocks import Mode
+from app.services import audit, collections, entries, media_refs, page_cache
+from app.services.blocks import FieldError, Mode
 from app.services.content import invalid
 from app.services.errors import ServiceError
 from app.services.permissions import Permission, require
@@ -57,6 +57,20 @@ def validated(entry: Entry, source: Any) -> Document:
     return document
 
 
+def problems(entry: Entry) -> tuple[Document | None, list[FieldError]]:
+    """Per il controllo prima di pubblicare (D-135): la stessa validazione di `publish`, senza
+    eccezioni, così i due non possono dire cose diverse."""
+    draft = entries.load_draft(entry.id)
+    source = draft.data_json if draft is not None else entries.published_document(entry)
+    try:
+        return validated(entry, source), []
+    except ServiceError as error:
+        if error.code != "invalid_content":
+            return None, [FieldError("", error.code, error.message)]
+        details = error.details if isinstance(error.details, list) else []
+        return None, [FieldError(d["path"], d["code"], d["message"]) for d in details]
+
+
 def _apply(entry: Entry, document: Document, actor_id: int | None, now: datetime) -> None:
     theme = active_theme()
     entries.bump_version(entry, entry.version)
@@ -68,7 +82,7 @@ def _apply(entry: Entry, document: Document, actor_id: int | None, now: datetime
     entry.scheduled_by = None
     entry.sort_at = collections.sort_moment(theme, entry.collection, document["fields"], now)
     entry.updated_by = actor_id
-    entity_revisions.record(entries.REVISION_TYPE, str(entry.id), document, actor_id)
+    entries.record_revision(entry, "published", document, actor_id)
     page_cache.mark_changed()
 
 

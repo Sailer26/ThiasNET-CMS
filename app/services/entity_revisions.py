@@ -45,3 +45,10 @@ def history(entity_type: str, entity_key: str) -> list[EntityRevision]:
         .limit(KEPT)
     )
     return list(db.session.execute(query).scalars())
+
+
+def get(entity_type: str, entity_key: str, revision_id: int) -> EntityRevision | None:
+    revision = db.session.get(EntityRevision, revision_id)
+    if revision is None or (revision.entity_type, revision.entity_key) != (entity_type, entity_key):
+        return None
+    return revision

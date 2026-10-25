@@ -26,5 +26,5 @@ BLOCK_TYPES: frozenset[str] = frozenset(
 WIDGET_TYPES: frozenset[str] = frozenset(
     {"notice", "contacts_inline", "hours", "contacts", "social", "latest_entries", "text", "cta"}
 )
-# D-142: "ultime notizie" arriva con le collezioni (Fase 7); fino ad allora non si può scegliere.
-ENABLED_WIDGET_TYPES: frozenset[str] = WIDGET_TYPES - {"latest_entries"}
+# D-142, D-155: dalla Fase 7b anche "ultime notizie"; l'insieme resta per spegnere un tipo.
+ENABLED_WIDGET_TYPES: frozenset[str] = WIDGET_TYPES

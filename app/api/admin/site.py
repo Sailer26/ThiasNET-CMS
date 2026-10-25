@@ -35,5 +35,7 @@ def site_info() -> Response:
             # "home"; il layout si cambia poi nell'editor.
             "default_layout": _layout(theme.layouts, PAGE_LAYOUT),
             "home_layout": _layout(theme.layouts, HOME_LAYOUT),
+            # Fase 7b: una voce del menu del pannello per raccolta (le notizie, D-148).
+            "collections": [{"key": k, "label": c.label} for k, c in theme.collections.items()],
         }
     )

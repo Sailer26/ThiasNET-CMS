@@ -45,6 +45,7 @@ MAX_ID = 2**31 - 1
 UID_RE = re.compile(r"^[0-9a-f]{32}$")
 ITEM_KEYS = frozenset({"uid", "type", "data", "visibility", "until"})
 MODES = ("all", "only", "except")
+LATEST = "latest_entries"
 NOTICE = "notice"  # l'unico widget con "fino al" (D-142)
 YEARS = range(2000, 2101)  # "fino al" plausibile: niente date che non si possono convertire
 SUBJECT = "questa parte del sito"
@@ -60,6 +61,7 @@ MESSAGES = {
     "invalid_until": "Data e ora non valide",
     "until_not_allowed": "Solo il banner avviso può sparire da solo a una data",
     "too_many": f"Al massimo {MAX_WIDGETS} widget per parte del sito",
+    "unknown_collection": "Questa raccolta non c'è nel tema",
 }
 
 
@@ -96,6 +98,7 @@ def _row(area: str, locale: str) -> WidgetAreaRow | None:
 @dataclass
 class _Check:
     allowed: tuple[str, ...]
+    collections: frozenset[str] = frozenset()
     errors: list[FieldError] = field(default_factory=list)
     uids: set[str] = field(default_factory=set)
     pages: dict[int, list[str]] = field(default_factory=dict)
@@ -158,6 +161,9 @@ def _item(raw: Any, path: str, check: _Check) -> dict[str, Any] | None:
         return None
     data = REGISTRY.clean(kind, raw_data)
     check.errors.extend(REGISTRY.errors(kind, data, Mode.PUBLISH, join_path(path, "data")))
+    collection = data.get("collection") if kind == LATEST and isinstance(data, dict) else None
+    if collection is not None and collection not in check.collections:
+        check.errors.append(_problem(f"{path}/data/collection", "unknown_collection"))
     visibility = _visibility(raw.get("visibility"), f"{path}/visibility", check)
     until = _until(raw.get("until"), f"{path}/until", check)
     if until is not None and kind != NOTICE:
@@ -178,13 +184,13 @@ def _check_pages(check: _Check, locale: str) -> None:
 
 
 def validate(
-    items: Any, area: WidgetArea, locale: str
+    items: Any, area: WidgetArea, locale: str, collections: Iterable[str] = ()
 ) -> tuple[list[dict[str, Any]], list[FieldError]]:
     if not isinstance(items, list):
         return [], [_problem("items", "invalid_shape")]
     if len(items) > MAX_WIDGETS:
         return [], [_problem("items", "too_many")]
-    check = _Check(allowed=allowed_types(area))
+    check = _Check(allowed=allowed_types(area), collections=frozenset(collections))
     found = [_item(raw, f"items/{index}", check) for index, raw in enumerate(items)]
     _check_pages(check, locale)
     return [item for item in found if item is not None], check.errors
@@ -193,13 +199,20 @@ def validate(
 # --- Lettura per il pannello ---------------------------------------------------------------------
 
 
-def _types(area: WidgetArea) -> list[dict[str, Any]]:
+def _schema_for(kind: str, theme: Theme) -> dict[str, Any]:
+    """Lo schema per il pannello; per "ultime notizie" la scelta della raccolta viene dal tema."""
+    schema: dict[str, Any] = plain(REGISTRY.schema(kind))
+    if kind == LATEST:
+        keys = list(theme.collections)
+        titles = [c.label for c in theme.collections.values()]
+        field = {**schema["properties"]["collection"], "enum": keys, "x-enum-titles": titles}
+        schema = {**schema, "properties": {**schema["properties"], "collection": field}}
+    return schema
+
+
+def _types(area: WidgetArea, theme: Theme) -> list[dict[str, Any]]:
     return [
-        {
-            "type": kind,
-            "label": REGISTRY.schema(kind)["title"],
-            "schema": plain(REGISTRY.schema(kind)),
-        }
+        {"type": kind, "label": REGISTRY.schema(kind)["title"], "schema": _schema_for(kind, theme)}
         for kind in allowed_types(area)
     ]
 
@@ -211,7 +224,7 @@ def editable(area_name: str, theme: Theme) -> dict[str, Any]:
         "area": area_name,
         "label": area.label,
         "locale": _locale(theme),  # le pagine della visibilità sono di questa lingua
-        "types": _types(area),
+        "types": _types(area, theme),
         "version": row.version if row is not None else 0,
         "items": list(row.items_json) if row is not None else [],
     }
@@ -283,7 +296,7 @@ def store_area(
     require(actor, Permission.PUBLISH)
     area = spec(theme, area_name)
     locale = _locale(theme)
-    clean, errors = validate(items, area, locale)
+    clean, errors = validate(items, area, locale, theme.collections)
     if errors:
         raise invalid(errors)
     before = _row(area_name, locale)
