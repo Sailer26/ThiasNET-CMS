@@ -172,8 +172,11 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - [x] Menu per posizione, drag&drop, profondità massima (6b)
 - [x] Impostazioni sito + settings del tema generate da `theme.json` (form dinamico tipizzato) su `PUT /api/admin/settings/appearance` (D-14)
 
+**Rimandati dalla 7b:**
+- Fase 8: un solo flusso di pubblicazione per i due editor (oggi pagine e notizie hanno ciascuno il suo, con gli stessi pezzi sotto); versioni tenute per tipo (oggi le ultime 50 di ogni oggetto, anche dopo molti ripristini); i dati del widget "ultime notizie" calcolati una volta sola per pagina se ce ne sono due.
+- Dopo il test d'uso: trascinare la foto della notizia dal telefono direttamente nel testo, se serve.
+
 **Rimandati dalla 7a:**
-- 7b: schermata Notizie nel pannello, anteprima della notizia, "Notizia" dal telefono (D-97), widget "ultime notizie".
 - Con gli eventi (quando un cliente li chiede): gli eventi passati spariscono dall'elenco (D-150). Insieme: `format_date` per data e ora nel fuso svizzero (oggi mostra il giorno UTC; il tema default ha solo date).
 
 **Rimandati dalla 6c:**
@@ -193,7 +196,13 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - [x] Tabelle `entries` ed `entry_drafts` (migrazione `0013`): bozza con versione, pubblica, programma, ritira, cestino, versioni; API `/collections` e `/entries`
 - [x] Sito: pagina elenco paginata, dettaglio `entries/<raccolta>.html`, 301 se l'elenco si sposta, sitemap, "Usato in" dei media; regola d'oro con le notizie
 
-- [x] Collezioni da `theme.json` (news; gli eventi quando servono, D-148), listing paginato, dettaglio (7a; pannello nella 7b)
+
+**7b — Notizie nel pannello** (D-153 … D-157)
+- [x] Server: raccolte nei dati del sito, versioni con tipo e ripristino in bozza, programmazione con "modifiche più recenti", `/entries/<id>/checks`, anteprima `/_preview/entries/<id>`
+- [x] Widget "ultime notizie" acceso (titolo, raccolta, quante; 3 di solito, D-155) con template nel tema
+- [x] Pannello: voce Notizie, elenco con cestino, nuova notizia, editor dallo schema con anteprima affiancata (D-156), campi data e data/ora; "Notizia" dal telefono (D-153, D-154); e2e
+
+- [x] Collezioni da `theme.json` (news; gli eventi quando servono, D-148), listing paginato, dettaglio (7a), pannello (7b)
 - [ ] Traduzioni collegate, selettore lingua, hreflang
 
 ## Fase 8 — Produzione

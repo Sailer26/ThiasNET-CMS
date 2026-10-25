@@ -70,6 +70,7 @@ I template sono eseguiti in sandbox (D-52): non possono leggere file fuori dal t
 | `entry_list()` | nella pagina elenco: `{collection, items, page, pages, prev_url, next_url}`; `items` sono voci come `entry`. Fuori da una pagina elenco: elenco vuoto |
 | `entry` | in `entries/<raccolta>.html`: `{id, collection, title, url, fields, published_at}`. `fields` contiene solo i campi dichiarati: il testo formattato si stampa con `\|safe_html`, i media con `img(entry.fields.cover, ...)`, il resto è testo semplice (già escapato) |
 | `format_date(valore, "long")` | una data del CMS nella lingua della pagina: "24 ottobre 2026" (`"short"`: "24.10.2026"); valore non valido → vuoto |
+| `widget.entries` | nel widget "ultime notizie" (`widgets/latest_entries.html`): le voci online più recenti, come `entry`; vuoto se la raccolta non ha una pagina elenco online (D-155). In `widget.data`: `title`, `collection`, `limit` |
 | `img(media_id, size="card", sizes=None, eager=False, css_class=None)` | `<img>` responsive (D-81): `srcset` con larghezza normale e doppia, `width`/`height`, `alt`, `loading="lazy"` (con `eager=True` per l'immagine in cima, es. hero). `size` deve essere un `image_sizes` del tema (altrimenti errore del tema). `sizes` e `css_class` accettano solo testo semplice. Media mancante: niente sul sito, segnaposto in anteprima |
 | `media_url(id)` | indirizzo del file principale, o `None` |
 | `media_file(id)` | per i file da scaricare: `{url, name, ext, size_label}` (es. `PDF`, `340 kB`), o `None` |

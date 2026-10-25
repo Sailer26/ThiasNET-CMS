@@ -163,6 +163,10 @@ SPA ──fetch──► /api/admin/* (cookie di sessione SameSite=Strict + head
   schemi di `app/widgets/` (lo stesso `BlockRegistry` dei blocchi), salva con versione e dà al rendering
   `site_widgets()` (i `WidgetView` visibili per area); `expire_due()` rinnova la cache quando scade un banner
   (route pubblica e `publish-scheduled`). Pannello in `admin/src/features/widgets/` (operazioni pure in `model.ts`).
+- 7b: `GET /entries/<id>/checks`, `GET /entries/<id>/revisions/<rid>` e `/restore`; anteprima `/_preview/entries/<id>`;
+  `site` con `collections`; nel pannello `admin/src/features/entries/` (elenco, editor, telefono) sopra i pezzi
+  comuni di `features/editor/` (`Autosave` e `History` generici, `useAutosaveLifecycle`, `ConflictDialog`, `SeoFields`,
+  `undoKeys`, `PreviewPane` con `action`).
 - 7a: `GET /collections`, `GET`/`POST /collections/<chiave>/entries`, `GET`/`PATCH`/`DELETE /entries/<id>` e
   `/restore`, `/draft`, `/publish`, `/schedule`, `/unschedule`, `/unpublish`, `/revisions` (`content.edit`, le azioni
   su voci online chiedono `content.publish`). `collections.py` genera lo schema dei campi dal tema e lo valida con il

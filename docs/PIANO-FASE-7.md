@@ -46,7 +46,7 @@ Decisioni D-147 … D-151. Piano di `ecc:planner`, risposte di Thias tutte sulle
 - Notizie programmate e cache: rinnovo come per i banner (D-146).
 - Regola d'oro: i campi sono solo dati (testo, testo formattato con l'allowlist, media, url sicuri), mai template.
 
-## Fase 7b — Notizie nel pannello (2026-10-25)
+## Fase 7b — Notizie nel pannello (2026-10-25, fatta: D-157)
 
 Decisioni D-153 … D-156. Piano di `ecc:planner`, risposte di Thias tutte sulle proposte.
 
