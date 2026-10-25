@@ -279,7 +279,7 @@ def entry_context(
     if document is not None:
         fields = collections.lenient(theme, entry.collection, document.get("fields") or {})
         view = replace(
-            view, title=str(document.get("title") or ""), fields=MappingProxyType(fields)
+            view, title=str(document.get("title") or entry.title), fields=MappingProxyType(fields)
         )
         seo = dict(document.get("seo") or {})
     page = PageView(

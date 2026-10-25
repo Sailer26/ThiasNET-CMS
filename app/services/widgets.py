@@ -162,7 +162,7 @@ def _item(raw: Any, path: str, check: _Check) -> dict[str, Any] | None:
     data = REGISTRY.clean(kind, raw_data)
     check.errors.extend(REGISTRY.errors(kind, data, Mode.PUBLISH, join_path(path, "data")))
     collection = data.get("collection") if kind == LATEST and isinstance(data, dict) else None
-    if collection is not None and collection not in check.collections:
+    if isinstance(collection, str) and collection not in check.collections:
         check.errors.append(_problem(f"{path}/data/collection", "unknown_collection"))
     visibility = _visibility(raw.get("visibility"), f"{path}/visibility", check)
     until = _until(raw.get("until"), f"{path}/until", check)

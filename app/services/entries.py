@@ -8,6 +8,7 @@ programmazione stanno in `entry_publishing.py`.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Mapping
 from types import EllipsisType
 from typing import Any
 
@@ -365,10 +366,14 @@ def serialize(
     theme: Theme,
     *,
     has_draft: bool | None = None,
+    drafts: Mapping[int, EntryDraft] | None = None,
     listing: Page | EllipsisType | None = ...,
 ) -> dict[str, Any]:
     """`listing` già cercata evita una query per riga nell'elenco del pannello."""
-    drafted = load_draft(entry.id) is not None if has_draft is None else has_draft
+    if drafts is not None:
+        drafted = entry.id in drafts
+    else:
+        drafted = load_draft(entry.id) is not None if has_draft is None else has_draft
     found = (
         listing_page(theme, entry.collection, entry.locale, online=False)
         if isinstance(listing, EllipsisType)
@@ -390,15 +395,17 @@ def serialize(
         "deleted_at": _iso(entry.deleted_at),
         "has_draft": drafted,
         "url": None if found is None else entry_url(found, entry.slug, theme),
-        "schedule": _schedule(entry),
+        "schedule": _schedule(entry, drafts),
     }
 
 
-def _schedule(entry: Entry) -> dict[str, Any] | None:
+def _schedule(
+    entry: Entry, drafts: Mapping[int, EntryDraft] | None = None
+) -> dict[str, Any] | None:
     """La programmazione in attesa; `draft_newer`: la bozza è cambiata dopo (D-122)."""
     if entry.scheduled_json is None or entry.publish_at is None:
         return None
-    draft = load_draft(entry.id)
+    draft = load_draft(entry.id) if drafts is None else drafts.get(entry.id)
     return {
         "publish_at": _iso(entry.publish_at),
         "author_name": display_name(entry.scheduled_by),
@@ -418,13 +425,14 @@ def panel_list(
     order = (Entry.sort_at.desc().nulls_first(), Entry.updated_at.desc(), Entry.id.desc())
     query = select(Entry).where(*where).order_by(*order).offset((page - 1) * per_page)
     rows = list(db.session.execute(query.limit(per_page)).scalars())
-    drafted = set(
-        db.session.execute(
-            select(EntryDraft.entry_id).where(EntryDraft.entry_id.in_([e.id for e in rows]))
+    drafts = {
+        draft.entry_id: draft
+        for draft in db.session.execute(
+            select(EntryDraft).where(EntryDraft.entry_id.in_([e.id for e in rows]))
         ).scalars()
-    )
+    }
     listing = listing_page(theme, collection, locale, online=False)
-    found = [serialize(e, theme, has_draft=e.id in drafted, listing=listing) for e in rows]
+    found = [serialize(e, theme, drafts=drafts, listing=listing) for e in rows]
     return found, int(total)
 
 
@@ -473,18 +481,27 @@ def revision(entry: Entry, revision_id: int) -> EntityRevision:
 
 def restore_revision(actor: User, entry: Entry, revision_id: int, draft_version: int) -> int:
     """D-42: la versione torna nella bozza, mai online. La bozza di adesso non va persa (D-40)."""
+    theme = active_theme()
     chosen = revision(entry, revision_id)
-    clean = collections.validate(active_theme(), entry.collection, _snapshot(chosen), Mode.DRAFT)
+    snapshot = _snapshot(chosen)
+    # Un campo che il tema non ha più non deve bloccare il ripristino del resto (D-53).
+    raw_fields = snapshot.get("fields")
+    fields: dict[str, Any] = raw_fields if isinstance(raw_fields, dict) else {}
+    snapshot = {**snapshot, "fields": collections.lenient(theme, entry.collection, fields)}
+    clean = collections.validate(theme, entry.collection, snapshot, Mode.DRAFT)
     current = load_draft(entry.id)
-    if current is not None and current.version == draft_version:
-        record_revision(entry, "draft", current.data_json, actor.id)
-    version = _write_draft(actor, entry, draft_version, clean)
+    previous = (
+        current.data_json if current is not None and current.version == draft_version else None
+    )
+    version = _write_draft(actor, entry, draft_version, clean)  # 409 qui: nulla da registrare
+    if previous is not None:
+        record_revision(entry, "draft", previous, actor.id)
     audit.record(
         "entry.revision_restored",
         actor_id=actor.id,
         entity="entry",
         entity_id=entry.id,
-        diff={"revision_id": chosen.id},
+        diff={"revision_id": chosen.id, "from_version": draft_version},
     )
     db.session.commit()
     return version

@@ -64,7 +64,9 @@ export function EntriesScreen({ collection }: { collection: string }) {
   const label = site.collections.find((c) => c.key === collection)?.label ?? it.titles.entries;
   const [tab, setTab] = useState<Tab>("list");
   const [page, setPage] = useState(1);
-  const [found, setFound] = useState<EntryPage | null>(null);
+  // Il risultato ricorda per quale scheda e pagina è arrivato: mai righe del cestino come se
+  // fossero notizie (o il contrario) mentre arriva la risposta nuova.
+  const [loaded, setLoaded] = useState<{ tab: Tab; page: number; result: EntryPage } | null>(null);
   const [info, setInfo] = useState<CollectionInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<NoticeState | null>(null);
@@ -77,7 +79,11 @@ export function EntriesScreen({ collection }: { collection: string }) {
     Promise.all([fetchEntries(collection, page, tab === "trash"), fetchCollections()]).then(
       ([entries, collections]) => {
         if (request !== latest.current) return;
-        setFound(entries);
+        if (entries.items.length === 0 && page > 1) {
+          setPage(page - 1); // l'ultima pagina si è svuotata (es. dopo un recupero)
+          return;
+        }
+        setLoaded({ tab, page, result: entries });
         setInfo(collections.find((c) => c.key === collection) ?? null);
         setError(null);
       },
@@ -99,6 +105,13 @@ export function EntriesScreen({ collection }: { collection: string }) {
     } catch (failure) {
       setNotice({ kind: "error", text: errorMessage(failure) });
     }
+  }
+
+  const found = loaded && loaded.tab === tab && loaded.page === page ? loaded.result : null;
+
+  function closeNew() {
+    setCreating(false);
+    setTitle("");
   }
 
   function show(next: Tab) {
@@ -163,10 +176,10 @@ export function EntriesScreen({ collection }: { collection: string }) {
           title={en.newEntry}
           submitLabel={en.create}
           canSubmit={title.trim().length > 0}
-          onClose={() => setCreating(false)}
+          onClose={closeNew}
           onSubmit={async () => {
             const created = await createEntry(collection, title.trim());
-            setCreating(false);
+            closeNew();
             await navigate(paths.entry(collection, created.id));
           }}
         >

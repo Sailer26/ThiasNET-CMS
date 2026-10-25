@@ -209,3 +209,90 @@ def test_latest_entries_widget_shows_online_news(admin: FlaskClient) -> None:
     assert "Dal Comune" in html and 'href="/notizie/tre"' in html and 'href="/notizie/due"' in html
     assert 'href="/notizie/uno"' not in html and "Solo bozza" not in html
     assert "3 ottobre 2026" in html
+
+
+# --- dalle review della 7b ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("collection", [[], {}, 7])
+def test_latest_entries_with_a_strange_collection_is_a_422(
+    admin: FlaskClient, collection: object
+) -> None:
+    response = _latest_in_footer(admin, {"collection": collection})
+    assert response.status_code == 422, response.get_json()
+
+
+def test_restore_with_a_stale_draft_version_changes_nothing(admin: FlaskClient) -> None:
+    item = online(admin, "Prima")
+    first = admin.get(f"{ENTRIES}/{item['id']}/revisions").get_json()["data"][0]
+    assert save(admin, item["id"], title="Seconda").status_code == 200
+    url = f"{ENTRIES}/{item['id']}/revisions/{first['id']}/restore"
+    stale = admin.post(url, json={"draft_version": 99})
+    assert (stale.status_code, error_code(stale)) == (409, "version_conflict")
+    assert draft(admin, item["id"])["data"]["title"] == "Seconda"
+    kinds = [r["kind"] for r in admin.get(f"{ENTRIES}/{item['id']}/revisions").get_json()["data"]]
+    assert kinds == ["published"]  # nessuna versione "draft" registrata per sbaglio
+
+
+def test_restore_of_a_revision_from_another_entry_is_a_404(admin: FlaskClient) -> None:
+    one = online(admin, "Una")
+    other = online(admin, "Altra")
+    foreign = admin.get(f"{ENTRIES}/{other['id']}/revisions").get_json()["data"][0]
+    url = f"{ENTRIES}/{one['id']}/revisions/{foreign['id']}/restore"
+    assert admin.post(url, json={"draft_version": 0}).status_code == 404
+
+
+def test_restore_ignores_fields_the_theme_removed(app: Flask, admin: FlaskClient) -> None:
+    from app.extensions import db
+    from app.models.revision import EntityRevision
+
+    item = online(admin, "Prima")
+    with app.app_context():
+        stored = db.session.execute(
+            db.select(EntityRevision).where(EntityRevision.entity_key == str(item["id"]))
+        ).scalar_one()
+        stored.snapshot_json = {
+            **stored.snapshot_json,
+            "fields": {"date": "2026-10-24", "gone": "x"},
+        }
+        db.session.commit()
+        revision_id = stored.id
+    url = f"{ENTRIES}/{item['id']}/revisions/{revision_id}/restore"
+    assert admin.post(url, json={"draft_version": 0}).status_code == 200
+    assert draft(admin, item["id"])["data"]["fields"] == {"date": "2026-10-24"}
+
+
+def test_schedule_unchanged_draft_is_not_newer(admin: FlaskClient) -> None:
+    item = create(admin)
+    assert save(admin, item["id"], fields=fields(summary="")).status_code == 200
+    when = (datetime.now(UTC) + timedelta(days=1)).isoformat()
+    version = draft(admin, item["id"])["version"]
+    sent = admin.post(
+        f"{ENTRIES}/{item['id']}/schedule", json={"draft_version": version, "publish_at": when}
+    )
+    assert sent.status_code == 200, sent.get_json()
+    listed = admin.get("/api/admin/collections/news/entries").get_json()["data"]
+    row = next(e for e in listed if e["id"] == item["id"])
+    assert row["schedule"]["draft_newer"] is False and row["has_draft"] is True
+
+
+def test_checks_survive_a_broken_draft(app: Flask, admin: FlaskClient) -> None:
+    from app.extensions import db
+    from app.models.entry import EntryDraft
+
+    item = create(admin)
+    with app.app_context():
+        stored = db.session.get_one(EntryDraft, item["id"])
+        stored.data_json = {"title": "X", "fields": "rotto", "seo": "rotta"}
+        db.session.commit()
+    response = admin.get(f"{ENTRIES}/{item['id']}/checks")
+    assert response.status_code == 200
+    assert response.get_json()["data"]["blocking"]
+
+
+def test_preview_with_an_empty_title_keeps_the_saved_one(admin: FlaskClient) -> None:
+    listing(admin)
+    item = create(admin, "Titolo salvato")
+    response = preview_post(admin, item["id"], {"title": "", "fields": {}, "seo": {}})
+    assert response.status_code == 200
+    assert "<title>Titolo salvato" in response.get_data(as_text=True)

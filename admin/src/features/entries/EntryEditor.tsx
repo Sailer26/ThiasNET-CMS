@@ -43,6 +43,7 @@ import { SaveIndicator } from "../editor/SaveIndicator";
 import { ScheduleDialog } from "../editor/schedule/ScheduleDialog";
 import { formatZurich } from "../editor/schedule/siteTime";
 import { fieldId, SchemaForm } from "../editor/schema/SchemaForm";
+import { undoKeys } from "../editor/undoKeys";
 import { useAutosaveLifecycle } from "../editor/useAutosaveLifecycle";
 import { MediaProvider } from "../media-picker/MediaContext";
 import { entrySafe, historyReducer, mediaIdsOf, setSeo, setTitle } from "./entryDocument";
@@ -125,6 +126,7 @@ function Workspace({ data }: { data: Loaded }) {
   const [restoring, setRestoring] = useState<Revision | null>(null);
   const [scheduling, setScheduling] = useState(false);
   const [slug, setSlug] = useState(data.entry.slug);
+  const [renaming, setRenaming] = useState(false);
 
   useEffect(
     () =>
@@ -142,18 +144,10 @@ function Workspace({ data }: { data: Loaded }) {
   const drop = (key: string) =>
     setServerErrors((current) => (current.has(key) ? new Map([...current].filter(([k]) => k !== key)) : current));
 
-  function keys(event: React.KeyboardEvent) {
-    const mod = event.ctrlKey || event.metaKey;
-    if (!mod || (event.target as Element).closest("dialog")) return;
-    const key = event.key.toLowerCase();
-    if (key === "z" && !event.shiftKey) {
-      event.preventDefault();
-      dispatch({ type: "undo" });
-    } else if (key === "y" || (key === "z" && event.shiftKey)) {
-      event.preventDefault();
-      dispatch({ type: "redo" });
-    }
-  }
+  const keys = undoKeys(
+    () => dispatch({ type: "undo" }),
+    () => dispatch({ type: "redo" }),
+  );
 
   async function loadTheirs() {
     const draft = await fetchEntryDraft(entry.id);
@@ -220,16 +214,17 @@ function Workspace({ data }: { data: Loaded }) {
   }
 
   async function discard() {
-    await autosave.flush();
+    await flushed();
     await discardEntryDraft(entry.id, autosave.draftVersion);
     await loadTheirs();
+    setEntry(await fetchEntry(entry.id));
     setConfirm(null);
     setServerErrors(new Map());
     setNotice({ kind: "success", text: ed.discard.done });
   }
 
   async function trash() {
-    await autosave.flush();
+    await flushed(); // con un salvataggio bloccato si resta qui: niente bozza persa
     await trashEntry(entry.id, entry.version);
     setConfirm(null);
     await navigate(paths.entries(collection));
@@ -249,7 +244,7 @@ function Workspace({ data }: { data: Loaded }) {
     await flushed();
     await restoreEntryRevision(entry.id, revision.id, autosave.draftVersion);
     await loadTheirs();
-    if (entry.schedule) setEntry(await fetchEntry(entry.id));
+    setEntry(await fetchEntry(entry.id)); // versione e "modifiche non pubblicate" aggiornate
     setRestoring(null);
     setViewing(null);
     setNotice({ kind: "success", text: ed.versions.done });
@@ -261,6 +256,8 @@ function Workspace({ data }: { data: Loaded }) {
   }
 
   async function changeAddress() {
+    if (renaming) return;
+    setRenaming(true);
     try {
       const fresh = await changeSlug(entry.id, entry.version, slug.trim());
       setEntry(fresh);
@@ -268,6 +265,8 @@ function Workspace({ data }: { data: Loaded }) {
       setNotice({ kind: "success", text: en.addressChanged });
     } catch (error) {
       setNotice({ kind: "error", text: errorMessage(error) });
+    } finally {
+      setRenaming(false);
     }
   }
 
@@ -398,9 +397,11 @@ function Workspace({ data }: { data: Loaded }) {
                 maxLength={200}
                 value={doc.title}
                 aria-describedby={titleError ? "entry-title-problem" : undefined}
+                aria-invalid={titleError ? true : undefined}
                 onChange={(event) => {
+                  const value = event.target.value;
                   drop("title");
-                  edit((d) => setTitle(d, event.target.value), "title");
+                  edit((d) => setTitle(d, value), "title");
                 }}
               />
               {titleError && (
@@ -426,7 +427,7 @@ function Workspace({ data }: { data: Loaded }) {
                 <button
                   type="button"
                   className="button button--small"
-                  disabled={!slug.trim() || slug.trim() === entry.slug}
+                  disabled={renaming || !slug.trim() || slug.trim() === entry.slug}
                   onClick={() => void changeAddress()}
                 >
                   {en.changeAddress}
@@ -536,12 +537,14 @@ function Workspace({ data }: { data: Loaded }) {
 }
 
 export function EntryEditor({ collection, id }: { collection: string; id: number }) {
+  const { site } = useSession();
   const state = useEntryData(collection, id);
   if (state.kind === "loading") return <p role="status">{en.loading}</p>;
   if (state.kind === "failed") {
+    const label = site.collections.find((c) => c.key === collection)?.label ?? en.general;
     return (
       <section className="screen">
-        <h1 tabIndex={-1}>{en.back}</h1>
+        <h1 tabIndex={-1}>{label}</h1>
         <p role="alert">{state.message}</p>
         <Link className="button" to={paths.entries(collection)}>
           {en.back}

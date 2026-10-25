@@ -3,6 +3,7 @@ import { ApiError, errorMessage } from "../../api/client";
 import { discardDraft, fetchChecks, fetchDraft, fetchPage, publishPage, saveDraft, unpublishPage, type Draft } from "../../api/drafts";
 import { getRevision, listRevisions, restoreRevision, schedulePage, unschedulePage, type Revision } from "../../api/revisions";
 import { ConflictDialog } from "./ConflictDialog";
+import { undoKeys } from "./undoKeys";
 import { useAutosaveLifecycle } from "./useAutosaveLifecycle";
 import { VersionsDialog } from "./history/VersionsDialog";
 import { ScheduleDialog } from "./schedule/ScheduleDialog";
@@ -175,19 +176,7 @@ function Workspace({ data }: { data: Loaded }) {
     },
   };
 
-  // Annulla/ripristina da tastiera, anche dentro i campi (D-105).
-  function keys(event: React.KeyboardEvent) {
-    const mod = event.ctrlKey || event.metaKey;
-    if (!mod || (event.target as Element).closest("dialog")) return;
-    const key = event.key.toLowerCase();
-    if (key === "z" && !event.shiftKey) {
-      event.preventDefault();
-      editor.undo();
-    } else if (key === "y" || (key === "z" && event.shiftKey)) {
-      event.preventDefault();
-      editor.redo();
-    }
-  }
+  const keys = undoKeys(editor.undo, editor.redo);
 
   async function loadTheirs() {
     const draft: Draft = await fetchDraft(page.id);

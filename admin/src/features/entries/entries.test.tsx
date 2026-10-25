@@ -187,6 +187,24 @@ describe("notizia dal telefono (D-97, D-154)", () => {
     expect(api.callsTo("POST", "/entries/7/publish")[0]?.body).toEqual({ draft_version: 2 });
   });
 
+  test("se un passo non riesce si riprova da lì: una notizia sola", async () => {
+    const api = phoneApi();
+    api.on(
+      "PUT",
+      "/entries/7/draft",
+      { status: 500, error: { code: "server_error", message: "Errore temporaneo" } },
+      { data: { version: 2 } },
+    );
+    const user = userEvent.setup();
+    render(<App />);
+    await write(user, "Pubblica");
+    const dialog = await screen.findByRole("dialog", { name: "Nuova notizia" });
+    expect(await within(dialog).findByText("Errore temporaneo")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Pubblica" }));
+    expect(await screen.findByText('"Strada chiusa" è online.')).toBeInTheDocument();
+    expect(api.callsTo("POST", "/collections/news/entries")).toHaveLength(1);
+  });
+
   test("chi non può pubblicare: resta in bozza", async () => {
     const editor = { ...ME, role: "editor" as const, can_publish: false, permissions: ["content.edit", "profile"] };
     const api = phoneApi(editor);

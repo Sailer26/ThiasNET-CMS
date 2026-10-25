@@ -42,10 +42,25 @@ describe("date nei moduli (7b)", () => {
   test("data e ora: l'istante arriva solo quando ci sono tutte e due, con il fuso svizzero", async () => {
     const onChange = form({});
     const user = userEvent.setup();
-    await user.type(screen.getByLabelText("Giorno"), "2099-01-10");
+    await user.type(screen.getByLabelText("Inizio: Giorno"), "2099-01-10");
     expect(onChange).not.toHaveBeenCalled();
-    await user.type(screen.getByLabelText("Ora"), "08:00");
+    await user.type(screen.getByLabelText("Inizio: Ora"), "08:00");
     expect(onChange).toHaveBeenLastCalledWith(["start"], "2099-01-10T08:00:00+01:00");
+  });
+
+  test("data e ora a metà: se il valore cambia da fuori (annulla) si vede quello", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <SchemaForm schema={SCHEMA} data={{ start: "2099-01-10T08:00:00+01:00" }} idPrefix="u" errors={NONE} unsaved={NONE} pages={[]} onChange={vi.fn()} />,
+    );
+    await user.clear(screen.getByLabelText("Inizio: Ora"));
+    expect(screen.getByLabelText("Inizio: Ora")).toHaveValue("");
+    rerender(
+      <SchemaForm schema={SCHEMA} data={{ start: "2099-02-01T09:30:00+01:00" }} idPrefix="u" errors={NONE} unsaved={NONE} pages={[]} onChange={vi.fn()} />,
+    );
+    expect(screen.getByLabelText("Inizio: Giorno")).toHaveValue("2099-02-01");
+    expect(screen.getByLabelText("Inizio: Ora")).toHaveValue("09:30");
+    expect(screen.getByRole("group", { name: /Inizio/ })).toBeInTheDocument();
   });
 
   test("testo lungo in un'area di testo anche sotto i 200 caratteri", () => {

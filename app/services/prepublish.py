@@ -162,10 +162,12 @@ def entry_report(entry: Entry) -> dict[str, list[dict[str, str]]]:
     checked = document if document is not None else source
     warnings: list[FieldError] = []
     if isinstance(checked, dict):
-        seo = checked.get("seo") or {}
-        if not str(seo.get("description") or "").strip():
+        seo = checked.get("seo")
+        description = seo.get("description") if isinstance(seo, dict) else None
+        if not str(description or "").strip():
             warnings.append(SEO_EMPTY)
-        warnings += _broken_links_in(_strings(checked.get("fields") or {}, "fields"))
+        fields = checked.get("fields")
+        warnings += _broken_links_in(_strings(fields if isinstance(fields, dict) else {}, "fields"))
     return {
         "blocking": [error.as_dict() for error in blocking],
         "warnings": [warning.as_dict() for warning in warnings],

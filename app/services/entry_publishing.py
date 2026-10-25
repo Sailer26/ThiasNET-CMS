@@ -68,7 +68,11 @@ def problems(entry: Entry) -> tuple[Document | None, list[FieldError]]:
         if error.code != "invalid_content":
             return None, [FieldError("", error.code, error.message)]
         details = error.details if isinstance(error.details, list) else []
-        return None, [FieldError(d["path"], d["code"], d["message"]) for d in details]
+        return None, [
+            FieldError(str(d.get("path", "")), str(d.get("code", "")), str(d.get("message", "")))
+            for d in details
+            if isinstance(d, dict)
+        ]
 
 
 def _apply(entry: Entry, document: Document, actor_id: int | None, now: datetime) -> None:

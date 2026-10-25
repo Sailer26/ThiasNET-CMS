@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { errorMessage } from "../../api/client";
 import { createEntry, fetchCollections, fetchEntryChecks, publishEntry, saveEntryDraft, type CollectionInfo } from "../../api/entries";
 import { uploadMedia } from "../../api/media";
@@ -9,7 +9,7 @@ import { FormDialog } from "../../ui/FormDialog";
 import { zurichToday } from "../editor/schedule/siteTime";
 import { firstField } from "./entryDocument";
 
-const TEXT_MAX = 300;
+const TEXT_MAX = 300; // se il tema non dice di meno
 
 interface Props {
   onClose: () => void;
@@ -17,7 +17,19 @@ interface Props {
 }
 
 function escapeHtml(value: string): string {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** I passi già fatti: ritentare dopo un errore riparte da lì (niente doppioni né notizie vuote). */
+interface Progress {
+  photo?: number | null;
+  entryId?: number;
+  version?: number;
 }
 
 /** "Notizia" dal telefono (D-97, D-153, D-154): titolo, poche righe, una foto. Chi può
@@ -33,6 +45,7 @@ export function PhoneNews({ onClose, onDone }: Props) {
   const [alt, setAlt] = useState("");
   const id = useId();
   const publisher = can(Permission.publish);
+  const progress = useRef<Progress>({});
 
   useEffect(() => {
     let active = true;
@@ -54,27 +67,33 @@ export function PhoneNews({ onClose, onDone }: Props) {
   const photoField = schema ? firstField(schema, (spec) => spec["x-media"] === "image") : null;
   const dateField = schema ? firstField(schema, (spec) => Boolean(spec["x-date"])) : null;
   const richText = Boolean(textField && schema?.properties?.[textField]?.["x-richtext"]);
+  const textMax = Math.min(TEXT_MAX, (textField && schema?.properties?.[textField]?.maxLength) || TEXT_MAX);
 
   async function submit() {
     const name = title.trim();
+    const done = progress.current;
     // Prima la foto: se il caricamento non riesce non resta una notizia vuota.
-    const photo = file && photoField ? (await uploadMedia(file, alt)).media.id : null;
-    const created = await createEntry(key, name);
-    const fields: Record<string, unknown> = {};
-    if (dateField) fields[dateField] = zurichToday();
-    if (textField && text.trim()) fields[textField] = richText ? `<p>${escapeHtml(text.trim())}</p>` : text.trim();
-    if (photoField && photo !== null) fields[photoField] = photo;
-    const version = await saveEntryDraft(created.id, 1, { title: name, fields, seo: {} });
+    if (done.photo === undefined) done.photo = file && photoField ? (await uploadMedia(file, alt)).media.id : null;
+    if (done.entryId === undefined) done.entryId = (await createEntry(key, name)).id;
+    if (done.version === undefined) {
+      const fields: Record<string, unknown> = {};
+      if (dateField) fields[dateField] = zurichToday();
+      if (textField && text.trim()) fields[textField] = richText ? `<p>${escapeHtml(text.trim())}</p>` : text.trim();
+      if (photoField && done.photo !== null) fields[photoField] = done.photo;
+      // Una notizia nuova nasce con la bozza alla versione 1 (vedi entries.create sul server).
+      done.version = await saveEntryDraft(done.entryId, 1, { title: name, fields, seo: {} });
+    }
     if (!publisher) {
       onDone(en.phone.saved(name));
       return;
     }
-    const checks = await fetchEntryChecks(created.id).catch(() => null);
-    if (checks && checks.blocking.length > 0) {
+    // Se il controllo non risponde non si pubblica alla cieca: la notizia resta in bozza.
+    const checks = await fetchEntryChecks(done.entryId).catch(() => null);
+    if (!checks || checks.blocking.length > 0) {
       onDone(en.phone.blocked(name));
       return;
     }
-    await publishEntry(created.id, version);
+    await publishEntry(done.entryId, done.version);
     onDone(en.phone.published(name));
   }
 
@@ -99,10 +118,13 @@ export function PhoneNews({ onClose, onDone }: Props) {
           <textarea
             id={`${id}-text`}
             rows={4}
-            maxLength={TEXT_MAX}
+            maxLength={textMax}
             value={text}
             aria-describedby={`${id}-text-help`}
-            onChange={(event) => setText(event.target.value)}
+            onChange={(event) => {
+              progress.current = { ...progress.current, version: undefined }; // la bozza va risalvata
+              setText(event.target.value);
+            }}
           />
           <p id={`${id}-text-help`} className="hint">
             {en.phone.textHelp}
@@ -118,7 +140,10 @@ export function PhoneNews({ onClose, onDone }: Props) {
             type="file"
             accept="image/*"
             aria-describedby={`${id}-photo-help`}
-            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            onChange={(event) => {
+              progress.current = { ...progress.current, photo: undefined, version: undefined };
+              setFile(event.target.files?.[0] ?? null);
+            }}
           />
           <p id={`${id}-photo-help`} className="hint">
             {en.phone.photoHelp}

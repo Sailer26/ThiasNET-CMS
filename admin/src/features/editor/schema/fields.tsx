@@ -145,47 +145,51 @@ interface DayTime {
 /** Giorno e ora nell'ora svizzera (D-122); al documento arriva l'istante con il fuso. Finché
  * manca una delle due parti il campo tiene il valore per sé, e il documento non cambia. */
 export function DateTimeField({ id, spec, value, onChange, required, error, unsaved }: FieldProps<string>) {
-  const [partial, setPartial] = useState<DayTime | null>(null);
-  const shown: DayTime = partial ?? (value ? isoToZurich(value) : null) ?? { date: "", time: "" };
-  const [badHour, setBadHour] = useState(false);
+  // Un valore a metà vale solo per il valore da cui è partito: se il documento cambia da fuori
+  // (annulla, "carica la sua", versione ripristinata) il campo mostra di nuovo quello.
+  const [partial, setPartial] = useState<(DayTime & { base: string | undefined; badHour: boolean }) | null>(null);
+  const current = partial !== null && partial.base === value ? partial : null;
+  const shown: DayTime = current ?? (value ? isoToZurich(value) : null) ?? { date: "", time: "" };
   function change(next: DayTime) {
-    setBadHour(false);
     if (!next.date && !next.time) {
       setPartial(null);
       onChange(undefined);
       return;
     }
     if (!next.date || !next.time) {
-      setPartial(next);
+      setPartial({ ...next, base: value, badHour: false });
       return;
     }
     const converted = zurichToIso(next.date, next.time);
     if ("error" in converted) {
-      setPartial(next);
-      setBadHour(converted.error === "missing_hour");
+      setPartial({ ...next, base: value, badHour: converted.error === "missing_hour" });
       return;
     }
     setPartial(null);
     onChange(converted.iso);
   }
-  const problem = badHour ? ed.fields.missingHour : undefined;
+  const problem = current?.badHour ? ed.fields.missingHour : undefined;
+  const described = [describedBy(id, spec, error ?? problem, unsaved), `${id}-zone`].filter(Boolean).join(" ");
+  const invalid = error || unsaved || problem ? true : undefined;
   return (
     <FieldFrame id={id} spec={spec} required={required} error={error ?? problem} unsaved={unsaved}>
-      <div className="schedule-fields">
+      <div className="schedule-fields" role="group" aria-labelledby={`${id}-label`}>
         <input
           id={id}
           type="date"
-          aria-label={ed.fields.day}
+          aria-label={`${spec.title ?? ""}: ${ed.fields.day}`}
           value={shown.date}
-          aria-describedby={`${id}-zone`}
+          aria-describedby={described}
+          aria-invalid={invalid}
           onChange={(event) => change({ ...shown, date: event.target.value })}
         />
         <input
           type="time"
-          aria-label={ed.fields.time}
+          aria-label={`${spec.title ?? ""}: ${ed.fields.time}`}
           step={300}
           value={shown.time}
-          aria-describedby={`${id}-zone`}
+          aria-describedby={described}
+          aria-invalid={invalid}
           onChange={(event) => change({ ...shown, time: event.target.value })}
         />
       </div>
