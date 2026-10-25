@@ -45,3 +45,28 @@ Decisioni D-147 … D-151. Piano di `ecc:planner`, risposte di Thias tutte sulle
 - Slug di una notizia uguale a una sottopagina: l'elenco non può avere sottopagine.
 - Notizie programmate e cache: rinnovo come per i banner (D-146).
 - Regola d'oro: i campi sono solo dati (testo, testo formattato con l'allowlist, media, url sicuri), mai template.
+
+## Fase 7b — Notizie nel pannello (2026-10-25)
+
+Decisioni D-153 … D-156. Piano di `ecc:planner`, risposte di Thias tutte sulle proposte.
+
+### Risposte di Thias
+1. **Foto dal telefono:** si sceglie ogni volta, fotocamera o galleria. → D-153
+2. **Chi non può pubblicare, dal telefono:** salva come bozza. → D-154
+3. **Ultime notizie:** 3 notizie con titolo e data nel piè di pagina. → D-155
+4. **Anteprima:** affiancata come per le pagine. → D-156
+
+### Lavori
+- **Server:** raccolte nei dati del sito; versioni delle notizie con contenuto, autore e ripristino in bozza
+  (D-40, D-42); "programmazione con modifiche più recenti"; `GET /entries/<id>/checks` con la stessa
+  validazione di `publish` (D-135); anteprima `/_preview/entries/<id>`; widget `latest_entries` acceso con
+  `collection` e `limit`, template nel tema.
+- **Pannello:** pezzi comuni dell'editor resi generici (salvataggio automatico, cronologia, anteprima,
+  versioni, conflitto); campi data e data/ora; voce di menu per raccolta; elenco con cestino; nuova notizia;
+  editor della notizia; "Notizia" dal telefono; scelta della raccolta nel widget.
+- **Test:** pytest per anteprima, controlli, versioni e widget; vitest per campi e schermate; un e2e; regola d'oro.
+
+### Rischi
+- Rendere generici i pezzi dell'editor senza rompere quello delle pagine: commit a parte, test delle pagine verdi.
+- Dal telefono più passi non atomici: prima la foto, poi la notizia (una foto abbandonata resta in libreria).
+- Nuova route di anteprima: meta-test dei permessi e review di sicurezza.
