@@ -10,6 +10,7 @@ import { UsersScreen } from "./features/admin/UsersScreen";
 import { SettingsScreen } from "./features/settings/SettingsScreen";
 import { MenusScreen } from "./features/menus/MenusScreen";
 import { WidgetsScreen } from "./features/widgets/WidgetsScreen";
+import { EntriesScreen } from "./features/entries/EntriesScreen";
 import { Link } from "./router/Link";
 import { paths, useRoute, type Route } from "./router/router";
 import { Permission } from "./session/can";
@@ -18,7 +19,10 @@ import { SessionProvider } from "./session/SessionProvider";
 import { AppShell } from "./shell/AppShell";
 import { it } from "./text/it";
 
-// L'editor (con TipTap) si scarica solo quando si apre una pagina.
+// Gli editor (con TipTap) si scaricano solo quando servono.
+const EntryEditor = lazy(() =>
+  import("./features/entries/EntryEditor").then((module) => ({ default: module.EntryEditor })),
+);
 const EditorScreen = lazy(() =>
   import("./features/editor/EditorScreen").then((module) => ({ default: module.EditorScreen })),
 );
@@ -50,6 +54,14 @@ function Screen({ route }: { route: Route }) {
       return <ProfileScreen />;
     case "menus":
       return can(Permission.publish) ? <MenusScreen /> : <NoAccess />;
+    case "entries":
+      return <EntriesScreen key={route.collection} collection={route.collection} />;
+    case "entry":
+      return (
+        <Suspense fallback={<p role="status">{it.loading}</p>}>
+          <EntryEditor key={route.id} collection={route.collection} id={route.id} />
+        </Suspense>
+      );
     case "widgets":
       return can(Permission.publish) ? <WidgetsScreen /> : <NoAccess />;
     case "settings":

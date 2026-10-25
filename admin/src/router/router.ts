@@ -14,6 +14,8 @@ export type Route =
   | { name: "settings" }
   | { name: "menus" }
   | { name: "widgets" }
+  | { name: "entries"; collection: string }
+  | { name: "entry"; collection: string; id: number }
   | { name: "not-found" };
 
 export const paths = {
@@ -29,10 +31,13 @@ export const paths = {
   settings: "/admin/impostazioni",
   menus: "/admin/menu",
   widgets: "/admin/widget",
+  entries: (collection: string) => `/admin/raccolte/${collection}`,
+  entry: (collection: string, id: number) => `/admin/raccolte/${collection}/${id}`,
 } as const;
 
 const PAGE_RE = /^\/admin\/pagine\/(\d{1,9})$/;
 const MESSAGE_RE = /^\/admin\/messaggi\/(\d{1,9})$/;
+const ENTRIES_RE = /^\/admin\/raccolte\/([a-z][a-z0-9_]{0,63})(?:\/(\d{1,9}))?$/;
 const SIMPLE: Record<string, Route> = {
   [paths.trash]: { name: "trash" },
   [paths.media]: { name: "media" },
@@ -54,6 +59,11 @@ export function parseRoute(pathname: string): Route {
   if (page) return { name: "page", id: Number(page[1]) };
   const message = MESSAGE_RE.exec(path);
   if (message) return { name: "message", id: Number(message[1]) };
+  const entries = ENTRIES_RE.exec(path);
+  if (entries) {
+    const collection = entries[1]!;
+    return entries[2] ? { name: "entry", collection, id: Number(entries[2]) } : { name: "entries", collection };
+  }
   return { name: "not-found" };
 }
 

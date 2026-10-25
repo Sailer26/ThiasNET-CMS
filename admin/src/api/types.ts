@@ -26,6 +26,8 @@ export interface Site {
   default_locale: string;
   default_layout: string;
   home_layout: string;
+  /** Le raccolte del tema (7b): una voce di menu ciascuna, es. le notizie. */
+  collections: { key: string; label: string }[];
 }
 
 export interface Page {

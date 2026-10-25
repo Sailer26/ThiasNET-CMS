@@ -16,6 +16,8 @@ export const it = {
     settings: "Impostazioni",
     menus: "Menu",
     widgets: "Widget",
+    entries: "Notizie",
+    entry: "Notizia",
     notFound: "Schermata non trovata",
   },
   errors: {

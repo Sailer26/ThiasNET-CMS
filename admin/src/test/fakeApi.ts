@@ -94,6 +94,7 @@ export const SITE: Site = {
   default_locale: "it",
   default_layout: "page",
   home_layout: "home",
+  collections: [{ key: "news", label: "Notizie" }],
 };
 
 let nextId = 100;

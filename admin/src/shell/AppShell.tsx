@@ -26,6 +26,8 @@ const TITLES: Record<string, string> = {
   settings: it.titles.settings,
   menus: it.titles.menus,
   widgets: it.titles.widgets,
+  entries: it.titles.entries,
+  entry: it.titles.entry,
   "not-found": it.titles.notFound,
 };
 
@@ -98,6 +100,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link to={paths.pages} aria-current={current("pages", "page")}>
             {it.shell.pages}
           </Link>
+          {site.collections.map((collection) => (
+            <Link
+              key={collection.key}
+              to={paths.entries(collection.key)}
+              aria-current={
+                (route.name === "entries" || route.name === "entry") && route.collection === collection.key ? "page" : undefined
+              }
+            >
+              {collection.label}
+            </Link>
+          ))}
           <Link to={paths.media} aria-current={current("media")}>
             {it.shell.media}
           </Link>

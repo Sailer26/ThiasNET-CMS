@@ -1,16 +1,13 @@
 import { useState } from "react";
 import type { Catalog } from "../../../api/catalog";
 import type { Site } from "../../../api/types";
-import { MediaChoice } from "../../media-picker/MediaChoice";
 import { ed } from "../../../text/editor";
 import { FormDialog } from "../../../ui/FormDialog";
 import type { PageDocument, Seo } from "../model/document";
 import { relayout } from "../model/relayout";
-import { length } from "../schema/validate";
+import { SeoFields } from "./SeoFields";
 
 const TITLE_MAX = 200;
-const SEO_TITLE_MAX = 70;
-const SEO_DESCRIPTION_MAX = 160;
 
 interface Props {
   doc: PageDocument;
@@ -33,8 +30,6 @@ function Problem({ id, text }: { id: string; text: string | undefined }) {
 
 export function PageSettings({ doc, catalog, site, path, errors, onTitle, onLayout, onSeo }: Props) {
   const [pending, setPending] = useState<ReturnType<typeof relayout> | null>(null);
-  const seoTitle = doc.seo.title ?? "";
-  const description = doc.seo.description ?? "";
 
   function chooseLayout(name: string) {
     const result = relayout(doc, catalog, name);
@@ -67,72 +62,7 @@ export function PageSettings({ doc, catalog, site, path, errors, onTitle, onLayo
         </select>
         <Problem id="page-layout-problem" text={errors.get("layout")} />
       </div>
-      <details className="seo" open={errors.has("seo/title") || errors.has("seo/description") ? true : undefined}>
-        <summary>{ed.page.seo}</summary>
-        <div className="field">
-          <label htmlFor="seo-title">{ed.page.seoTitle}</label>
-          <input
-            id="seo-title"
-            maxLength={SEO_TITLE_MAX}
-            value={seoTitle}
-            placeholder={doc.title}
-            aria-describedby="seo-title-help"
-            onChange={(event) => onSeo("title", event.target.value || undefined)}
-          />
-          <p id="seo-title-help" className="hint">
-            {ed.page.seoTitleHelp} {ed.fields.counter(length(seoTitle), SEO_TITLE_MAX)}
-          </p>
-          <Problem id="seo-title-problem" text={errors.get("seo/title")} />
-        </div>
-        <div className="field">
-          <label htmlFor="seo-description">{ed.page.seoDescription}</label>
-          <textarea
-            id="seo-description"
-            rows={3}
-            maxLength={SEO_DESCRIPTION_MAX}
-            value={description}
-            aria-describedby="seo-description-help"
-            onChange={(event) => onSeo("description", event.target.value || undefined)}
-          />
-          <p id="seo-description-help" className="hint">
-            {ed.page.seoDescriptionHelp} {ed.fields.counter(length(description), SEO_DESCRIPTION_MAX)}
-          </p>
-          <Problem id="seo-description-problem" text={errors.get("seo/description")} />
-        </div>
-        <div className="field field--check">
-          <label>
-            <input
-              type="checkbox"
-              checked={doc.seo.noindex === true}
-              onChange={(event) => onSeo("noindex", event.target.checked ? true : undefined)}
-            />
-            {ed.page.noindex}
-          </label>
-        </div>
-        <div className="field">
-          <span className="field__label" id="seo-og-label">
-            {ed.media.ogImage}
-          </span>
-          <MediaChoice
-            id="seo-og_image_media_id"
-            kind="image"
-            value={doc.seo.og_image_media_id}
-            onChange={(id) => onSeo("og_image_media_id", id)}
-            describedBy="seo-og-help"
-            labelledBy="seo-og-label"
-          />
-          <p id="seo-og-help" className="hint">
-            {ed.media.ogImageHelp}
-          </p>
-          <Problem id="seo-og-problem" text={errors.get("seo/og_image_media_id")} />
-        </div>
-        <div className="google" aria-label={ed.page.googlePreview}>
-          <p className="hint">{ed.page.googlePreview}</p>
-          <p className="google__url">{site.url + path}</p>
-          <p className="google__title">{seoTitle || doc.title}</p>
-          <p className="google__text">{description}</p>
-        </div>
-      </details>
+      <SeoFields seo={doc.seo} title={doc.title} url={site.url + path} errors={errors} onSeo={onSeo} />
       {pending && (
         <FormDialog
           title={ed.page.relayoutTitle}
