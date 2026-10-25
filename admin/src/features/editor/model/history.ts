@@ -1,32 +1,33 @@
 // Annulla/ripristina (D-105): una sola storia, 100 passi, battute nello stesso campo unite.
+// Generica: la usano le pagine e le notizie (7b).
 import type { PageDocument } from "./document";
 
 export const HISTORY_LIMIT = 100;
 export const MERGE_MS = 1000;
 
-export interface History {
-  past: PageDocument[];
-  present: PageDocument;
-  future: PageDocument[];
+export interface History<D = PageDocument> {
+  past: D[];
+  present: D;
+  future: D[];
   lastKey: string | null;
   lastAt: number;
 }
 
-export function startHistory(doc: PageDocument): History {
+export function startHistory<D>(doc: D): History<D> {
   return { past: [], present: doc, future: [], lastKey: null, lastAt: 0 };
 }
 
 /** Nuovo stato. `key` (es. "uid:campo") unisce le battute vicine nello stesso campo. */
-export function commit(history: History, doc: PageDocument, key: string | null, now: number): History {
+export function commit<D>(history: History<D>, doc: D, key: string | null, now: number): History<D> {
   if (doc === history.present) return history;
   const merge = key !== null && key === history.lastKey && now - history.lastAt <= MERGE_MS;
   const past = merge ? history.past : [...history.past, history.present].slice(-HISTORY_LIMIT);
   return { past, present: doc, future: [], lastKey: key, lastAt: now };
 }
 
-export function undo(history: History): History {
+export function undo<D>(history: History<D>): History<D> {
   const previous = history.past.at(-1);
-  if (!previous) return history;
+  if (previous === undefined) return history;
   return {
     past: history.past.slice(0, -1),
     present: previous,
@@ -36,8 +37,8 @@ export function undo(history: History): History {
   };
 }
 
-export function redo(history: History): History {
-  const [next, ...future] = history.future;
-  if (!next) return history;
+export function redo<D>(history: History<D>): History<D> {
+  if (history.future.length === 0) return history;
+  const [next, ...future] = history.future as [D, ...D[]];
   return { past: [...history.past, history.present], present: next, future, lastKey: null, lastAt: 0 };
 }

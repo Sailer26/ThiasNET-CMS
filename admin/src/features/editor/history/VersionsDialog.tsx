@@ -1,25 +1,26 @@
 import { useEffect, useState } from "react";
 import { errorMessage } from "../../../api/client";
-import { listRevisions, type Revision } from "../../../api/revisions";
+import type { Revision } from "../../../api/revisions";
 import { ed } from "../../../text/editor";
 import { Dialog } from "../../../ui/Dialog";
 import { formatZurich } from "../schedule/siteTime";
 
 interface Props {
-  pageId: number;
+  /** Le versioni da mostrare (di una pagina o di una notizia). */
+  load: () => Promise<Revision[]>;
   onLook: (revision: Revision) => void;
   onRestore: (revision: Revision) => void;
   onClose: () => void;
 }
 
 /** Versioni della pagina (D-121): chi e quando, Guarda, Ripristina nella bozza. */
-export function VersionsDialog({ pageId, onLook, onRestore, onClose }: Props) {
+export function VersionsDialog({ load, onLook, onRestore, onClose }: Props) {
   const [items, setItems] = useState<Revision[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    listRevisions(pageId).then(
+    load().then(
       (found) => {
         if (active) setItems(found);
       },
@@ -30,7 +31,7 @@ export function VersionsDialog({ pageId, onLook, onRestore, onClose }: Props) {
     return () => {
       active = false;
     };
-  }, [pageId]);
+  }, [load]);
 
   return (
     <Dialog title={ed.versions.title} onClose={onClose}>

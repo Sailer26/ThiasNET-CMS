@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError, errorMessage } from "../../api/client";
 import { discardDraft, fetchChecks, fetchDraft, fetchPage, publishPage, saveDraft, unpublishPage, type Draft } from "../../api/drafts";
-import { getRevision, restoreRevision, schedulePage, unschedulePage, type Revision } from "../../api/revisions";
+import { getRevision, listRevisions, restoreRevision, schedulePage, unschedulePage, type Revision } from "../../api/revisions";
+import { ConflictDialog } from "./ConflictDialog";
+import { useAutosaveLifecycle } from "./useAutosaveLifecycle";
 import { VersionsDialog } from "./history/VersionsDialog";
 import { ScheduleDialog } from "./schedule/ScheduleDialog";
 import { formatZurich } from "./schedule/siteTime";
 import type { Page } from "../../api/types";
 import { Link } from "../../router/Link";
-import { paths, setNavigationGuard } from "../../router/router";
+import { paths } from "../../router/router";
 import { Permission } from "../../session/can";
 import { useSession } from "../../session/context";
 import { ed } from "../../text/editor";
@@ -74,7 +76,7 @@ function focusField(id: string) {
 }
 
 function Workspace({ data }: { data: Loaded }) {
-  const { site, can, reloadKey } = useSession();
+  const { site, can } = useSession();
   const { catalog } = data;
   const [page, setPage] = useState<Page>(data.page);
   const editor = useEditorState(data.draft.data);
@@ -116,41 +118,9 @@ function Workspace({ data }: { data: Loaded }) {
       }),
     [autosave],
   );
-  useEffect(() => autosave.change(doc), [autosave, doc]);
+  useAutosaveLifecycle(autosave, doc);
 
-  // Uscita dall'editor: si finisce di salvare anche dopo che la schermata è sparita.
-  useEffect(
-    () => () => {
-      void autosave.flush().finally(() => autosave.dispose());
-    },
-    [autosave],
-  );
-
-  // Dopo un nuovo accesso si risalva senza ricaricare (D-104).
-  const firstKey = useRef(reloadKey);
-  useEffect(() => {
-    if (reloadKey !== firstKey.current) void autosave.retry();
-  }, [reloadKey, autosave]);
-
-  useEffect(() => {
-    setNavigationGuard(async () => (await autosave.flush()) || window.confirm(ed.save.leave));
-    function beforeUnload(event: BeforeUnloadEvent) {
-      if (!autosave.dirty) return;
-      event.preventDefault();
-      event.returnValue = ""; // Safari e browser meno recenti
-    }
-    function hidden() {
-      if (document.visibilityState === "hidden") void autosave.flush();
-    }
-    window.addEventListener("beforeunload", beforeUnload);
-    document.addEventListener("visibilitychange", hidden);
-    return () => {
-      setNavigationGuard(null);
-      window.removeEventListener("beforeunload", beforeUnload);
-      document.removeEventListener("visibilitychange", hidden);
-    };
-  }, [autosave]);
-
+  const loadRevisions = useCallback(() => listRevisions(page.id), [page.id]);
   const safe = useMemo(() => draftSafe(doc, catalog, saved), [doc, catalog, saved]);
   const unsaved = useMemo(() => byBlock(safe.problems), [safe]);
   const errors = useMemo(() => byBlock(serverErrors), [serverErrors]);
@@ -490,7 +460,7 @@ function Workspace({ data }: { data: Loaded }) {
           <ZoneList doc={doc} catalog={catalog} selected={selected} errors={errorsWithZones(errors)} unsaved={unsaved} pages={data.pages} actions={actions} />
         </div>
         <div className="editor__preview">
-          <PreviewPane pageId={page.id} doc={viewing?.doc ?? safe.doc} selected={selected} onSelect={editor.select} />
+          <PreviewPane action={`/_preview/${page.id}`} doc={viewing?.doc ?? safe.doc} selected={selected} onSelect={editor.select} />
         </div>
       </div>
       {save.kind === "conflict" && (
@@ -514,7 +484,7 @@ function Workspace({ data }: { data: Loaded }) {
       )}
       {versionsOpen && (
         <VersionsDialog
-          pageId={page.id}
+          load={loadRevisions}
           onClose={() => setVersionsOpen(false)}
           onLook={(revision) => void look(revision)}
           onRestore={(revision) => {
@@ -567,26 +537,6 @@ function errorsWithZones(errors: Map<string, Map<string, string>>): Map<string, 
     out.set(`zone:${name}`, inner);
   }
   return out;
-}
-
-function ConflictDialog({ error, onTheirs, onMine }: { error: ApiError; onTheirs: () => Promise<void>; onMine: () => Promise<void> }) {
-  const details = (error.details ?? {}) as { updated_by_name?: string };
-  const [failure, setFailure] = useState<string | null>(null);
-  const run = (action: () => Promise<void>) => () => {
-    setFailure(null);
-    action().catch((problem: unknown) => setFailure(errorMessage(problem)));
-  };
-  return (
-    <FormDialog title={ed.conflict.title} submitLabel={ed.conflict.theirs} onClose={() => undefined} onSubmit={onTheirs}>
-      <p>{ed.conflict.text(details.updated_by_name ?? "un altro utente")}</p>
-      <p className="hint">{ed.conflict.theirsHelp}</p>
-      <p className="hint">{ed.conflict.mineHelp}</p>
-      <button type="button" className="button" onClick={run(onMine)}>
-        {ed.conflict.mine}
-      </button>
-      {failure && <p className="form__error">{failure}</p>}
-    </FormDialog>
-  );
 }
 
 export function EditorScreen({ pageId }: { pageId: number }) {

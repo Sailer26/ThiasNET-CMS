@@ -26,13 +26,14 @@ export const realClock: Clock = {
 };
 
 /** Salva `doc` (base = ultima versione salvata); restituisce versione e documento salvato. */
-type Save = (doc: PageDocument, version: number, base: PageDocument) => Promise<{ version: number; saved: PageDocument }>;
+type Save<D> = (doc: D, version: number, base: D) => Promise<{ version: number; saved: D }>;
 
-export class Autosave {
+/** Il documento di una pagina o di una notizia (7b): basta che sia JSON. */
+export class Autosave<D = PageDocument> {
   private version: number;
-  private latest: PageDocument | null = null;
+  private latest: D | null = null;
   private savedJson: string;
-  private savedDoc: PageDocument;
+  private savedDoc: D;
   private timer: unknown = null;
   private running: Promise<void> | null = null;
   private blocked = false;
@@ -40,9 +41,9 @@ export class Autosave {
   private readonly listeners = new Set<(state: SaveState) => void>();
 
   constructor(
-    private readonly save: Save,
+    private readonly save: Save<D>,
     version: number,
-    saved: PageDocument,
+    saved: D,
     private readonly clock: Clock = realClock,
     private readonly delay = SAVE_DELAY_MS,
   ) {
@@ -57,7 +58,7 @@ export class Autosave {
   }
 
   /** L'ultima versione salvata (per l'ultimo valore valido dei campi, D-104). */
-  get base(): PageDocument {
+  get base(): D {
     return this.savedDoc;
   }
 
@@ -82,7 +83,7 @@ export class Autosave {
   }
 
   /** Il documento è cambiato: si salva dopo una pausa. */
-  change(doc: PageDocument): void {
+  change(doc: D): void {
     this.latest = doc;
     if (!this.dirty) {
       // Tornati al testo salvato (es. con Annulla): nessun errore resta in sospeso.
@@ -167,7 +168,7 @@ export class Autosave {
   }
 
   /** "Carica la sua" (o pagina ricaricata): nuova base, nulla da salvare. */
-  reset(version: number, doc: PageDocument): void {
+  reset(version: number, doc: D): void {
     if (this.timer !== null) this.clock.cancel(this.timer);
     this.timer = null;
     this.version = version;

@@ -15,17 +15,20 @@ interface Frame {
 }
 
 interface Props {
-  pageId: number;
-  doc: PageDocument;
-  selected: string | null;
-  onSelect: (uid: string) => void;
+  /** Dove si manda il documento: `/_preview/<pagina>` o `/_preview/entries/<notizia>`. */
+  action: string;
+  doc: PageDocument | object;
+  selected?: string | null;
+  onSelect?: (uid: string) => void;
 }
+
+const ignore = () => undefined;
 
 let counter = 0;
 
 /** Anteprima live (D-107): a ogni aggiornamento un iframe nuovo dietro quello visibile; si
  * scambiano quando il nuovo dice "pronto". Niente voci nella storia del browser. */
-export function PreviewPane({ pageId, doc, selected, onSelect }: Props) {
+export function PreviewPane({ action, doc, selected = null, onSelect = ignore }: Props) {
   const [active, setActive] = useState<Frame | null>(null);
   const [pending, setPending] = useState<Frame | null>(null);
   const [stale, setStale] = useState(false);
@@ -56,7 +59,7 @@ export function PreviewPane({ pageId, doc, selected, onSelect }: Props) {
   // L'iframe nuovo esiste nel DOM: gli si manda il documento e parte l'attesa del "pronto".
   useEffect(() => {
     if (!pending) return;
-    transport.submit(pending.name, `/_preview/${pageId}`, {
+    transport.submit(pending.name, action, {
       csrf_token: getCsrfToken() ?? "",
       document: pending.json,
     });
@@ -65,7 +68,7 @@ export function PreviewPane({ pageId, doc, selected, onSelect }: Props) {
       setStale(true);
     }, PREVIEW_TIMEOUT_MS);
     return () => clearTimeout(timer);
-  }, [pending, pageId]);
+  }, [pending, action]);
 
   useEffect(() => {
     function receive(event: MessageEvent) {
