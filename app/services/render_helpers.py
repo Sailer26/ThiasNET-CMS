@@ -97,6 +97,20 @@ def embed(block: BlockView) -> Mapping[str, str] | None:
     return {**found, "kind": kind, "title": str(title)}
 
 
+def _alternates(context: PageContext) -> list[Markup]:
+    """hreflang (D-151): solo le lingue con la traduzione online, e x-default sulla prima."""
+    found = [language for language in context.languages if language.translated]
+    if len(found) < 2:
+        return []
+    base = context.site.base_url
+    link = Markup('<link rel="alternate" hreflang="{}" href="{}">')
+    links = [link.format(language.locale, base + language.url) for language in found]
+    default = next((x for x in found if x.locale == context.site.locale), None)
+    if default is not None:
+        links.append(link.format("x-default", base + default.url))
+    return links
+
+
 def head_markup(context: PageContext) -> Markup:
     page, site = context.page, context.site
     seo_title = page.seo.get("title")
@@ -113,6 +127,7 @@ def head_markup(context: PageContext) -> Markup:
     if context.mode is RenderMode.PREVIEW or page.noindex:
         parts.append(Markup('<meta name="robots" content="noindex">'))
     parts.append(Markup('<link rel="canonical" href="{}">').format(site.base_url + page.path))
+    parts.extend(_alternates(context))
     parts.append(
         Markup('<link rel="stylesheet" href="/_vars.css?v={}">').format(context.css_version)
     )

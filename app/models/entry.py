@@ -46,6 +46,14 @@ class Entry(Base):
         ),
         Index("ix_entries_listing", "collection", "locale", "status", "sort_at"),
         Index("ix_entries_publish_at", "publish_at"),
+        Index(
+            "uq_entries_group_locale",
+            "translation_group",
+            "locale",
+            unique=True,
+            sqlite_where=LIVE,
+            postgresql_where=LIVE,
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

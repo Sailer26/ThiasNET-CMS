@@ -254,7 +254,9 @@ def test_sitemap_lists_only_indexable_online_pages(
     import xml.etree.ElementTree as ET
 
     _online(admin, "Home", layout="home", slug="")
+    _online(admin, "Startseite", layout="home", slug="", locale="de")  # D-158
     _online(admin, "Über uns", locale="de")
+    _online(admin, "Hello", locale="en")  # senza homepage inglese: fuori dalla sitemap
     hidden = _online(admin, "Nascosta")
     zones = {"main": [text_block(1)], "sidebar": []}
     put_draft(
@@ -268,7 +270,11 @@ def test_sitemap_lists_only_indexable_online_pages(
     assert response.mimetype == "application/xml"
     root = ET.fromstring(response.get_data())  # noqa: S314
     locations = {loc.text for loc in root.iter(f"{SITEMAP_NS}loc")}
-    assert locations == {"https://www.example.ch/", "https://www.example.ch/de/ueber-uns"}
+    assert locations == {
+        "https://www.example.ch/",
+        "https://www.example.ch/de/",
+        "https://www.example.ch/de/ueber-uns",
+    }
     assert all(lastmod.text for lastmod in root.iter(f"{SITEMAP_NS}lastmod"))
 
 

@@ -61,6 +61,17 @@ class Link:
 
 
 @dataclass(frozen=True)
+class Language:
+    """Una lingua del selettore (D-151, D-158)."""
+
+    locale: str
+    label: str
+    url: str  # la traduzione di questa pagina o, senza, la homepage di quella lingua
+    current: bool = False
+    translated: bool = False  # c'è la traduzione: la lingua va negli hreflang
+
+
+@dataclass(frozen=True)
 class WidgetView:
     id: str  # uid stabile: finisce in data-widget-id
     type: str
@@ -164,6 +175,7 @@ class PageContext:
     og_image: MediaView | None = None
     entry: EntryView | None = None  # dettaglio di una voce (entries/<raccolta>.html)
     listing: ListingView | None = None  # pagina elenco (D-149)
+    languages: tuple[Language, ...] = ()  # selettore e hreflang (D-158); vuoto con una lingua
 
 
 def _freeze(value: Any) -> Any:

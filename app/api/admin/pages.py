@@ -12,6 +12,7 @@ from flask import Response, request
 from app.api import ok
 from app.api.admin import bp
 from app.api.admin.decorators import current, require_permission
+from app.api.admin.locale import panel_locale
 from app.api.validation import json_body, page_meta, pagination
 from app.models.page import (
     LOCALE_LENGTH,
@@ -20,7 +21,7 @@ from app.models.page import (
     SLUG_MAX_LENGTH,
     Page,
 )
-from app.services import page_views, pages, prepublish, publishing, revisions
+from app.services import page_views, pages, prepublish, publishing, revisions, translations
 from app.services.errors import ServiceError
 from app.services.permissions import Permission
 from app.services.theme import active_theme
@@ -127,8 +128,7 @@ def list_pages() -> Response:
 @bp.get("/pages/tree")
 @require_permission(EDIT)
 def page_tree() -> Response:
-    default = active_theme().locales[0]
-    nodes, truncated = page_views.tree(_locale_arg(default) or default)
+    nodes, truncated = page_views.tree(panel_locale())
     return ok(nodes, meta={"truncated": truncated})
 
 
@@ -268,3 +268,22 @@ def restore_revision(page_id: int, revision_id: int) -> Response:
         current(), pages.get_page(page_id), revision_id, body["draft_version"]
     )
     return ok({"version": version})
+
+
+# --- Traduzioni (D-151) ------------------------------------------------------------------------
+
+TRANSLATE_SCHEMA = _schema(["locale"], locale={"type": "string", "maxLength": 5})
+
+
+@bp.get("/pages/<int:page_id>/translations")
+@require_permission(EDIT)
+def list_page_translations(page_id: int) -> Response:
+    return ok(translations.page_translations(pages.get_page(page_id)))
+
+
+@bp.post("/pages/<int:page_id>/translations")
+@require_permission(EDIT)
+def translate_page(page_id: int) -> Response:
+    body = json_body(TRANSLATE_SCHEMA)
+    created = translations.translate_page(current(), pages.get_page(page_id), body["locale"])
+    return _page_response(created, 201)

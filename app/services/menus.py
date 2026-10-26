@@ -61,8 +61,8 @@ def _problem(path: str, code: str) -> FieldError:
     return FieldError(path, code, MESSAGES[code])
 
 
-def _locale(theme: Theme) -> str:
-    return theme.locales[0]  # D-94: il pannello lavora nella lingua principale
+def _locale(theme: Theme, locale: str | None = None) -> str:
+    return locale or theme.locales[0]  # D-159: la lingua scelta nel pannello
 
 
 def spec(theme: Theme, location: str) -> Mapping[str, Any]:
@@ -211,12 +211,13 @@ def _automatic_items(location: str, locale: str) -> list[dict[str, Any]]:
     ]
 
 
-def editable(location: str, theme: Theme) -> dict[str, Any]:
+def editable(location: str, theme: Theme, locale: str | None = None) -> dict[str, Any]:
     found = spec(theme, location)
-    locale = _locale(theme)
+    locale = _locale(theme, locale)
     row = _row(location, locale)
     return {
         "location": location,
+        "locale": locale,
         "label": found["label"],
         "max_depth": found["max_depth"],
         "automatic": location == AUTOMATIC,
@@ -226,8 +227,8 @@ def editable(location: str, theme: Theme) -> dict[str, Any]:
     }
 
 
-def all_editable(theme: Theme) -> list[dict[str, Any]]:
-    return [editable(location, theme) for location in theme.menus]
+def all_editable(theme: Theme, locale: str | None = None) -> list[dict[str, Any]]:
+    return [editable(location, theme, locale) for location in theme.menus]
 
 
 # --- Scrittura -----------------------------------------------------------------------------------
@@ -271,12 +272,17 @@ def _commit(location: str, locale: str) -> None:
 
 
 def store_menu(
-    actor: User, location: str, version: int, items: Any, theme: Theme
+    actor: User,
+    location: str,
+    version: int,
+    items: Any,
+    theme: Theme,
+    locale: str | None = None,
 ) -> dict[str, Any]:
     """D-140: chi può pubblicare salva il menu, e il sito cambia subito."""
     require(actor, Permission.PUBLISH)
     found = spec(theme, location)
-    locale = _locale(theme)
+    locale = _locale(theme, locale)
     clean, errors = validate(items, int(found["max_depth"]), locale)
     if errors:
         raise invalid(errors)
@@ -289,17 +295,19 @@ def store_menu(
     entity_revisions.record("menu", f"{location}:{locale}", snapshot, actor.id)
     page_cache.mark_changed()
     _commit(location, locale)
-    return editable(location, theme)
+    return editable(location, theme, locale)
 
 
-def reset_menu(actor: User, location: str, version: int, theme: Theme) -> dict[str, Any]:
+def reset_menu(
+    actor: User, location: str, version: int, theme: Theme, locale: str | None = None
+) -> dict[str, Any]:
     """ "Torna automatico" (D-141): il menu fatto a mano si toglie; "main" torna automatico."""
     require(actor, Permission.PUBLISH)
     spec(theme, location)
-    locale = _locale(theme)
+    locale = _locale(theme, locale)
     row = _row(location, locale)
     if row is None:
-        return editable(location, theme)
+        return editable(location, theme, locale)
     removed = rows_affected(
         delete(MenuRow).where(
             MenuRow.location == location, MenuRow.locale == locale, MenuRow.version == version
@@ -315,7 +323,7 @@ def reset_menu(actor: User, location: str, version: int, theme: Theme) -> dict[s
     page_cache.mark_changed()
     db.session.commit()
     db.session.expire_all()  # la riga cancellata non deve restare nella sessione
-    return editable(location, theme)
+    return editable(location, theme, locale)
 
 
 # --- Lettura per il sito -------------------------------------------------------------------------

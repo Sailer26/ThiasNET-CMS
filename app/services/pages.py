@@ -37,8 +37,20 @@ MAX_SLUG_ATTEMPTS = 500
 # "Online" per i permessi (D-48): già pubblicate o con una pubblicazione in arrivo.
 ONLINE_STATUSES = frozenset({PageStatus.PUBLISHED, PageStatus.SCHEDULED})
 PATH_INDEX_MARKERS = ("uq_pages_locale_path", "pages.locale, pages.path")
+GROUP_INDEX_MARKERS = ("uq_pages_group_locale", "pages.translation_group, pages.locale")
 
 __all__ = ["is_home", "require"]
+
+
+def translation_exists() -> ServiceError:
+    return ServiceError("translation_exists", "Questa lingua ha già la sua traduzione", 409)
+
+
+def translation_taken(group: str, locale: str, exclude: int | None = None) -> bool:
+    query = select(Page.id).where(live(), Page.translation_group == group, Page.locale == locale)
+    if exclude is not None:
+        query = query.where(Page.id != exclude)
+    return db.session.execute(query.limit(1)).first() is not None
 
 
 def _path_taken_error() -> ServiceError:
@@ -94,6 +106,8 @@ def _unique_path_guard() -> Iterator[None]:
         db.session.rollback()
         if any(marker in str(exc.orig) for marker in PATH_INDEX_MARKERS):
             raise _path_taken_error() from exc
+        if any(marker in str(exc.orig) for marker in GROUP_INDEX_MARKERS):
+            raise translation_exists() from exc
         raise
 
 
@@ -227,6 +241,7 @@ def create_page(
     locale: str | None = None,
     parent_id: int | None = None,
     slug: str | None = None,
+    translation_group: str | None = None,
 ) -> Page:
     theme = active_theme()
     clean_title = _title(title)
@@ -243,7 +258,7 @@ def create_page(
     page = Page(
         parent_id=parent_key,
         locale=locale,
-        translation_group=str(uuid.uuid4()),
+        translation_group=translation_group or str(uuid.uuid4()),
         slug=slug,
         path=path,
         title=clean_title,
@@ -406,6 +421,8 @@ def restore(actor: User, page: Page, version: int) -> Page:
         if depth(parent.path) + 1 > MAX_DEPTH:
             raise _too_deep()
     check_listing(page, page.layout, page.locale)  # D-149: mai due pagine elenco
+    if translation_taken(page.translation_group, page.locale, exclude=page.id):
+        raise translation_exists()  # D-161: nel frattempo la lingua ha un'altra traduzione
     path = path_for(parent, page.slug)  # il genitore può essere stato spostato nel frattempo
     page_paths.check_length([path])
     if path_taken(page.locale, path, exclude=[page.id]):

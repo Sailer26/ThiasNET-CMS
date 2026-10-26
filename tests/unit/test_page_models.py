@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,7 +24,7 @@ MIGRATIONS = str(ROOT / "migrations")
 def _page(slug: str = "chi-siamo", **extra: object) -> Page:
     values: dict[str, object] = {
         "locale": "it",
-        "translation_group": "00000000-0000-4000-8000-000000000001",
+        "translation_group": str(uuid.uuid4()),  # D-151: una pagina per lingua nel gruppo
         "slug": slug,
         "path": f"/{slug}",
         "title": "Chi siamo",

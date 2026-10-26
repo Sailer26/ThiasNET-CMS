@@ -39,6 +39,7 @@ FALLBACK_SLUG = "notizia"
 MAX_SLUG_ATTEMPTS = 500
 ONLINE = frozenset({EntryStatus.PUBLISHED, EntryStatus.SCHEDULED})
 SLUG_INDEX_MARKERS = ("uq_entries_locale_collection_slug", "entries.locale, entries.collection")
+GROUP_INDEX_MARKERS = ("uq_entries_group_locale", "entries.translation_group, entries.locale")
 REVISION_TYPE = "entry"
 Document = dict[str, Any]
 
@@ -138,6 +139,8 @@ def _commit_unique() -> None:
         db.session.rollback()
         if any(marker in str(exc.orig) for marker in SLUG_INDEX_MARKERS):
             raise _slug_taken_error() from exc
+        if any(marker in str(exc.orig) for marker in GROUP_INDEX_MARKERS):
+            raise translation_exists() from exc
         raise
 
 
@@ -157,7 +160,27 @@ def empty_document(title: str) -> Document:
     return {"title": title, "fields": {}, "seo": {}}
 
 
-def create(actor: User, collection: str, *, title: str, locale: str | None = None) -> Entry:
+def translation_exists() -> ServiceError:
+    return ServiceError("translation_exists", "Questa lingua ha già la sua traduzione", 409)
+
+
+def translation_taken(group: str, locale: str, exclude: int | None = None) -> bool:
+    query = select(Entry.id).where(
+        Entry.deleted_at.is_(None), Entry.translation_group == group, Entry.locale == locale
+    )
+    if exclude is not None:
+        query = query.where(Entry.id != exclude)
+    return db.session.execute(query.limit(1)).first() is not None
+
+
+def create(
+    actor: User,
+    collection: str,
+    *,
+    title: str,
+    locale: str | None = None,
+    translation_group: str | None = None,
+) -> Entry:
     theme = active_theme()
     collections.spec(theme, collection)
     locale = locale or theme.locales[0]
@@ -168,7 +191,7 @@ def create(actor: User, collection: str, *, title: str, locale: str | None = Non
     entry = Entry(
         collection=collection,
         locale=locale,
-        translation_group=str(uuid.uuid4()),
+        translation_group=translation_group or str(uuid.uuid4()),
         slug=slug,
         title=clean_title,
         fields_json={},
@@ -183,6 +206,8 @@ def create(actor: User, collection: str, *, title: str, locale: str | None = Non
         db.session.rollback()
         if any(marker in str(exc.orig) for marker in SLUG_INDEX_MARKERS):
             raise _slug_taken_error() from exc
+        if any(marker in str(exc.orig) for marker in GROUP_INDEX_MARKERS):
+            raise translation_exists() from exc
         raise
     db.session.add(
         EntryDraft(entry_id=entry.id, data_json=empty_document(clean_title), author_id=actor.id)
@@ -250,6 +275,8 @@ def restore(actor: User, entry: Entry, version: int) -> Entry:
     """Torna come bozza non pubblicata, se il suo indirizzo è ancora libero."""
     if _slug_taken(entry.collection, entry.locale, entry.slug, exclude=entry.id):
         raise _slug_taken_error()
+    if translation_taken(entry.translation_group, entry.locale, exclude=entry.id):
+        raise translation_exists()  # D-161
     bump_version(entry, version)
     entry.deleted_at = None
     entry.deleted_by = None
@@ -414,11 +441,17 @@ def _schedule(
 
 
 def panel_list(
-    theme: Theme, collection: str, *, page: int, per_page: int, trash: bool
+    theme: Theme,
+    collection: str,
+    *,
+    page: int,
+    per_page: int,
+    trash: bool,
+    locale: str | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
     """Le voci di una raccolta per il pannello: le più recenti in cima."""
     collections.spec(theme, collection)
-    locale = theme.locales[0]  # D-94: la lingua del pannello arriva con la 7c
+    locale = locale or theme.locales[0]  # D-159: la lingua scelta nel pannello
     deleted = Entry.deleted_at.is_not(None) if trash else Entry.deleted_at.is_(None)
     where = (Entry.collection == collection, Entry.locale == locale, deleted)
     total = db.session.execute(select(func.count()).select_from(Entry).where(*where)).scalar_one()

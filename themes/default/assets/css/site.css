@@ -94,6 +94,9 @@ main:focus { outline: none; }
 .site-nav ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.25rem; }
 .site-nav a { display: block; padding: 0.5rem 0; color: var(--text); text-decoration: none; }
 .site-nav a[aria-current="page"] { color: var(--accent); font-weight: 700; }
+.language-switcher ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 0.75rem; }
+.language-switcher a { display: block; padding: 0.5rem 0; color: var(--text); font-size: 0.9rem; }
+.language-switcher a[aria-current="true"] { color: var(--accent); font-weight: 700; }
 .site-nav__sub { padding-left: var(--space); }
 .footer-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 1rem; }
 .js .site-nav[data-collapsed="true"] { display: none; }

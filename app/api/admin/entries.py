@@ -14,9 +14,10 @@ from flask import Response, request
 from app.api import ok
 from app.api.admin import bp
 from app.api.admin.decorators import current, require_permission
+from app.api.admin.locale import panel_locale
 from app.api.validation import json_body, page_meta, pagination
 from app.models.page import SLUG_MAX_LENGTH, TITLE_MAX_LENGTH
-from app.services import collections, entries, entry_publishing, prepublish
+from app.services import collections, entries, entry_publishing, prepublish, translations
 from app.services.permissions import Permission
 from app.services.theme import active_theme
 
@@ -65,10 +66,10 @@ def _entry(entry_id: int) -> dict[str, Any]:
 @bp.get("/collections")
 @require_permission(EDIT)
 def list_collections() -> Response:
-    theme = active_theme()
+    theme, locale = active_theme(), panel_locale()
     found = []
     for key, spec in theme.collections.items():
-        listing = entries.listing_page(theme, key, theme.locales[0], online=False)
+        listing = entries.listing_page(theme, key, locale, online=False)
         found.append(
             {
                 "key": key,
@@ -88,7 +89,9 @@ def list_collections() -> Response:
 def list_entries(key: str) -> Response:
     page, limit = pagination()
     trash = request.args.get("trash") in {"1", "true"}
-    rows, total = entries.panel_list(active_theme(), key, page=page, per_page=limit, trash=trash)
+    rows, total = entries.panel_list(
+        active_theme(), key, page=page, per_page=limit, trash=trash, locale=panel_locale()
+    )
     meta = page_meta(page, limit, total) | {"pages": max(1, math.ceil(total / limit))}
     return ok(rows, meta=meta)
 
@@ -216,3 +219,20 @@ def restore_entry_revision(entry_id: int, revision_id: int) -> Response:
 def entry_checks(entry_id: int) -> Response:
     """Controllo prima di pubblicare (D-135): non scrive nulla."""
     return ok(prepublish.entry_report(entries.get_entry(entry_id)))
+
+
+TRANSLATE_SCHEMA = _schema(["locale"], {"locale": {"type": "string", "maxLength": 5}})
+
+
+@bp.get("/entries/<int:entry_id>/translations")
+@require_permission(EDIT)
+def list_entry_translations(entry_id: int) -> Response:
+    return ok(translations.entry_translations(entries.get_entry(entry_id)))
+
+
+@bp.post("/entries/<int:entry_id>/translations")
+@require_permission(EDIT)
+def translate_entry(entry_id: int) -> Response:
+    body = json_body(TRANSLATE_SCHEMA)
+    created = translations.translate_entry(current(), entries.get_entry(entry_id), body["locale"])
+    return ok(entries.serialize(created, active_theme()), status=201)

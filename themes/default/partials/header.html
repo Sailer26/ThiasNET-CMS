@@ -22,5 +22,15 @@
 </ul>
 </nav>
 {% endif %}
+{% set langs = languages() %}
+{% if langs %}
+<nav class="language-switcher" aria-label="{{ cms_text('language_switcher_label') }}">
+<ul>
+{% for lang in langs %}
+<li><a hreflang="{{ lang.locale }}" href="{{ lang.url }}" lang="{{ lang.locale }}"{% if lang.current %} aria-current="true"{% endif %}>{{ lang.label }}</a></li>
+{% endfor %}
+</ul>
+</nav>
+{% endif %}
 </div>
 </header>

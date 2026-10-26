@@ -73,6 +73,15 @@ class Page(Base):
             postgresql_where=LIVE,
         ),
         Index("ix_pages_status_publish_at", "status", "publish_at"),
+        # D-151: una sola pagina viva per lingua in ogni gruppo di traduzioni
+        Index(
+            "uq_pages_group_locale",
+            "translation_group",
+            "locale",
+            unique=True,
+            sqlite_where=LIVE,
+            postgresql_where=LIVE,
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

@@ -26,6 +26,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "en": "Main menu",
     },
     "menu_toggle": {"it": "Menu", "de": "Menü", "rm": "Menu", "en": "Menu"},
+    "language_switcher_label": {"it": "Lingua", "de": "Sprache", "rm": "Lingua", "en": "Language"},
     "footer_menu_label": {
         "it": "Link utili",
         "de": "Nützliche Links",

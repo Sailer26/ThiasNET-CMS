@@ -22,6 +22,7 @@ from app.services import (
     media_refs,
     menus,
     public_pages,
+    site_languages,
     site_settings,
     widgets,
 )
@@ -192,9 +193,9 @@ def _latest(view: WidgetView, locale: str, theme: Theme) -> WidgetView:
 
 
 def with_latest_entries(
-    areas: Mapping[str, tuple[WidgetView, ...]], theme: Theme
+    areas: Mapping[str, tuple[WidgetView, ...]], locale: str, theme: Theme
 ) -> Mapping[str, tuple[WidgetView, ...]]:
-    locale = theme.locales[0]  # come i widget (D-94): le lingue arrivano con la 7c
+    """Le notizie nella lingua della pagina, come i widget della sua area."""
     return MappingProxyType(
         {
             name: tuple(
@@ -254,7 +255,10 @@ def page_context(
         site=site,
         mode=mode,
         menus=menus.site_menus(page.locale, page, theme),
-        widgets=with_latest_entries(widgets.site_widgets(page.locale, page.id, theme), theme),
+        widgets=with_latest_entries(
+            widgets.site_widgets(page.locale, page.id, theme), page.locale, theme
+        ),
+        languages=site_languages.for_page(page, theme),
         breadcrumbs=public_pages.breadcrumbs(page, theme),
         settings=values,
         css_version=css_version,
@@ -308,7 +312,10 @@ def entry_context(
         site=site,
         mode=mode,
         menus=menus.site_menus(entry.locale, listing, theme),
-        widgets=with_latest_entries(widgets.site_widgets(entry.locale, listing.id, theme), theme),
+        widgets=with_latest_entries(
+            widgets.site_widgets(entry.locale, listing.id, theme), entry.locale, theme
+        ),
+        languages=site_languages.for_entry(entry, view.url, theme),
         breadcrumbs=(*crumbs, Link(view.title, view.url, current=True)),
         settings=values,
         css_version=css_version,
@@ -342,7 +349,7 @@ def not_found_context(locale: str, path: str) -> PageContext:
         media=media,
         site=site,
         menus=menus.site_menus(locale, None, theme),
-        widgets=with_latest_entries(widgets.site_widgets(locale, None, theme), theme),
+        widgets=with_latest_entries(widgets.site_widgets(locale, None, theme), locale, theme),
         settings=values,
         css_version=css_version,
         analytics=_analytics(),

@@ -73,8 +73,8 @@ def _problem(path: str, code: str) -> FieldError:
     return FieldError(path, code, MESSAGES[code])
 
 
-def _locale(theme: Theme) -> str:
-    return theme.locales[0]  # D-94
+def _locale(theme: Theme, locale: str | None = None) -> str:
+    return locale or theme.locales[0]  # D-159: la lingua scelta nel pannello
 
 
 def spec(theme: Theme, area: str) -> WidgetArea:
@@ -217,21 +217,22 @@ def _types(area: WidgetArea, theme: Theme) -> list[dict[str, Any]]:
     ]
 
 
-def editable(area_name: str, theme: Theme) -> dict[str, Any]:
+def editable(area_name: str, theme: Theme, locale: str | None = None) -> dict[str, Any]:
     area = spec(theme, area_name)
-    row = _row(area_name, _locale(theme))
+    locale = _locale(theme, locale)
+    row = _row(area_name, locale)
     return {
         "area": area_name,
         "label": area.label,
-        "locale": _locale(theme),  # le pagine della visibilità sono di questa lingua
+        "locale": locale,  # le pagine della visibilità sono di questa lingua
         "types": _types(area, theme),
         "version": row.version if row is not None else 0,
         "items": list(row.items_json) if row is not None else [],
     }
 
 
-def all_editable(theme: Theme) -> list[dict[str, Any]]:
-    return [editable(name, theme) for name in theme.widget_areas]
+def all_editable(theme: Theme, locale: str | None = None) -> list[dict[str, Any]]:
+    return [editable(name, theme, locale) for name in theme.widget_areas]
 
 
 # --- Scrittura -----------------------------------------------------------------------------------
@@ -290,12 +291,17 @@ def _write(area: str, locale: str, version: int, items: list[dict[str, Any]], ac
 
 
 def store_area(
-    actor: User, area_name: str, version: int, items: Any, theme: Theme
+    actor: User,
+    area_name: str,
+    version: int,
+    items: Any,
+    theme: Theme,
+    locale: str | None = None,
 ) -> dict[str, Any]:
     """D-140: chi può pubblicare cambia i widget, e il sito cambia subito."""
     require(actor, Permission.PUBLISH)
     area = spec(theme, area_name)
-    locale = _locale(theme)
+    locale = _locale(theme, locale)
     clean, errors = validate(items, area, locale, theme.collections)
     if errors:
         raise invalid(errors)
@@ -318,7 +324,7 @@ def store_area(
     except IntegrityError:
         db.session.rollback()
         raise _conflict(_row(area_name, locale)) from None
-    return editable(area_name, theme)
+    return editable(area_name, theme, locale)
 
 
 @dataclass(frozen=True)

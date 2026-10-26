@@ -188,6 +188,7 @@ class _Helpers:
             "asset": self.renderer.asset_url,
             "embed": render_helpers.embed,
             "menu": self.menu,
+            "languages": lambda: context.languages,
             "widget_area": self.widget_area,
             "entry": context.entry,
             "entry_list": self.entry_list,
