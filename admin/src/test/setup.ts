@@ -27,6 +27,7 @@ afterEach(() => {
   cleanup();
   setCsrfToken(null);
   forgetCatalog();
+  window.localStorage.clear(); // la lingua del pannello ricordata (D-159) non passa da un test all'altro
   const unexpected = unexpectedCalls.splice(0);
   expect(unexpected, "chiamate all'API senza risposta preparata").toEqual([]);
 });

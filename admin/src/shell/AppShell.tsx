@@ -9,7 +9,9 @@ import { Link } from "../router/Link";
 import { navigate, paths, useRoute } from "../router/router";
 import { Permission } from "../session/can";
 import { useSession } from "../session/context";
+import { usePanelLocale } from "../session/localeContext";
 import { it } from "../text/it";
+import { languageName } from "../text/languages";
 import { NoticeArea } from "../ui/Notice";
 import { Logo } from "./Logo";
 
@@ -55,6 +57,7 @@ function useUnreadCount(enabled: boolean): number {
 export function AppShell({ children }: { children: ReactNode }) {
   const { site, user, logout, can } = useSession();
   const route = useRoute();
+  const { locale, locales, setLocale } = usePanelLocale();
   const [error, setError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [asking, setAsking] = useState(false);
@@ -78,6 +81,18 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
     document.querySelector<HTMLElement>("main h1")?.focus();
   }, [route, site.name]);
+
+  /** Un editor lavora nella lingua della sua pagina (D-159): cambiando lingua si torna all'elenco. */
+  function changeLocale(next: string) {
+    const back = route.name === "page" ? paths.pages : route.name === "entry" ? paths.entries(route.collection) : null;
+    if (back === null) {
+      setLocale(next);
+      return;
+    }
+    void navigate(back).then(() => {
+      if (window.location.pathname === back) setLocale(next);
+    });
+  }
 
   function exit() {
     if (leaving) return;
@@ -155,6 +170,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
         </nav>
         <div className="shell__account">
+          {locales.length > 1 && (
+            <label className="shell__locale">
+              <span>{it.shell.language}</span>
+              <select value={locale} onChange={(event) => changeLocale(event.target.value)}>
+                {locales.map((code) => (
+                  <option key={code} value={code}>
+                    {languageName(code)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <HelpMenu
             onAsk={() => setAsking(true)}
             onTour={() => {

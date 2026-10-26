@@ -1,5 +1,5 @@
 // Menu del sito (D-140, D-141, D-145): l'albero intero si salva con la versione.
-import { request } from "./client";
+import { localized, request } from "./client";
 
 export interface MenuItemData {
   uid: string;
@@ -11,6 +11,7 @@ export interface MenuItemData {
 
 export interface MenuInfo {
   location: string;
+  locale: string;
   label: string;
   max_depth: number;
   automatic: boolean;
@@ -19,14 +20,16 @@ export interface MenuInfo {
   items: MenuItemData[];
 }
 
-export async function fetchMenus(): Promise<MenuInfo[]> {
-  return (await request<MenuInfo[]>("GET", "/menus")).data;
+const menuPath = (location: string, locale: string) => localized(`/menus/${encodeURIComponent(location)}`, locale);
+
+export async function fetchMenus(locale: string): Promise<MenuInfo[]> {
+  return (await request<MenuInfo[]>("GET", localized("/menus", locale))).data;
 }
 
-export async function storeMenu(location: string, version: number, items: MenuItemData[]): Promise<MenuInfo> {
-  return (await request<MenuInfo>("PUT", `/menus/${encodeURIComponent(location)}`, { version, items })).data;
+export async function storeMenu(location: string, version: number, items: MenuItemData[], locale: string): Promise<MenuInfo> {
+  return (await request<MenuInfo>("PUT", menuPath(location, locale), { version, items })).data;
 }
 
-export async function resetMenu(location: string, version: number): Promise<MenuInfo> {
-  return (await request<MenuInfo>("DELETE", `/menus/${encodeURIComponent(location)}`, { version })).data;
+export async function resetMenu(location: string, version: number, locale: string): Promise<MenuInfo> {
+  return (await request<MenuInfo>("DELETE", menuPath(location, locale), { version })).data;
 }

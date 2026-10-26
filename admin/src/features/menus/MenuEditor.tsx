@@ -295,7 +295,7 @@ export function MenuEditor({ menu, pages, onReload }: Props) {
 
   async function save() {
     try {
-      const saved = await storeMenu(menu.location, info.version, items);
+      const saved = await storeMenu(menu.location, info.version, items, menu.locale);
       setInfo(saved);
       setItems(saved.items);
       setProblems([]);
@@ -308,7 +308,7 @@ export function MenuEditor({ menu, pages, onReload }: Props) {
 
   async function reset() {
     try {
-      const fresh = await resetMenu(menu.location, info.version);
+      const fresh = await resetMenu(menu.location, info.version, menu.locale);
       setInfo(fresh);
       setItems(fresh.items);
       setProblems([]);

@@ -39,6 +39,7 @@ import { isFieldErrors } from "../editor/model/errorPaths";
 import { startHistory } from "../editor/model/history";
 import { SeoFields } from "../editor/page/SeoFields";
 import { PreviewPane } from "../editor/preview/PreviewPane";
+import { TranslationsBox } from "../translations/TranslationsBox";
 import { SaveIndicator } from "../editor/SaveIndicator";
 import { ScheduleDialog } from "../editor/schedule/ScheduleDialog";
 import { formatZurich } from "../editor/schedule/siteTime";
@@ -70,7 +71,10 @@ function useEntryData(collection: string, id: number): LoadState {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   useEffect(() => {
     let active = true;
-    Promise.all([fetchCollections(), fetchEntry(id), fetchEntryDraft(id)]).then(
+    // La pagina elenco è quella della lingua della notizia (D-159), non quella del pannello.
+    Promise.all([fetchEntry(id), fetchEntryDraft(id)])
+      .then(async ([entry, draft]) => [await fetchCollections(entry.locale), entry, draft] as const)
+      .then(
       ([collections, entry, draft]) => {
         const info = collections.find((c) => c.key === collection);
         if (!active) return;
@@ -460,6 +464,7 @@ function Workspace({ data }: { data: Loaded }) {
                 edit((d) => setSeo(d, key, value), `seo/${key}`);
               }}
             />
+            <TranslationsBox kind="entry" id={entry.id} locale={entry.locale} collection={entry.collection} />
           </div>
           <div className="editor__preview">
             <PreviewPane action={`/_preview/entries/${entry.id}`} doc={viewing?.doc ?? safe.doc} />

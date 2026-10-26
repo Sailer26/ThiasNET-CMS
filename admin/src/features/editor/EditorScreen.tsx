@@ -42,6 +42,7 @@ import { isFieldErrors, locateError } from "./model/errorPaths";
 import { newUid } from "./model/uid";
 import { PageSettings } from "./page/PageSettings";
 import { PreviewPane } from "./preview/PreviewPane";
+import { TranslationsBox } from "../translations/TranslationsBox";
 import { fieldId } from "./schema/SchemaForm";
 import { SaveIndicator } from "./SaveIndicator";
 import { useEditorData, type Loaded } from "./useEditorData";
@@ -446,6 +447,7 @@ function Workspace({ data }: { data: Loaded }) {
               editor.update((d) => setSeo(d, key, value), `page:seo/${key}`);
             }}
           />
+          <TranslationsBox kind="page" id={page.id} locale={page.locale} />
           <ZoneList doc={doc} catalog={catalog} selected={selected} errors={errorsWithZones(errors)} unsaved={unsaved} pages={data.pages} actions={actions} />
         </div>
         <div className="editor__preview">
@@ -530,7 +532,7 @@ function errorsWithZones(errors: Map<string, Map<string, string>>): Map<string, 
 
 export function EditorScreen({ pageId }: { pageId: number }) {
   const { site } = useSession();
-  const { state } = useEditorData(pageId, site.default_locale, site.default_layout);
+  const { state } = useEditorData(pageId, site.default_layout);
   if (state.kind === "loading") return <p role="status">{ed.loading}</p>;
   if (state.kind === "failed") {
     return (

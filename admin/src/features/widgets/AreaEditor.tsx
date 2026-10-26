@@ -87,7 +87,7 @@ export function AreaEditor({ area, pages, onReload }: Props) {
   async function save() {
     const sent = items;
     try {
-      const saved = await storeWidgetArea(area.area, version, sent);
+      const saved = await storeWidgetArea(area.area, version, sent, area.locale);
       setVersion(saved.version);
       setItems(saved.items);
       setProblems([]);

@@ -4,6 +4,7 @@ import { createEntry, fetchCollections, fetchEntryChecks, publishEntry, saveEntr
 import { uploadMedia } from "../../api/media";
 import { Permission } from "../../session/can";
 import { useSession } from "../../session/context";
+import { usePanelLocale } from "../../session/localeContext";
 import { en } from "../../text/entries";
 import { FormDialog } from "../../ui/FormDialog";
 import { zurichToday } from "../editor/schedule/siteTime";
@@ -46,10 +47,11 @@ export function PhoneNews({ onClose, onDone }: Props) {
   const id = useId();
   const publisher = can(Permission.publish);
   const progress = useRef<Progress>({});
+  const { locale } = usePanelLocale(); // D-159
 
   useEffect(() => {
     let active = true;
-    fetchCollections().then(
+    fetchCollections(locale).then(
       (found) => {
         if (active) setInfo(found.find((c) => c.key === key) ?? null);
       },
@@ -60,7 +62,7 @@ export function PhoneNews({ onClose, onDone }: Props) {
     return () => {
       active = false;
     };
-  }, [key]);
+  }, [key, locale]);
 
   const schema = info?.schema;
   const textField = schema ? firstField(schema, (spec) => Boolean(spec["x-multiline"] || spec["x-richtext"])) : null;
@@ -74,7 +76,7 @@ export function PhoneNews({ onClose, onDone }: Props) {
     const done = progress.current;
     // Prima la foto: se il caricamento non riesce non resta una notizia vuota.
     if (done.photo === undefined) done.photo = file && photoField ? (await uploadMedia(file, alt)).media.id : null;
-    if (done.entryId === undefined) done.entryId = (await createEntry(key, name)).id;
+    if (done.entryId === undefined) done.entryId = (await createEntry(key, name, locale)).id;
     if (done.version === undefined) {
       const fields: Record<string, unknown> = {};
       if (dateField) fields[dateField] = zurichToday();

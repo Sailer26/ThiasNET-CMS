@@ -1,3 +1,4 @@
+import { usePanelLocale } from "../../session/localeContext";
 import { useEffect, useId, useState } from "react";
 import { errorMessage, isConflict } from "../../api/client";
 import { fetchWidgetArea, storeWidgetArea, type WidgetAreaInfo } from "../../api/widgets";
@@ -23,12 +24,13 @@ export function PhoneNotice({ onClose, onDone }: Props) {
   const [until, setUntil] = useState<Until>(NO_END);
   const [start, setStart] = useState<Until>(NO_END);
   const [removing, setRemoving] = useState(false);
-  const [attempt, setAttempt] = useState(0); // dopo un conflitto si rilegge l'area
+  const [attempt, setAttempt] = useState(0);
+  const { locale } = usePanelLocale(); // il telefono lavora nella lingua del pannello (D-159) // dopo un conflitto si rilegge l'area
   const id = useId();
 
   useEffect(() => {
     let active = true;
-    fetchWidgetArea(NOTICE_AREA).then(
+    fetchWidgetArea(NOTICE_AREA, locale).then(
       (area) => {
         if (!active) return;
         const found = currentNotice(area.items);
@@ -46,7 +48,7 @@ export function PhoneNotice({ onClose, onDone }: Props) {
     return () => {
       active = false;
     };
-  }, [attempt]);
+  }, [attempt, locale]);
 
   /** Qualcuno ha salvato nel frattempo: l'errore si vede e l'area si rilegge, così si può riprovare. */
   async function store(run: () => Promise<unknown>) {
@@ -76,7 +78,7 @@ export function PhoneNotice({ onClose, onDone }: Props) {
         danger
         onClose={() => setRemoving(false)}
         onSubmit={async () => {
-          await store(() => storeWidgetArea(NOTICE_AREA, area.version, removeWidget(area.items, existing.uid)));
+          await store(() => storeWidgetArea(NOTICE_AREA, area.version, removeWidget(area.items, existing.uid), area.locale));
           onDone(wg.phone.removed);
         }}
       >
@@ -94,7 +96,7 @@ export function PhoneNotice({ onClose, onDone }: Props) {
         if (!area) return;
         const data = { ...(existing?.data ?? {}), text: text.trim(), level };
         const ends = nextUntil(until, start, existing?.until);
-        await store(() => storeWidgetArea(NOTICE_AREA, area.version, setNotice(area.items, data, ends)));
+        await store(() => storeWidgetArea(NOTICE_AREA, area.version, setNotice(area.items, data, ends), area.locale));
         onDone(wg.phone.saved);
       }}
     >

@@ -227,3 +227,12 @@ h1[tabindex="-1"]:focus { outline: none; }
   display: inline-block; width: 1.5rem; height: 1.5rem; border-radius: 50%;
   border: 1px solid var(--tn-border); vertical-align: middle; margin-right: 0.35rem;
 }
+
+/* Lingua del pannello e traduzioni (7c, D-159) */
+.shell__locale { display: flex; align-items: center; gap: 0.25rem; font-size: 0.9rem; }
+.shell__locale select { min-height: var(--target); }
+.translations { margin: 1rem 0; }
+.translations__toggle { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; font-weight: 600; min-height: var(--target); color: inherit; }
+.translations__list { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
+.translations__list li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.translations__language { font-weight: 600; min-width: 7rem; }

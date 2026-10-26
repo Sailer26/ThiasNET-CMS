@@ -3,7 +3,7 @@ import { errorMessage } from "../../api/client";
 import { fetchTree } from "../../api/pages";
 import type { PageNode } from "../../api/types";
 import { fetchWidgetAreas, type WidgetAreaInfo } from "../../api/widgets";
-import { useSession } from "../../session/context";
+import { usePanelLocale } from "../../session/localeContext";
 import { wg } from "../../text/widgets";
 import type { PageOption } from "../menus/MenuEditor";
 import { AreaEditor } from "./AreaEditor";
@@ -14,7 +14,7 @@ function flatten(nodes: PageNode[], depth = 0): PageOption[] {
 
 /** Widget (6c, D-140, D-142): una scheda per ogni parte del sito prevista dal tema. */
 export function WidgetsScreen() {
-  const { site } = useSession();
+  const { locale } = usePanelLocale(); // D-159
   const [areas, setAreas] = useState<WidgetAreaInfo[] | null>(null);
   const [pages, setPages] = useState<PageOption[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -23,8 +23,8 @@ export function WidgetsScreen() {
   /** Pagine nella lingua delle aree (il server controlla quelle). Conta solo l'ultima richiesta. */
   const load = useCallback(() => {
     const request = ++latest.current;
-    fetchWidgetAreas()
-      .then(async (found) => [found, await fetchTree(found[0]?.locale ?? site.default_locale)] as const)
+    fetchWidgetAreas(locale)
+      .then(async (found) => [found, await fetchTree(found[0]?.locale ?? locale)] as const)
       .then(
         ([found, tree]) => {
           if (request !== latest.current) return;
@@ -36,7 +36,7 @@ export function WidgetsScreen() {
           if (request === latest.current) setError(errorMessage(failure));
         },
       );
-  }, [site.default_locale]);
+  }, [locale]);
 
   useEffect(() => {
     load();
@@ -58,7 +58,7 @@ export function WidgetsScreen() {
       {!areas && !error && <p role="status">{wg.loading}</p>}
       {areas?.map((area) => (
         // key con la versione: dopo "Ricarica" la scheda riparte dal server
-        <AreaEditor key={`${area.area}-${area.version}`} area={area} pages={pages} onReload={load} />
+        <AreaEditor key={`${area.locale}-${area.area}-${area.version}`} area={area} pages={pages} onReload={load} />
       ))}
     </section>
   );

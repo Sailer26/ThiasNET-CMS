@@ -11,6 +11,9 @@ import {
 import type { PageNode } from "../../api/types";
 import { Permission } from "../../session/can";
 import { useSession } from "../../session/context";
+import { usePanelLocale } from "../../session/localeContext";
+import { translate } from "../../api/translations";
+import { languageName } from "../../text/languages";
 import { it } from "../../text/it";
 import { en } from "../../text/entries";
 import { wg } from "../../text/widgets";
@@ -55,7 +58,8 @@ export function PageTreeScreen() {
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const latest = useRef(0);
-  const locale = site.default_locale; // D-94: solo la prima lingua fino alla Fase 7
+  const { locale } = usePanelLocale(); // D-159
+  const language = languageName(locale);
 
   /** Solo la risposta dell'ultima richiesta conta: una vecchia non sovrascrive una nuova. */
   const reload = useCallback(() => {
@@ -142,6 +146,28 @@ export function PageTreeScreen() {
     );
   }
 
+  /** La homepage di un'altra lingua nasce come traduzione di quella principale (D-151);
+   * se il sito non ne ha ancora una, si crea vuota. */
+  async function homeIn() {
+    if (busyRef.current) return;
+    try {
+      const main = (await fetchTree(site.default_locale)).nodes.find((node) => node.is_home);
+      if (!main) {
+        setDialog({ kind: "create", home: true });
+        return;
+      }
+      await act(
+        async () => {
+          await translate("page", main.id, locale);
+        },
+        it.tree.homeCreatedIn(language),
+        false,
+      );
+    } catch (error) {
+      setNotice({ kind: "error", text: errorMessage(error) });
+    }
+  }
+
   return (
     <section className="screen" aria-labelledby="pages-title" data-tour="pages">
       <div className="screen__head">
@@ -185,7 +211,15 @@ export function PageTreeScreen() {
       )}
       {!tree && !loadError && <p role="status">{it.loading}</p>}
       {tree?.truncated && <p className="notice notice--info">{it.tree.truncated}</p>}
-      {tree && !withHome && !tree.truncated && (
+      {tree && !withHome && !tree.truncated && locale !== site.default_locale && (
+        <div className="empty">
+          <p>{it.tree.noHomeIn(language)}</p>
+          <button type="button" className="button button--primary" disabled={busy} onClick={() => void homeIn()}>
+            {it.tree.createHomeIn(language)}
+          </button>
+        </div>
+      )}
+      {tree && !withHome && !tree.truncated && locale === site.default_locale && (
         <div className="empty">
           <p>{it.tree.noHome}</p>
           <button

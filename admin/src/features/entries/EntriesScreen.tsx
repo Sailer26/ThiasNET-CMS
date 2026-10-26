@@ -4,6 +4,7 @@ import { createEntry, fetchCollections, fetchEntries, restoreEntry, type Collect
 import { Link } from "../../router/Link";
 import { navigate, paths } from "../../router/router";
 import { useSession } from "../../session/context";
+import { usePanelLocale } from "../../session/localeContext";
 import { en } from "../../text/entries";
 import { ed } from "../../text/editor";
 import { it } from "../../text/it";
@@ -61,12 +62,13 @@ function Row({ entry, collection, trash, onRestore }: RowProps) {
 /** Le notizie di una raccolta (7b): elenco, cestino, nuova notizia. */
 export function EntriesScreen({ collection }: { collection: string }) {
   const { site } = useSession();
+  const { locale } = usePanelLocale(); // D-159
   const label = site.collections.find((c) => c.key === collection)?.label ?? it.titles.entries;
   const [tab, setTab] = useState<Tab>("list");
   const [page, setPage] = useState(1);
   // Il risultato ricorda per quale scheda e pagina è arrivato: mai righe del cestino come se
   // fossero notizie (o il contrario) mentre arriva la risposta nuova.
-  const [loaded, setLoaded] = useState<{ tab: Tab; page: number; result: EntryPage } | null>(null);
+  const [loaded, setLoaded] = useState<{ tab: Tab; page: number; locale: string; result: EntryPage } | null>(null);
   const [info, setInfo] = useState<CollectionInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<NoticeState | null>(null);
@@ -76,14 +78,14 @@ export function EntriesScreen({ collection }: { collection: string }) {
 
   const load = useCallback(() => {
     const request = ++latest.current;
-    Promise.all([fetchEntries(collection, page, tab === "trash"), fetchCollections()]).then(
+    Promise.all([fetchEntries(collection, page, tab === "trash", locale), fetchCollections(locale)]).then(
       ([entries, collections]) => {
         if (request !== latest.current) return;
         if (entries.items.length === 0 && page > 1) {
           setPage(page - 1); // l'ultima pagina si è svuotata (es. dopo un recupero)
           return;
         }
-        setLoaded({ tab, page, result: entries });
+        setLoaded({ tab, page, locale, result: entries });
         setInfo(collections.find((c) => c.key === collection) ?? null);
         setError(null);
       },
@@ -91,7 +93,7 @@ export function EntriesScreen({ collection }: { collection: string }) {
         if (request === latest.current) setError(errorMessage(failure));
       },
     );
-  }, [collection, page, tab]);
+  }, [collection, page, tab, locale]);
 
   useEffect(() => {
     load();
@@ -107,7 +109,7 @@ export function EntriesScreen({ collection }: { collection: string }) {
     }
   }
 
-  const found = loaded && loaded.tab === tab && loaded.page === page ? loaded.result : null;
+  const found = loaded && loaded.tab === tab && loaded.page === page && loaded.locale === locale ? loaded.result : null;
 
   function closeNew() {
     setCreating(false);
@@ -178,7 +180,7 @@ export function EntriesScreen({ collection }: { collection: string }) {
           canSubmit={title.trim().length > 0}
           onClose={closeNew}
           onSubmit={async () => {
-            const created = await createEntry(collection, title.trim());
+            const created = await createEntry(collection, title.trim(), locale);
             closeNew();
             await navigate(paths.entry(collection, created.id));
           }}

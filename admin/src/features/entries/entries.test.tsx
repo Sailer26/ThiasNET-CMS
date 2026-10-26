@@ -88,7 +88,7 @@ describe("notizie nel pannello (7b)", () => {
     await user.click(within(dialog).getByRole("button", { name: "Crea" }));
     expect(await screen.findByLabelText("Titolo")).toHaveValue("Mercato");
     expect(window.location.pathname).toBe("/admin/raccolte/news/6");
-    expect(api.callsTo("POST", "/collections/news/entries")[0]?.body).toEqual({ title: "Mercato" });
+    expect(api.callsTo("POST", "/collections/news/entries")[0]?.body).toEqual({ title: "Mercato", locale: "it" });
   });
 
   test("editor: data e testo, poi pubblica dopo il controllo con gli avvisi", async () => {

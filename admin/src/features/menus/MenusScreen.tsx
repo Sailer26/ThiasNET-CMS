@@ -3,7 +3,7 @@ import { fetchMenus, type MenuInfo } from "../../api/menus";
 import { errorMessage } from "../../api/client";
 import { fetchTree } from "../../api/pages";
 import type { PageNode } from "../../api/types";
-import { useSession } from "../../session/context";
+import { usePanelLocale } from "../../session/localeContext";
 import { mn } from "../../text/menus";
 import { MenuEditor, type PageOption } from "./MenuEditor";
 
@@ -16,13 +16,13 @@ function flatten(nodes: PageNode[], depth = 0): PageOption[] {
 
 /** Menu del sito (6b, D-140, D-141): uno per posizione prevista dal tema. */
 export function MenusScreen() {
-  const { site } = useSession();
+  const { locale } = usePanelLocale(); // D-159
   const [menus, setMenus] = useState<MenuInfo[] | null>(null);
   const [pages, setPages] = useState<PageOption[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    Promise.all([fetchMenus(), fetchTree(site.default_locale)]).then(
+    Promise.all([fetchMenus(locale), fetchTree(locale)]).then(
       ([found, tree]) => {
         setMenus(found);
         setPages(flatten(tree.nodes));
@@ -30,7 +30,7 @@ export function MenusScreen() {
       },
       (failure: unknown) => setError(errorMessage(failure)),
     );
-  }, [site.default_locale]);
+  }, [locale]);
 
   useEffect(() => {
     load();
@@ -51,7 +51,7 @@ export function MenusScreen() {
       {!menus && !error && <p role="status">{mn.loading}</p>}
       {menus?.map((menu) => (
         // key con la versione: dopo "Ricarica" l'editor riparte dal server
-        <MenuEditor key={`${menu.location}-${menu.version}-${menu.manual}`} menu={menu} pages={pages} onReload={load} />
+        <MenuEditor key={`${menu.locale}-${menu.location}-${menu.version}-${menu.manual}`} menu={menu} pages={pages} onReload={load} />
       ))}
     </section>
   );

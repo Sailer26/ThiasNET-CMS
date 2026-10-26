@@ -57,6 +57,7 @@ export const it = {
     widgets: "Widget",
     profile: "Il tuo profilo",
     openSite: "Apri il sito",
+    language: "Lingua",
     account: "Il tuo account",
     logout: "Esci",
     logoutAll: "Esci da tutti i dispositivi",
@@ -70,6 +71,11 @@ export const it = {
     newPage: "Nuova pagina",
     createHome: "Crea la homepage",
     noHome: "Il sito non ha ancora una homepage.",
+    noHomeIn: (language: string) =>
+      `${language}: ancora nessuna homepage. Sul sito questa lingua compare quando la sua homepage è online.`,
+    createHomeIn: (language: string) => `Crea la homepage in ${language}`,
+    homeCreatedIn: (language: string) =>
+      `Homepage in ${language} creata come copia di quella principale: traducila e pubblicala.`,
     truncated: "Ci sono molte pagine: ne mostro solo una parte.",
     phoneNotice: "Per modificare le pagine usa un computer o un tablet. Da qui puoi pubblicare le modifiche già fatte.",
     phonePublish: "Pubblica le modifiche",

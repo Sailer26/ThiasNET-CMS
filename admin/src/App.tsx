@@ -15,6 +15,7 @@ import { Link } from "./router/Link";
 import { paths, useRoute, type Route } from "./router/router";
 import { Permission } from "./session/can";
 import { useSession } from "./session/context";
+import { LocaleProvider } from "./session/LocaleProvider";
 import { SessionProvider } from "./session/SessionProvider";
 import { AppShell } from "./shell/AppShell";
 import { it } from "./text/it";
@@ -81,9 +82,11 @@ function Screen({ route }: { route: Route }) {
 function Panel() {
   const route = useRoute();
   return (
-    <AppShell>
-      <Screen route={route} />
-    </AppShell>
+    <LocaleProvider>
+      <AppShell>
+        <Screen route={route} />
+      </AppShell>
+    </LocaleProvider>
   );
 }
 

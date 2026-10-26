@@ -1,6 +1,6 @@
 // Widget per area (D-140, D-142, D-146): la lista intera di un'area si salva con la versione.
 import type { FieldSchema } from "./catalog";
-import { request } from "./client";
+import { localized, request } from "./client";
 
 export type VisibilityMode = "all" | "only" | "except";
 
@@ -34,16 +34,16 @@ export interface WidgetAreaInfo {
   items: WidgetItem[];
 }
 
-const areaPath = (area: string) => `/widgets/${encodeURIComponent(area)}`;
+const areaPath = (area: string, locale: string) => localized(`/widgets/${encodeURIComponent(area)}`, locale);
 
-export async function fetchWidgetAreas(): Promise<WidgetAreaInfo[]> {
-  return (await request<WidgetAreaInfo[]>("GET", "/widgets")).data;
+export async function fetchWidgetAreas(locale: string): Promise<WidgetAreaInfo[]> {
+  return (await request<WidgetAreaInfo[]>("GET", localized("/widgets", locale))).data;
 }
 
-export async function fetchWidgetArea(area: string): Promise<WidgetAreaInfo> {
-  return (await request<WidgetAreaInfo>("GET", areaPath(area))).data;
+export async function fetchWidgetArea(area: string, locale: string): Promise<WidgetAreaInfo> {
+  return (await request<WidgetAreaInfo>("GET", areaPath(area, locale))).data;
 }
 
-export async function storeWidgetArea(area: string, version: number, items: WidgetItem[]): Promise<WidgetAreaInfo> {
-  return (await request<WidgetAreaInfo>("PUT", areaPath(area), { version, items })).data;
+export async function storeWidgetArea(area: string, version: number, items: WidgetItem[], locale: string): Promise<WidgetAreaInfo> {
+  return (await request<WidgetAreaInfo>("PUT", areaPath(area, locale), { version, items })).data;
 }

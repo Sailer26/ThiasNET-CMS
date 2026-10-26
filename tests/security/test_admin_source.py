@@ -41,6 +41,10 @@ PROTOCOL_RELATIVE = re.compile(r"['\"`]//[a-z0-9]", re.IGNORECASE)
 EXTERNAL_URL = re.compile(r"https?://[A-Za-z0-9][^\s'\"`)]*")
 ALLOWED_URLS = frozenset({"http://www.w3.org/2000/svg"})  # namespace SVG, non una richiesta
 POST_MESSAGE_ANY = re.compile(r"postMessage\([^)]*['\"]\*['\"]")
+# Uniche eccezioni, file per file: la lingua del pannello ricordata su quel computer (D-159).
+# Mai token o dati del sito: il test qui sotto controlla che si salvi solo quella chiave.
+EXEMPT = {"session/LocaleProvider.tsx": frozenset({"localStorage"})}
+LOCALE_PROVIDER = SRC / "session" / "LocaleProvider.tsx"
 
 
 def _sources() -> list[Path]:
@@ -65,7 +69,12 @@ def test_panel_sources_exist() -> None:
 @pytest.mark.parametrize("path", _sources(), ids=lambda p: p.relative_to(SRC).as_posix())
 def test_panel_source_is_safe(path: Path) -> None:
     text = path.read_text(encoding="utf-8")
-    problems = [f"{token}: {why}" for token, why in FORBIDDEN.items() if token in text]
+    allowed = EXEMPT.get(path.relative_to(SRC).as_posix(), frozenset())
+    problems = [
+        f"{token}: {why}"
+        for token, why in FORBIDDEN.items()
+        if token in text and token not in allowed
+    ]
     problems += [
         f"indirizzo esterno {url}" for url in EXTERNAL_URL.findall(text) if url not in ALLOWED_URLS
     ]
@@ -79,3 +88,12 @@ def test_panel_source_is_safe(path: Path) -> None:
     }
     problems += [why for pattern, why in checks.items() if pattern.search(text)]
     assert not problems, problems
+
+
+def test_locale_provider_stores_only_the_language() -> None:
+    """D-159: nel browser resta solo il codice della lingua, sotto una chiave fissa."""
+    text = LOCALE_PROVIDER.read_text(encoding="utf-8")
+    assert re.findall(r"localStorage\.(\w+)\(", text) == ["getItem", "setItem"]
+    assert "localStorage.setItem(LOCALE_STORAGE_KEY, locale)" in text
+    assert "localStorage.getItem(LOCALE_STORAGE_KEY)" in text
+    assert 'LOCALE_STORAGE_KEY = "thiasnet.panel-locale"' in text

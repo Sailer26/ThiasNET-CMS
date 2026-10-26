@@ -145,6 +145,11 @@ export function isConflict(error: unknown): boolean {
 }
 
 /** Il messaggio da mostrare all'utente: quello del server, già in italiano. */
+/** Aggiunge la lingua del pannello (D-159) a un indirizzo dell'API. */
+export function localized(path: string, locale: string): string {
+  return `${path}${path.includes("?") ? "&" : "?"}locale=${encodeURIComponent(locale)}`;
+}
+
 export function errorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) return it.errors.generic;
   if (error.status === 429 && error.retryAfter) {

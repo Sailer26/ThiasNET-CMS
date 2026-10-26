@@ -2,7 +2,7 @@
 import type { FieldSchema } from "./catalog";
 import type { CheckItem, Checks } from "./drafts";
 import type { Revision } from "./revisions";
-import { request } from "./client";
+import { localized, request } from "./client";
 import type { Seo } from "../features/editor/model/document";
 
 export type EntryStatus = "draft" | "published" | "scheduled";
@@ -54,18 +54,19 @@ export const ENTRIES_PAGE_SIZE = 50;
 const one = (id: number) => `/entries/${id}`;
 const many = (collection: string) => `/collections/${encodeURIComponent(collection)}/entries`;
 
-export async function fetchCollections(): Promise<CollectionInfo[]> {
-  return (await request<CollectionInfo[]>("GET", "/collections")).data;
+/** `listing` è la pagina elenco nella lingua chiesta (D-149). */
+export async function fetchCollections(locale: string): Promise<CollectionInfo[]> {
+  return (await request<CollectionInfo[]>("GET", localized("/collections", locale))).data;
 }
 
-export async function fetchEntries(collection: string, page: number, trash: boolean): Promise<EntryPage> {
+export async function fetchEntries(collection: string, page: number, trash: boolean, locale: string): Promise<EntryPage> {
   const query = `page=${page}&limit=${ENTRIES_PAGE_SIZE}${trash ? "&trash=1" : ""}`;
-  const { data, meta } = await request<Entry[]>("GET", `${many(collection)}?${query}`);
+  const { data, meta } = await request<Entry[]>("GET", localized(`${many(collection)}?${query}`, locale));
   return { items: data, total: Number(meta.total ?? data.length), pages: Number(meta.pages ?? 1) };
 }
 
-export async function createEntry(collection: string, title: string): Promise<Entry> {
-  return (await request<Entry>("POST", many(collection), { title })).data;
+export async function createEntry(collection: string, title: string, locale: string): Promise<Entry> {
+  return (await request<Entry>("POST", many(collection), { title, locale })).data;
 }
 
 export async function fetchEntry(id: number): Promise<Entry> {

@@ -1,4 +1,5 @@
-// Caricamento dell'editor: pagina, bozza (o pubblicato) e catalogo, in parallelo.
+// Caricamento dell'editor: pagina, bozza (o pubblicato) e catalogo in parallelo, poi le pagine
+// della lingua della pagina (D-159: l'editor lavora sempre nella lingua della sua pagina).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchCatalog, type Catalog } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
@@ -20,13 +21,15 @@ function paths(nodes: PageNode[]): string[] {
   return nodes.flatMap((node) => [node.path, ...paths(node.children)]);
 }
 
-export function useEditorData(pageId: number, locale: string, fallbackLayout: string) {
+export function useEditorData(pageId: number, fallbackLayout: string) {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const latest = useRef(0);
 
   const load = useCallback(() => {
     const request = ++latest.current;
-    return Promise.all([fetchPage(pageId), fetchDraft(pageId), fetchCatalog(), fetchTree(locale)]).then(
+    return Promise.all([fetchPage(pageId), fetchDraft(pageId), fetchCatalog()])
+      .then(async ([page, draft, catalog]) => [page, draft, catalog, await fetchTree(page.locale)] as const)
+      .then(
       ([page, draft, catalog, tree]) => {
         if (request !== latest.current) return;
         const data = normalize(draft.data, catalog, fallbackLayout);
@@ -36,7 +39,7 @@ export function useEditorData(pageId: number, locale: string, fallbackLayout: st
         if (request === latest.current) setState({ kind: "failed", message: errorMessage(error) });
       },
     );
-  }, [pageId, locale, fallbackLayout]);
+  }, [pageId, fallbackLayout]);
 
   useEffect(() => {
     void load();
