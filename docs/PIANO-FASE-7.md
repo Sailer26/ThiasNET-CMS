@@ -70,3 +70,28 @@ Decisioni D-153 … D-156. Piano di `ecc:planner`, risposte di Thias tutte sulle
 - Rendere generici i pezzi dell'editor senza rompere quello delle pagine: commit a parte, test delle pagine verdi.
 - Dal telefono più passi non atomici: prima la foto, poi la notizia (una foto abbandonata resta in libreria).
 - Nuova route di anteprima: meta-test dei permessi e review di sicurezza.
+
+## Fase 7c — Lingue (2026-10-26)
+
+Decisioni D-151 (presa prima), D-158 … D-161. Piano di `ecc:planner`, risposte di Thias tutte sulle proposte.
+
+### Risposte di Thias
+1. **Chi decide le lingue:** Thias nel tema; una lingua compare quando la sua homepage è online. → D-158
+2. **Il pannello ricorda la lingua:** sì, su quel computer. → D-159
+3. **Avviso "traduzione forse vecchia":** non ora, tra le idee. → D-160
+4. **Cestino dell'originale:** le traduzioni restano. → D-161
+
+### Lavori
+- **Server:** indici unici (gruppo di traduzione, lingua) per pagine e notizie (migrazione `0014`);
+  `POST`/`GET /pages/<id>/translations` e `/entries/<id>/translations` (copia della bozza, pagina superiore
+  tradotta o primo livello, slug libero nella lingua); lingua del pannello in un punto solo per albero, menu,
+  widget e notizie; `languages()` per il tema, `hreflang` e `x-default`, sitemap con le alternative; "ultime
+  notizie" nella lingua della pagina (oggi sempre la prima: errore trovato dal piano); selettore nel tema default.
+- **Pannello:** lingua scelta in alto e ricordata; schermate per lingua; riquadro "Traduzioni" negli editor;
+  "Crea la homepage in …" quando una lingua è vuota.
+- **Test:** pytest per servizio, API, rendering, sitemap e lingua del pannello; vitest; e2e; regola d'oro.
+
+### Rischi
+- Home per lingua mancante: la lingua resta nascosta finché la sua homepage non è online.
+- Link interni copiati nella traduzione puntano ancora all'originale (idea in IDEE.md).
+- I testi in romancio vanno rivisti da chi lo parla.

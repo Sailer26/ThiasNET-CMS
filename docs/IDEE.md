@@ -17,3 +17,6 @@ Ogni idea nuova finisce qui, non nel codice (PREMORTEM #1). Si rivaluta dopo la 
 - **QR code per attivare il TOTP**, altre scorciatoie da tastiera, notifiche "nuovo messaggio dal sito".
 - **Chi ha letto un messaggio** nel registro (oggi lo stato letto è comune e non registrato, D-126); esportazione dei messaggi.
 - **Lightbox** per la galleria (ingrandimento al clic), nel tema e compatibile con la CSP.
+
+- **Traduzioni da aggiornare (D-160):** quando l'originale cambia dopo la traduzione, un avviso nella traduzione
+  ("l'originale è cambiato"), e un aiuto per i link interni copiati che puntano ancora alla lingua dell'originale.
