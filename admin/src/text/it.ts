@@ -57,7 +57,7 @@ export const it = {
     widgets: "Widget",
     profile: "Il tuo profilo",
     openSite: "Apri il sito",
-    language: "Lingua",
+    language: "Lingua dei contenuti",
     account: "Il tuo account",
     logout: "Esci",
     logoutAll: "Esci da tutti i dispositivi",

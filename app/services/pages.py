@@ -242,7 +242,9 @@ def create_page(
     parent_id: int | None = None,
     slug: str | None = None,
     translation_group: str | None = None,
+    commit: bool = True,
 ) -> Page:
+    """Con `commit=False` (traduzioni) chi chiama finisce la transazione: tutto o niente."""
     theme = active_theme()
     clean_title = _title(title)
     locale = locale or theme.locales[0]
@@ -286,7 +288,10 @@ def create_page(
             entity_id=page.id,
             diff={"title": clean_title, "locale": locale, "path": path, "layout": layout},
         )
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()  # l'indice unico decide qui, dentro la guardia
     return page
 
 

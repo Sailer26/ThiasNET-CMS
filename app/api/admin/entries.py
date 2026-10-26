@@ -16,7 +16,7 @@ from app.api.admin import bp
 from app.api.admin.decorators import current, require_permission
 from app.api.admin.locale import panel_locale
 from app.api.validation import json_body, page_meta, pagination
-from app.models.page import SLUG_MAX_LENGTH, TITLE_MAX_LENGTH
+from app.models.page import LOCALE_LENGTH, SLUG_MAX_LENGTH, TITLE_MAX_LENGTH
 from app.services import collections, entries, entry_publishing, prepublish, translations
 from app.services.permissions import Permission
 from app.services.theme import active_theme
@@ -221,7 +221,7 @@ def entry_checks(entry_id: int) -> Response:
     return ok(prepublish.entry_report(entries.get_entry(entry_id)))
 
 
-TRANSLATE_SCHEMA = _schema(["locale"], {"locale": {"type": "string", "maxLength": 5}})
+TRANSLATE_SCHEMA = _schema(["locale"], {"locale": {"type": "string", "maxLength": LOCALE_LENGTH}})
 
 
 @bp.get("/entries/<int:entry_id>/translations")

@@ -163,6 +163,10 @@ SPA ──fetch──► /api/admin/* (cookie di sessione SameSite=Strict + head
   schemi di `app/widgets/` (lo stesso `BlockRegistry` dei blocchi), salva con versione e dà al rendering
   `site_widgets()` (i `WidgetView` visibili per area); `expire_due()` rinnova la cache quando scade un banner
   (route pubblica e `publish-scheduled`). Pannello in `admin/src/features/widgets/` (operazioni pure in `model.ts`).
+- 7c: `GET`/`POST /pages/<id>/translations` e `/entries/<id>/translations` (`app/services/translations.py`), `?locale=`
+  su albero, menu, widget, raccolte e notizie con un solo `panel_locale()` (`app/api/admin/locale.py`); sul sito
+  `app/services/site_languages.py` (lingue visibili, selettore, `hreflang`) usato da `public_render` e dalla sitemap;
+  nel pannello `session/LocaleProvider.tsx` e `features/translations/`.
 - 7b: `GET /entries/<id>/checks`, `GET /entries/<id>/revisions/<rid>` e `/restore`; anteprima `/_preview/entries/<id>`;
   `site` con `collections`; nel pannello `admin/src/features/entries/` (elenco, editor, telefono) sopra i pezzi
   comuni di `features/editor/` (`Autosave` e `History` generici, `useAutosaveLifecycle`, `ConflictDialog`, `SeoFields`,

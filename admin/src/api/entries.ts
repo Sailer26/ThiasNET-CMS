@@ -54,7 +54,7 @@ export const ENTRIES_PAGE_SIZE = 50;
 const one = (id: number) => `/entries/${id}`;
 const many = (collection: string) => `/collections/${encodeURIComponent(collection)}/entries`;
 
-/** `listing` è la pagina elenco nella lingua chiesta (D-149). */
+/** Le raccolte, ognuna con la sua pagina elenco (`listing`) nella lingua chiesta (D-149). */
 export async function fetchCollections(locale: string): Promise<CollectionInfo[]> {
   return (await request<CollectionInfo[]>("GET", localized("/collections", locale))).data;
 }

@@ -1,7 +1,7 @@
-import { usePanelLocale } from "../../session/localeContext";
 import { useEffect, useId, useState } from "react";
 import { errorMessage, isConflict } from "../../api/client";
 import { fetchWidgetArea, storeWidgetArea, type WidgetAreaInfo } from "../../api/widgets";
+import { usePanelLocale } from "../../session/localeContext";
 import { wg } from "../../text/widgets";
 import { FormDialog } from "../../ui/FormDialog";
 import { currentNotice, NOTICE, removeWidget, setNotice } from "./model";
@@ -24,8 +24,8 @@ export function PhoneNotice({ onClose, onDone }: Props) {
   const [until, setUntil] = useState<Until>(NO_END);
   const [start, setStart] = useState<Until>(NO_END);
   const [removing, setRemoving] = useState(false);
-  const [attempt, setAttempt] = useState(0);
-  const { locale } = usePanelLocale(); // il telefono lavora nella lingua del pannello (D-159) // dopo un conflitto si rilegge l'area
+  const [attempt, setAttempt] = useState(0); // dopo un conflitto si rilegge l'area
+  const { locale } = usePanelLocale(); // il telefono lavora nella lingua del pannello (D-159)
   const id = useId();
 
   useEffect(() => {

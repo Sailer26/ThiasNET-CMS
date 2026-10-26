@@ -71,7 +71,7 @@ Decisioni D-153 … D-156. Piano di `ecc:planner`, risposte di Thias tutte sulle
 - Dal telefono più passi non atomici: prima la foto, poi la notizia (una foto abbandonata resta in libreria).
 - Nuova route di anteprima: meta-test dei permessi e review di sicurezza.
 
-## Fase 7c — Lingue (2026-10-26)
+## Fase 7c — Lingue (2026-10-26, fatta: D-161)
 
 Decisioni D-151 (presa prima), D-158 … D-161. Piano di `ecc:planner`, risposte di Thias tutte sulle proposte.
 

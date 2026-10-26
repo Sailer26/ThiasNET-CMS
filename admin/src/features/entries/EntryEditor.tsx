@@ -26,6 +26,7 @@ import { Link } from "../../router/Link";
 import { navigate, paths } from "../../router/router";
 import { Permission } from "../../session/can";
 import { useSession } from "../../session/context";
+import { useFollowLocale } from "../../session/localeContext";
 import { en } from "../../text/entries";
 import { ed } from "../../text/editor";
 import { FormDialog } from "../../ui/FormDialog";
@@ -98,6 +99,7 @@ function Workspace({ data }: { data: Loaded }) {
   const { site, can } = useSession();
   const { schema } = data.info;
   const collection = data.info.key;
+  useFollowLocale(data.entry.locale);
   const [entry, setEntry] = useState<Entry>(data.entry);
   const [history, dispatch] = useReducer(historyReducer, data.draft.data, startHistory);
   const doc = history.present;

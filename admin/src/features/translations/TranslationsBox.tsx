@@ -1,11 +1,15 @@
 // Riquadro "Traduzioni" degli editor (7c, D-151, D-159): si apre su richiesta, una riga per lingua.
-import { useState } from "react";
-import { errorMessage } from "../../api/client";
+import { useId, useState } from "react";
+import { ApiError, errorMessage } from "../../api/client";
 import { fetchTranslations, translate, type Translation, type TranslationKind } from "../../api/translations";
 import { navigate, paths } from "../../router/router";
 import { usePanelLocale } from "../../session/localeContext";
 import { languageName } from "../../text/languages";
 import { tr } from "../../text/translations";
+
+function statusText(status: Translation["status"]): string {
+  return status === null ? "" : tr.status[status];
+}
 
 interface Props {
   kind: TranslationKind;
@@ -21,6 +25,7 @@ export function TranslationsBox({ kind, id, locale, collection = "" }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const panelId = useId();
   if (locales.length < 2) return null;
 
   const target = (other: number) => (kind === "page" ? paths.page(other) : paths.entry(collection, other));
@@ -43,19 +48,26 @@ export function TranslationsBox({ kind, id, locale, collection = "" }: Props) {
     try {
       const created = await translate(kind, id, language);
       await openOther(created.id, language);
+      load(); // se l'editor non ha lasciato andare (modifiche da salvare), la riga dice "Apri"
     } catch (failure) {
-      setError(errorMessage(failure));
+      if (failure instanceof ApiError && failure.code === "translation_exists") {
+        load();
+        setError(tr.exists(languageName(language)));
+      } else {
+        setError(errorMessage(failure));
+      }
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <section className="translations">
+    <section className="translations" aria-label={tr.title}>
       <button
         type="button"
         className="translations__toggle"
         aria-expanded={expanded}
+        aria-controls={panelId}
         onClick={() => {
           setExpanded(!expanded);
           if (!expanded && rows === null) load();
@@ -63,8 +75,9 @@ export function TranslationsBox({ kind, id, locale, collection = "" }: Props) {
       >
         {tr.title}
       </button>
-      {expanded && <p className="hint">{tr.intro}</p>}
-      {error && (
+      <div id={panelId} hidden={!expanded}>
+      <p className="hint">{tr.intro}</p>
+      {expanded && error && (
         <p className="notice notice--error" role="alert">
           {error}
         </p>
@@ -86,7 +99,7 @@ export function TranslationsBox({ kind, id, locale, collection = "" }: Props) {
                     </button>
                   ) : (
                     <>
-                      <span className="hint">{tr.status[row.status ?? ""] ?? ""}</span>
+                      <span className="hint">{statusText(row.status)}</span>
                       <button type="button" className="button button--small button--ghost" onClick={() => void openOther(other, row.locale)}>
                         {tr.open(language)}
                       </button>
@@ -97,6 +110,7 @@ export function TranslationsBox({ kind, id, locale, collection = "" }: Props) {
             })}
         </ul>
       )}
+      </div>
     </section>
   );
 }

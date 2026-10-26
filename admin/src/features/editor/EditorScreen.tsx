@@ -13,6 +13,7 @@ import { Link } from "../../router/Link";
 import { paths } from "../../router/router";
 import { Permission } from "../../session/can";
 import { useSession } from "../../session/context";
+import { useFollowLocale } from "../../session/localeContext";
 import { ed } from "../../text/editor";
 import { FormDialog } from "../../ui/FormDialog";
 import { NoticeArea, type NoticeState } from "../../ui/Notice";
@@ -81,6 +82,7 @@ function Workspace({ data }: { data: Loaded }) {
   const { site, can } = useSession();
   const { catalog } = data;
   const [page, setPage] = useState<Page>(data.page);
+  useFollowLocale(data.page.locale);
   const editor = useEditorState(data.draft.data);
   const { doc, selected } = editor;
   const [save, setSave] = useState<SaveState>({ kind: "saved", at: null });

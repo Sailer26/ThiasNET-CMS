@@ -272,7 +272,7 @@ def restore_revision(page_id: int, revision_id: int) -> Response:
 
 # --- Traduzioni (D-151) ------------------------------------------------------------------------
 
-TRANSLATE_SCHEMA = _schema(["locale"], locale={"type": "string", "maxLength": 5})
+TRANSLATE_SCHEMA = _schema(["locale"], locale={"type": "string", "maxLength": LOCALE_LENGTH})
 
 
 @bp.get("/pages/<int:page_id>/translations")

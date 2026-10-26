@@ -8,7 +8,7 @@ export interface Translation {
   label: string;
   id: number | null;
   title: string | null;
-  status: string | null;
+  status: "draft" | "published" | "scheduled" | null;
 }
 
 const base = (kind: TranslationKind, id: number) => `/${kind === "page" ? "pages" : "entries"}/${id}/translations`;

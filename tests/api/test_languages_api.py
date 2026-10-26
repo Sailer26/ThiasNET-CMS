@@ -247,3 +247,108 @@ def test_latest_entries_follow_the_page_language(admin: FlaskClient, visitor: Fl
     assert stored.status_code == 200
     html = visitor.get("/de/").get_data(as_text=True)
     assert "Deutsche Nachricht" in html and "Notizia italiana" not in html
+
+
+# --- dalla review ---------------------------------------------------------------------------------
+
+
+def _entry(client: FlaskClient, title: str, locale: str = "it") -> dict[str, Any]:
+    news = f"{API}/collections/news/entries"
+    item: dict[str, Any] = client.post(news, json={"title": title, "locale": locale}).get_json()[
+        "data"
+    ]
+    body = {"version": 1, "title": title, "fields": {"date": "2026-10-26"}, "seo": {}}
+    assert client.put(f"{ENTRIES}/{item['id']}/draft", json=body).status_code == 200
+    return item
+
+
+def _publish_entry(client: FlaskClient, entry_id: int, draft_version: int = 2) -> None:
+    response = client.post(f"{ENTRIES}/{entry_id}/publish", json={"draft_version": draft_version})
+    assert response.status_code == 200, response.get_json()
+
+
+@pytest.mark.parametrize(("locale", "code"), [("it", "same_locale"), ("fr", "unknown_locale")])
+def test_entry_translation_needs_another_active_language(
+    admin: FlaskClient, locale: str, code: str
+) -> None:
+    item = _entry(admin, "Festa")
+    response = admin.post(f"{ENTRIES}/{item['id']}/translations", json={"locale": locale})
+    assert (response.status_code, error_code(response)) == (422, code)
+
+
+def test_restoring_a_duplicate_entry_translation_is_refused(admin: FlaskClient) -> None:
+    item = _entry(admin, "Festa")
+    first = admin.post(f"{ENTRIES}/{item['id']}/translations", json={"locale": "de"})
+    first_id = first.get_json()["data"]["id"]
+    version = first.get_json()["data"]["version"]
+    assert admin.delete(f"{ENTRIES}/{first_id}", json={"version": version}).status_code == 200
+    again = admin.post(f"{ENTRIES}/{item['id']}/translations", json={"locale": "de"})
+    assert again.status_code == 201
+    back = admin.post(f"{ENTRIES}/{first_id}/restore", json={"version": version + 1})
+    assert (back.status_code, error_code(back)) == (409, "translation_exists")
+
+
+def test_a_failed_copy_leaves_no_half_translation(
+    admin: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tutto o niente: se la copia non riesce, la lingua resta libera per riprovare."""
+    from app.services import drafts
+
+    page = create_page(admin, "Chi siamo")
+
+    def broken(*_args: Any, **_kwargs: Any) -> int:
+        raise RuntimeError("disco pieno")
+
+    monkeypatch.setattr(drafts, "write", broken)
+    with pytest.raises(RuntimeError):
+        translate(admin, page["id"])
+    monkeypatch.undo()
+    listed = admin.get(f"{PAGES}/{page['id']}/translations").get_json()["data"]
+    assert {row["locale"]: row["id"] for row in listed}["de"] is None
+    assert translate(admin, page["id"]).status_code == 201
+
+
+def test_two_translations_at_once_give_409(
+    admin: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """La seconda richiesta passa il controllo (simulato) ma l'indice unico la ferma: 409, non 500."""
+    from app.services import entries, pages
+
+    page = create_page(admin, "Chi siamo")
+    item = _entry(admin, "Festa")
+    assert translate(admin, page["id"]).status_code == 201
+    first = admin.post(f"{ENTRIES}/{item['id']}/translations", json={"locale": "de"})
+    assert first.status_code == 201
+    monkeypatch.setattr(pages, "translation_taken", lambda *_a, **_k: False)
+    monkeypatch.setattr(entries, "translation_taken", lambda *_a, **_k: False)
+    again = translate(admin, page["id"])
+    assert (again.status_code, error_code(again)) == (409, "translation_exists")
+    other = admin.post(f"{ENTRIES}/{item['id']}/translations", json={"locale": "de"})
+    assert (other.status_code, error_code(other)) == (409, "translation_exists")
+
+
+@pytest.mark.parametrize(
+    "path", ["/menus", "/widgets", "/collections", "/collections/news/entries"]
+)
+def test_unknown_panel_language_is_refused(admin: FlaskClient, path: str) -> None:
+    response = admin.get(f"{API}{path}?locale=fr")
+    assert (response.status_code, error_code(response)) == (422, "unknown_locale")
+
+
+def test_entry_switcher_hreflang_and_sitemap(admin: FlaskClient, visitor: FlaskClient) -> None:
+    it_home = home(admin)
+    publish_translation(admin, it_home["id"], "Startseite")
+    for locale in ("it", "de"):
+        listing = create_page(admin, "Notizie", layout="news_list", locale=locale)
+        assert publish(admin, listing["id"]).status_code == 200
+    item = _entry(admin, "Festa")
+    _publish_entry(admin, item["id"])
+    html = visitor.get("/notizie/festa").get_data(as_text=True)
+    assert 'hreflang="de" href="/de/"' in html  # non ancora tradotta: la homepage tedesca
+    created = admin.post(f"{ENTRIES}/{item['id']}/translations", json={"locale": "de"})
+    _publish_entry(admin, created.get_json()["data"]["id"])
+    html = visitor.get("/notizie/festa").get_data(as_text=True)
+    assert 'hreflang="de" href="/de/notizie/festa"' in html
+    assert '<link rel="alternate" hreflang="de" href="http' in html
+    sitemap = visitor.get("/sitemap.xml").get_data(as_text=True)
+    assert 'hreflang="de" href="https://www.example.ch/de/notizie/festa"' in sitemap

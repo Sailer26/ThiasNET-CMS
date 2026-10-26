@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it as test, vi } from "vitest";
 import { App } from "../../App";
-import { setCsrfToken } from "../../api/client";
+import { localized, setCsrfToken } from "../../api/client";
 import { catalog } from "../../test/catalog";
 import { fakeApi, node, signedIn, type Call, type FakeApi } from "../../test/fakeApi";
 import { LOCALE_STORAGE_KEY } from "../../session/LocaleProvider";
@@ -36,13 +36,13 @@ describe("lingue nel pannello (7c, D-159)", () => {
     const user = userEvent.setup();
     const { unmount } = render(<App />);
     expect(await screen.findByRole("link", { name: "Home" })).toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText("Lingua"), "de");
+    await user.selectOptions(screen.getByLabelText("Lingua dei contenuti"), "de");
     expect(await screen.findByRole("link", { name: "Startseite" })).toBeInTheDocument();
     expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe("de");
     unmount();
     render(<App />);
     expect(await screen.findByRole("link", { name: "Startseite" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Lingua")).toHaveValue("de");
+    expect(screen.getByLabelText("Lingua dei contenuti")).toHaveValue("de");
   });
 
   test("una lingua ricordata che il tema non ha più si ignora", async () => {
@@ -51,7 +51,7 @@ describe("lingue nel pannello (7c, D-159)", () => {
     tree(api, () => [START]);
     render(<App />);
     expect(await screen.findByRole("link", { name: "Home" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Lingua")).toHaveValue("it");
+    expect(screen.getByLabelText("Lingua dei contenuti")).toHaveValue("it");
     expect(api.callsTo("GET", "/pages/tree")[0]?.path).toContain("locale=it");
   });
 
@@ -94,7 +94,7 @@ describe("lingue nel pannello (7c, D-159)", () => {
     await user.click(await screen.findByRole("button", { name: "Traduzioni" }));
     await user.click(await screen.findByRole("button", { name: "Traduci in Deutsch" }));
     await waitFor(() => expect(window.location.pathname).toBe("/admin/pagine/8"));
-    expect(screen.getByLabelText("Lingua")).toHaveValue("de");
+    expect(screen.getByLabelText("Lingua dei contenuti")).toHaveValue("de");
     expect(api.callsTo("POST", "/pages/7/translations")[0]?.body).toEqual({ locale: "de" });
     // l'editor della traduzione propone i link della sua lingua
     await waitFor(() => expect(api.callsTo("GET", "/pages/8/draft")).toHaveLength(1));
@@ -120,5 +120,66 @@ describe("lingue nel pannello (7c, D-159)", () => {
     expect(await screen.findByText("Ancora nessuna notizia.")).toBeInTheDocument();
     expect(api.callsTo("GET", "/collections/news/entries")[0]?.path).toContain("locale=de");
     expect(api.callsTo("GET", "/collections")[0]?.path).toBe("/collections?locale=de");
+  });
+
+  test("l'editor porta il pannello nella lingua della sua pagina", async () => {
+    const api = start("/admin/pagine/8");
+    const draft = { title: "Über uns", layout: "page", seo: {}, zones: { main: [], sidebar: [] } };
+    api.on("GET", "/pages/8", { data: node("Über uns", { id: 8, locale: "de", path: "/ueber-uns" }) });
+    api.on("GET", "/pages/8/draft", { data: { version: 1, data: draft, from_published: false, updated_at: null } });
+    api.on("GET", "/blocks", { data: catalog() });
+    tree(api, () => [START]);
+    render(<App />);
+    expect(await screen.findByLabelText("Titolo della pagina")).toHaveValue("Über uns");
+    await waitFor(() => expect(screen.getByLabelText("Lingua dei contenuti")).toHaveValue("de"));
+    expect(api.callsTo("GET", "/pages/tree")[0]?.path).toContain("locale=de");
+  });
+
+  test("traduzione già fatta da qualcun altro: messaggio chiaro e riga aggiornata", async () => {
+    const api = start("/admin/pagine/7");
+    const draft = { title: "Chi siamo", layout: "page", seo: {}, zones: { main: [], sidebar: [] } };
+    api.on("GET", "/pages/7", { data: node("Chi siamo", { id: 7, path: "/chi-siamo" }) });
+    api.on("GET", "/pages/7/draft", { data: { version: 1, data: draft, from_published: false, updated_at: null } });
+    api.on("GET", "/blocks", { data: catalog() });
+    tree(api, () => []);
+    const it = { locale: "it", label: "Italiano", id: 7, title: "Chi siamo", status: "draft" };
+    api.on(
+      "GET",
+      "/pages/7/translations",
+      { data: [it, { locale: "de", label: "Deutsch", id: null, title: null, status: null }] },
+      { data: [it, { locale: "de", label: "Deutsch", id: 9, title: "Über uns", status: "published" }] },
+    );
+    api.on("POST", "/pages/7/translations", {
+      status: 409,
+      error: { code: "translation_exists", message: "Questa lingua ha già la sua traduzione" },
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    const toggle = await screen.findByRole("button", { name: "Traduzioni" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await user.click(await screen.findByRole("button", { name: "Traduci in Deutsch" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Esiste già una traduzione in Deutsch");
+    expect(await screen.findByRole("button", { name: "Apri in Deutsch" })).toBeInTheDocument();
+    expect(screen.getByText("online")).toBeInTheDocument();
+  });
+
+  test("widget nella lingua del pannello, anche al salvataggio", async () => {
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, "de");
+    const api = start("/admin/widget");
+    tree(api, () => [START]);
+    api.on("GET", "/widgets", {
+      data: [{ area: "footer", label: "Piè di pagina", locale: "de", types: [], version: 0, items: [] }],
+    });
+    render(<App />);
+    expect(await screen.findByText("Piè di pagina")).toBeInTheDocument();
+    expect(api.callsTo("GET", "/widgets")[0]?.path).toBe("/widgets?locale=de");
+    expect(api.callsTo("GET", "/pages/tree")[0]?.path).toContain("locale=de");
+  });
+
+  test("localized aggiunge la lingua anche a un indirizzo con altri parametri", () => {
+    expect(localized("/menus", "de")).toBe("/menus?locale=de");
+    expect(localized("/x?page=2", "rm")).toBe("/x?page=2&locale=rm");
   });
 });

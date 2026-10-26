@@ -49,9 +49,12 @@ function isStale(error: unknown): boolean {
   return error instanceof ApiError && STALE_CODES.has(error.code);
 }
 
+/** Il sito non ha ancora una homepage principale da tradurre: se ne crea una vuota. */
+class MissingHome extends Error {}
+
 export function PageTreeScreen() {
   const { site, can, reloadKey } = useSession();
-  const [tree, setTree] = useState<Tree | null>(null);
+  const [loaded, setLoaded] = useState<{ locale: string; tree: Tree } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notice, setNotice] = useState<NoticeState | null>(null);
   const [dialog, setDialog] = useState<DialogState | null>(null);
@@ -60,6 +63,8 @@ export function PageTreeScreen() {
   const latest = useRef(0);
   const { locale } = usePanelLocale(); // D-159
   const language = languageName(locale);
+  // Un albero di un'altra lingua non si mostra (né si sposta) mentre arriva quello nuovo.
+  const tree = loaded?.locale === locale ? loaded.tree : null;
 
   /** Solo la risposta dell'ultima richiesta conta: una vecchia non sovrascrive una nuova. */
   const reload = useCallback(() => {
@@ -67,7 +72,7 @@ export function PageTreeScreen() {
     return fetchTree(locale).then(
       (loaded) => {
         if (request !== latest.current) return;
-        setTree(loaded);
+        setLoaded({ locale, tree: loaded });
         setLoadError(null);
       },
       (error: unknown) => {
@@ -150,21 +155,24 @@ export function PageTreeScreen() {
    * se il sito non ne ha ancora una, si crea vuota. */
   async function homeIn() {
     if (busyRef.current) return;
+    const target = locale; // la lingua di quando si è premuto
     try {
-      const main = (await fetchTree(site.default_locale)).nodes.find((node) => node.is_home);
-      if (!main) {
-        setDialog({ kind: "create", home: true });
-        return;
-      }
       await act(
         async () => {
-          await translate("page", main.id, locale);
+          const main = (await fetchTree(site.default_locale)).nodes.find((node) => node.is_home);
+          if (!main) throw new MissingHome();
+          await translate("page", main.id, target);
         },
-        it.tree.homeCreatedIn(language),
+        it.tree.homeCreatedIn(languageName(target)),
         false,
       );
     } catch (error) {
+      if (error instanceof MissingHome) {
+        setDialog({ kind: "create", home: true });
+        return;
+      }
       setNotice({ kind: "error", text: errorMessage(error) });
+      void reload(); // es. 409: nel frattempo qualcuno l'ha già creata
     }
   }
 

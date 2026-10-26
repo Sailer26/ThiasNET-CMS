@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchMenus, type MenuInfo } from "../../api/menus";
 import { errorMessage } from "../../api/client";
 import { fetchTree } from "../../api/pages";
@@ -20,15 +20,21 @@ export function MenusScreen() {
   const [menus, setMenus] = useState<MenuInfo[] | null>(null);
   const [pages, setPages] = useState<PageOption[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const latest = useRef(0);
 
+  /** Cambiando lingua in fretta conta solo l'ultima risposta. */
   const load = useCallback(() => {
+    const request = ++latest.current;
     Promise.all([fetchMenus(locale), fetchTree(locale)]).then(
       ([found, tree]) => {
+        if (request !== latest.current) return;
         setMenus(found);
         setPages(flatten(tree.nodes));
         setError(null);
       },
-      (failure: unknown) => setError(errorMessage(failure)),
+      (failure: unknown) => {
+        if (request === latest.current) setError(errorMessage(failure));
+      },
     );
   }, [locale]);
 

@@ -56,7 +56,7 @@ Una fase alla volta. Una fase è chiusa solo quando tutti i criteri sono spuntat
 - Fase 4: `img()` e `media_url()` veri (oggi vuoti sul sito, segnaposto in anteprima), `og:image`, link dei file scaricabili.
 - Fase 5: messaggi del modulo contatti nel pannello; il pannello usa l'anteprima live (`POST /_preview/<id>` con `target` sull'iframe, messaggi `cms:block-click` / `cms:highlight`); test automatici di `consent.js` e `preview.js`.
 - Fase 6: menu configurati (oggi menu automatico, D-58), widget, impostazioni del sito e del tema dal pannello con `page_cache.mark_changed()`.
-- Fase 7: hreflang e selettore lingua.
+- ~~Fase 7: hreflang e selettore lingua.~~ fatto nella 7c.
 - Fase 8: CSP con l'host di Matomo e degli iframe, axe e Lighthouse automatici, dati strutturati, `python -m app.theme_check` nel build Docker, cron per `publish-scheduled`, `send-contact-messages` e `purge-contact-messages`; far rivedere i testi in romancio.
 
 ## Fase 4 — Media library
@@ -146,7 +146,7 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - 5b: titolo, layout e SEO della pagina nell'editor (oggi il clic sul titolo apre un segnaposto); bozza risalvata dopo un nuovo accesso.
 - 5c: `blob:` nella CSP del pannello per l'anteprima dei file da caricare.
 - Dopo il test d'uso: menu "⋯" per le azioni delle righe su tablet, se serve (oggi le azioni vanno a capo sotto il titolo).
-- ~~Fase 6: azione rapida "banner avviso" da telefono (D-97)~~ fatta nella 6c. Fase 7: lingue nel pannello (D-94), azione "notizia".
+- ~~Fase 6: azione rapida "banner avviso" da telefono (D-97)~~ fatta nella 6c. ~~Fase 7: lingue nel pannello (D-94), azione "notizia".~~ fatte nella 7b e 7c.
 - Fase 8: Docker con `npm ci && npm run build` (che include il controllo CSP), Caddy per `/admin/assets/`, build obbligatoria all'avvio in produzione, e2e completi, `npm audit` e action fissate a SHA, axe sul pannello.
 - Fase 8 (dalla review di sicurezza della 5a): guardiani della regola d'oro e del pannello basati sull'albero del codice (oggi controllano i nomi: `getattr` con nomi calcolati o import rinominati non si vedono), `eslint-plugin-jsx-a11y` se l'audit axe lo chiede.
 
@@ -171,6 +171,11 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - [x] Widget per area con visibilità per pagina (6c)
 - [x] Menu per posizione, drag&drop, profondità massima (6b)
 - [x] Impostazioni sito + settings del tema generate da `theme.json` (form dinamico tipizzato) su `PUT /api/admin/settings/appearance` (D-14)
+
+**Rimandati dalla 7c:**
+- Fase 8: selettore della lingua anche sulle pagine 404; sitemap con `x-default` come la testa delle pagine, e le pagine `noindex` tolte allo stesso modo da `hreflang` e sitemap; sitemap con le pagine elenco cercate in una sola query; un aiuto comune per i vincoli unici (`translation_exists` e i marcatori oggi stanno sia in `pages.py` sia in `entries.py`).
+- Dopo il test d'uso: avviso per i lettori di schermo quando cambia la lingua dei contenuti; la lingua ricordata per utente e non solo per computer; le finestre del telefono ("Notizia", "Avviso") che ripartono se la lingua cambia mentre sono aperte; anteprima di una pagina in una lingua non ancora visibile con il selettore completo.
+- Caso raro: "Crea la homepage in …" quando manca la homepage principale crea una homepage vuota, non collegata alla principale che arriverà dopo (oggi va cestinata e rifatta traducendo).
 
 **Rimandati dalla 7b:**
 - Fase 8: un solo flusso di pubblicazione per i due editor (oggi pagine e notizie hanno ciascuno il suo, con gli stessi pezzi sotto); versioni tenute per tipo (oggi le ultime 50 di ogni oggetto, anche dopo molti ripristini); i dati del widget "ultime notizie" calcolati una volta sola per pagina se ce ne sono due.
@@ -202,8 +207,13 @@ Divisa in quattro sotto-fasi con una PR ciascuna (D-86, `docs/PIANO-FASE-5.md`).
 - [x] Widget "ultime notizie" acceso (titolo, raccolta, quante; 3 di solito, D-155) con template nel tema
 - [x] Pannello: voce Notizie, elenco con cestino, nuova notizia, editor dallo schema con anteprima affiancata (D-156), campi data e data/ora; "Notizia" dal telefono (D-153, D-154); e2e
 
+**7c — Lingue** (D-151, D-158 … D-161)
+- [x] Traduzioni collegate di pagine e notizie (una per lingua, migrazione `0014`), copia della bozza, pagina superiore tradotta
+- [x] Sito: lingua visibile solo con la sua homepage online, selettore nel tema, `hreflang` e `x-default`, sitemap con le alternative, "ultime notizie" nella lingua della pagina
+- [x] Pannello: lingua scelta in alto e ricordata, albero/menu/widget/notizie per lingua, riquadro "Traduzioni", "Crea la homepage in …"; e2e
+
 - [x] Collezioni da `theme.json` (news; gli eventi quando servono, D-148), listing paginato, dettaglio (7a), pannello (7b)
-- [ ] Traduzioni collegate, selettore lingua, hreflang
+- [x] Traduzioni collegate, selettore lingua, hreflang (7c)
 
 ## Fase 8 — Produzione
 - [ ] Dockerfile multi-stage, docker-compose con Caddy, `themes/` read-only

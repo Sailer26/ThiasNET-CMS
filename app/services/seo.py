@@ -38,7 +38,7 @@ def _attr(value: str) -> str:
 
 def _url_xml(url: _Url, siblings: list[_Url]) -> str:
     links = "".join(
-        f'<xhtml:link rel="alternate" hreflang="{s.locale}" href="{_attr(s.location)}"/>'
+        f'<xhtml:link rel="alternate" hreflang="{_attr(s.locale)}" href="{_attr(s.location)}"/>'
         for s in (siblings if len(siblings) > 1 else ())
     )
     return (

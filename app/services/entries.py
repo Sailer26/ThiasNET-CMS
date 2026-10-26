@@ -180,7 +180,9 @@ def create(
     title: str,
     locale: str | None = None,
     translation_group: str | None = None,
+    commit: bool = True,
 ) -> Entry:
+    """Con `commit=False` (traduzioni) chi chiama finisce la transazione: tutto o niente."""
     theme = active_theme()
     collections.spec(theme, collection)
     locale = locale or theme.locales[0]
@@ -219,7 +221,8 @@ def create(
         entity_id=entry.id,
         diff={"collection": collection, "title": clean_title, "slug": slug},
     )
-    _commit_unique()
+    if commit:
+        _commit_unique()
     return entry
 
 
@@ -273,10 +276,10 @@ def trash(actor: User, entry: Entry, version: int) -> Entry:
 
 def restore(actor: User, entry: Entry, version: int) -> Entry:
     """Torna come bozza non pubblicata, se il suo indirizzo è ancora libero."""
+    if translation_taken(entry.translation_group, entry.locale, exclude=entry.id):
+        raise translation_exists()  # D-161: prima del nome, è il motivo che conta
     if _slug_taken(entry.collection, entry.locale, entry.slug, exclude=entry.id):
         raise _slug_taken_error()
-    if translation_taken(entry.translation_group, entry.locale, exclude=entry.id):
-        raise translation_exists()  # D-161
     bump_version(entry, version)
     entry.deleted_at = None
     entry.deleted_by = None
@@ -353,10 +356,13 @@ def _write_draft(actor: User, entry: Entry, expected: int, document: Document) -
     return expected + 1
 
 
-def store_draft(actor: User, entry: Entry, expected: int, document: Any) -> int:
+def store_draft(
+    actor: User, entry: Entry, expected: int, document: Any, *, commit: bool = True
+) -> int:
     clean = collections.validate(active_theme(), entry.collection, document, Mode.DRAFT)
     version = _write_draft(actor, entry, expected, clean)
-    db.session.commit()
+    if commit:
+        db.session.commit()
     return version
 
 

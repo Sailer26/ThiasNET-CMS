@@ -15,6 +15,7 @@ import { Link } from "./router/Link";
 import { paths, useRoute, type Route } from "./router/router";
 import { Permission } from "./session/can";
 import { useSession } from "./session/context";
+import { usePanelLocale } from "./session/localeContext";
 import { LocaleProvider } from "./session/LocaleProvider";
 import { SessionProvider } from "./session/SessionProvider";
 import { AppShell } from "./shell/AppShell";
@@ -30,6 +31,7 @@ const EditorScreen = lazy(() =>
 
 function Screen({ route }: { route: Route }) {
   const { can } = useSession();
+  const { locale } = usePanelLocale();
   switch (route.name) {
     case "pages":
       return <PageTreeScreen />;
@@ -56,7 +58,7 @@ function Screen({ route }: { route: Route }) {
     case "menus":
       return can(Permission.publish) ? <MenusScreen /> : <NoAccess />;
     case "entries":
-      return <EntriesScreen key={route.collection} collection={route.collection} />;
+      return <EntriesScreen key={`${route.collection}-${locale}`} collection={route.collection} />;
     case "entry":
       return (
         <Suspense fallback={<p role="status">{it.loading}</p>}>

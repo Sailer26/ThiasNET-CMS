@@ -5,5 +5,6 @@ export const tr = {
   loading: "Caricamento…",
   create: (language: string) => `Traduci in ${language}`,
   open: (language: string) => `Apri in ${language}`,
-  status: { draft: "bozza", published: "online", scheduled: "programmata" } as Record<string, string>,
+  status: { draft: "bozza", published: "online", scheduled: "programmata" },
+  exists: (language: string) => `Esiste già una traduzione in ${language}: la trovi qui sotto.`,
 };

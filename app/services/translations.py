@@ -8,9 +8,11 @@ lingua. Da lì ogni lingua è una pagina a sé (cestino compreso, D-161).
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.models.entry import Entry
@@ -38,6 +40,16 @@ def _page_in(group: str, locale: str) -> Page | None:
     return db.session.execute(query.limit(1)).scalar_one_or_none()
 
 
+def _commit(markers: tuple[str, ...], exists: Callable[[], ServiceError]) -> None:
+    """Due traduzioni nella stessa lingua nello stesso istante: 409, non 500."""
+    try:
+        db.session.commit()
+    except IntegrityError as exc:
+        if any(marker in str(exc.orig) for marker in markers):
+            raise exists() from exc
+        raise
+
+
 def translate_page(actor: User, page: Page, locale: str) -> Page:
     theme = active_theme()
     _check_locale(theme, page.locale, locale)
@@ -49,25 +61,30 @@ def translate_page(actor: User, page: Page, locale: str) -> Page:
         parent = db.session.get(Page, page.parent_id)
         found = _page_in(parent.translation_group, locale) if parent is not None else None
         parent_id = found.id if found is not None else None
-    created = pages.create_page(
-        actor,
-        title=clean["title"] or page.title,
-        layout=clean["layout"],
-        locale=locale,
-        parent_id=parent_id,
-        slug="" if is_home(page) else None,
-        translation_group=page.translation_group,
-    )
-    # create_page ha messo una bozza vuota (versione 1): ora la copia dell'originale.
-    drafts.write(actor, created, 1, {**clean, "title": created.title}, announce=False)
-    audit.record(
-        "page.translated",
-        actor_id=actor.id,
-        entity="page",
-        entity_id=created.id,
-        diff={"from": page.id, "locale": locale},
-    )
-    db.session.commit()
+    try:  # pagina, copia e registro in un solo commit: mai una traduzione vuota a metà
+        created = pages.create_page(
+            actor,
+            title=clean["title"] or page.title,
+            layout=clean["layout"],
+            locale=locale,
+            parent_id=parent_id,
+            slug="" if is_home(page) else None,
+            translation_group=page.translation_group,
+            commit=False,
+        )
+        # create_page ha messo una bozza vuota (versione 1): ora la copia dell'originale.
+        drafts.write(actor, created, 1, {**clean, "title": created.title}, announce=False)
+        audit.record(
+            "page.translated",
+            actor_id=actor.id,
+            entity="page",
+            entity_id=created.id,
+            diff={"from": page.id, "locale": locale},
+        )
+        _commit(pages.GROUP_INDEX_MARKERS, pages.translation_exists)
+    except BaseException:
+        db.session.rollback()
+        raise
     return created
 
 
@@ -79,22 +96,27 @@ def translate_entry(actor: User, entry: Entry, locale: str) -> Entry:
     clean = collections.validate(
         theme, entry.collection, entries.draft_view(entry)["data"], Mode.DRAFT
     )
-    created = entries.create(
-        actor,
-        entry.collection,
-        title=clean["title"] or entry.title,
-        locale=locale,
-        translation_group=entry.translation_group,
-    )
-    entries.store_draft(actor, created, 1, {**clean, "title": created.title})
-    audit.record(
-        "entry.translated",
-        actor_id=actor.id,
-        entity="entry",
-        entity_id=created.id,
-        diff={"from": entry.id, "locale": locale},
-    )
-    db.session.commit()
+    try:  # voce, copia e registro in un solo commit
+        created = entries.create(
+            actor,
+            entry.collection,
+            title=clean["title"] or entry.title,
+            locale=locale,
+            translation_group=entry.translation_group,
+            commit=False,
+        )
+        entries.store_draft(actor, created, 1, {**clean, "title": created.title}, commit=False)
+        audit.record(
+            "entry.translated",
+            actor_id=actor.id,
+            entity="entry",
+            entity_id=created.id,
+            diff={"from": entry.id, "locale": locale},
+        )
+        _commit(entries.GROUP_INDEX_MARKERS, entries.translation_exists)
+    except BaseException:
+        db.session.rollback()
+        raise
     return created
 
 

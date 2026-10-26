@@ -62,16 +62,40 @@ def for_page(page: Page, theme: Theme) -> tuple[Language, ...]:
     return _build(theme, page.locale, found)
 
 
+def _listings(theme: Theme, collection: str, locales: set[str]) -> dict[str, Page]:
+    """Le pagine elenco online della raccolta, una per lingua, in una sola query (D-149)."""
+    layout = theme.listing_layout(collection)
+    if layout is None or not locales:
+        return {}
+    query = (
+        select(Page)
+        .where(
+            live(),
+            Page.status == PageStatus.PUBLISHED,
+            Page.layout == layout,
+            Page.locale.in_(locales),
+        )
+        .order_by(Page.id)
+    )
+    found: dict[str, Page] = {}
+    for page in db.session.execute(query).scalars():
+        found.setdefault(page.locale, page)  # la prima, come entries.listing_page
+    return found
+
+
 def for_entry(entry: Entry, url: str, theme: Theme) -> tuple[Language, ...]:
-    query = select(Entry.collection, Entry.locale, Entry.slug).where(
+    query = select(Entry.locale, Entry.slug).where(
         Entry.deleted_at.is_(None),
         Entry.status == EntryStatus.PUBLISHED,
+        Entry.collection == entry.collection,
         Entry.translation_group == entry.translation_group,
     )
-    found: dict[str, str] = {}
-    for collection, locale, slug in db.session.execute(query):
-        listing = entries.listing_page(theme, collection, locale, online=True)
-        if listing is not None:
-            found[locale] = entries.entry_url(listing, slug, theme)
+    rows = [(row.locale, row.slug) for row in db.session.execute(query)]
+    listings = _listings(theme, entry.collection, {locale for locale, _slug in rows})
+    found = {
+        locale: entries.entry_url(listings[locale], slug, theme)
+        for locale, slug in rows
+        if locale in listings
+    }
     found[entry.locale] = url
     return _build(theme, entry.locale, found)
